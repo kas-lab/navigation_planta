@@ -1,0 +1,9 @@
+repositories:
+  owl_to_pddl:
+    type: git
+    url: git@github.com:remaro-network/dlToPlanning.git
+    version: main
+  downward_ros:
+    type: git
+    url: git@github.com:kas-lab/downward_ros.git
+    version: main
