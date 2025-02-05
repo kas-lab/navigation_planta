@@ -52,7 +52,7 @@ navigation:f_localization rdf:type owl:NamedIndividual ,
 navigation:fd_amcl_kinect rdf:type owl:NamedIndividual ,
                                    tomasys:FunctionDesign ;
                           tomasys:hasQAestimation navigation:qa_v_accuracy_excellent ,
-                                                  navigation:qa_v_energy_cost_really_bad ;
+                                                  navigation:qa_v_energy_cost_really_good ;
                           tomasys:requiresC navigation:c_kinect ;
                           tomasys:solvesF navigation:f_localization .
 
