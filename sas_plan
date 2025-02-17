@@ -1,6 +1,0 @@
-(reconfigure f_localization fd_amcl_kinect)
-(move wp_initial wp1)
-(move wp1 wp2)
-(move wp2 wp3)
-(move wp3 wp4)
-; cost = 5 (unit cost)
