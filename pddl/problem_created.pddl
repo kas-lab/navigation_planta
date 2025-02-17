@@ -9,15 +9,15 @@
   (:init
     (robot_at wp_initial)
     
-    (connected wp_initial wp1)
-    (connected wp1 wp2)
-    (connected wp2 wp3)
-    (connected wp3 wp4)
+    (corridor wp_initial wp1)
+    (corridor wp1 wp2)
+    (corridor wp2 wp3)
+    (corridor wp3 wp4)
     
-    (connected wpf wp1)
-    (connected wpf wp2)
-    (connected wpf wp3)
-    (connected wpf wp4)
+    (corridor wpf wp1)
+    (corridor wpf wp2)
+    (corridor wpf wp3)
+    (corridor wpf wp4)
     
     (equalTo 0.0_decimal 0.0_decimal)
     (equalTo 0.6_decimal 0.6_decimal)
