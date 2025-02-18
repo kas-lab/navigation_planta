@@ -19,3 +19,5 @@ ros2 run owl_to_pddl owl_to_pddl.py --ros-args -p owl_file:=owl/navigation.owl -
 ```bash
 ros2 run downward_ros fast-downward.py --alias lama-first pddl/domain_sas_created.pddl pddl/problem_created.pddl
 ```
+
+![Map example](IMG_0006.JPEG)

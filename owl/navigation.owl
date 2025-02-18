@@ -23,8 +23,7 @@ navigation:a_move rdf:type owl:NamedIndividual ,
 
 ###  http://www.metacontrol.org/navigation#c_camera
 navigation:c_camera rdf:type owl:NamedIndividual ,
-                             tomasys:Component ;
-                    tomasys:isQAtype navigation:qa_environment_light .
+                             tomasys:Component .
 
 
 ###  http://www.metacontrol.org/navigation#c_headlamp
@@ -39,8 +38,7 @@ navigation:c_kinect rdf:type owl:NamedIndividual ,
 
 ###  http://www.metacontrol.org/navigation#c_lidar
 navigation:c_lidar rdf:type owl:NamedIndividual ,
-                            tomasys:Component ;
-                   tomasys:isQAtype navigation:qa_accuracy .
+                            tomasys:Component .
 
 
 ###  http://www.metacontrol.org/navigation#f_localization
@@ -52,7 +50,8 @@ navigation:f_localization rdf:type owl:NamedIndividual ,
 navigation:fd_amcl_kinect rdf:type owl:NamedIndividual ,
                                    tomasys:FunctionDesign ;
                           tomasys:hasQAestimation navigation:qa_v_accuracy_excellent ,
-                                                  navigation:qa_v_energy_cost_really_good ;
+                                                  navigation:qa_v_energy_cost_really_good ,
+                                                  navigation:qa_v_environment_light_low ;
                           tomasys:requiresC navigation:c_kinect ;
                           tomasys:solvesF navigation:f_localization .
 
@@ -61,7 +60,8 @@ navigation:fd_amcl_kinect rdf:type owl:NamedIndividual ,
 navigation:fd_amcl_lidar rdf:type owl:NamedIndividual ,
                                   tomasys:FunctionDesign ;
                          tomasys:hasQAestimation navigation:qa_v_accuracy_medium ,
-                                                 navigation:qa_v_energy_cost_medium ;
+                                                 navigation:qa_v_energy_cost_medium ,
+                                                 navigation:qa_v_environment_light_low ;
                          tomasys:requiresC navigation:c_lidar ;
                          tomasys:solvesF navigation:f_localization .
 
@@ -70,7 +70,8 @@ navigation:fd_amcl_lidar rdf:type owl:NamedIndividual ,
 navigation:fd_aruco rdf:type owl:NamedIndividual ,
                              tomasys:FunctionDesign ;
                     tomasys:hasQAestimation navigation:qa_v_accuracy_good ,
-                                            navigation:qa_v_energy_cost_excellent ;
+                                            navigation:qa_v_energy_cost_excellent ,
+                                            navigation:qa_v_environment_light_low ;
                     tomasys:requiresC navigation:c_camera ;
                     tomasys:solvesF navigation:f_localization .
 
@@ -79,7 +80,8 @@ navigation:fd_aruco rdf:type owl:NamedIndividual ,
 navigation:fd_aruco_headlamp rdf:type owl:NamedIndividual ,
                                       tomasys:FunctionDesign ;
                              tomasys:hasQAestimation navigation:qa_v_accuracy_good ,
-                                                     navigation:qa_v_energy_cost_really_bad ;
+                                                     navigation:qa_v_energy_cost_really_bad ,
+                                                     navigation:qa_v_environment_light_bright ;
                              tomasys:requiresC navigation:c_camera ,
                                                navigation:c_headlamp ;
                              tomasys:solvesF navigation:f_localization .
@@ -89,7 +91,8 @@ navigation:fd_aruco_headlamp rdf:type owl:NamedIndividual ,
 navigation:fd_mrpt_kinect rdf:type owl:NamedIndividual ,
                                    tomasys:FunctionDesign ;
                           tomasys:hasQAestimation navigation:qa_v_accuracy_really_good ,
-                                                  navigation:qa_v_energy_cost_good ;
+                                                  navigation:qa_v_energy_cost_good ,
+                                                  navigation:qa_v_environment_light_low ;
                           tomasys:requiresC navigation:c_kinect ;
                           tomasys:solvesF navigation:f_localization .
 
@@ -98,7 +101,8 @@ navigation:fd_mrpt_kinect rdf:type owl:NamedIndividual ,
 navigation:fd_mrpt_lidar rdf:type owl:NamedIndividual ,
                                   tomasys:FunctionDesign ;
                          tomasys:hasQAestimation navigation:qa_v_accuracy_bad ,
-                                                 navigation:qa_v_energy_cost_bad ;
+                                                 navigation:qa_v_energy_cost_bad ,
+                                                 navigation:qa_v_environment_light_low ;
                          tomasys:requiresC navigation:c_lidar ;
                          tomasys:solvesF navigation:f_localization .
 
@@ -205,6 +209,13 @@ navigation:qa_v_environment_light_bright rdf:type owl:NamedIndividual ,
                                                   tomasys:QAvalue ;
                                          tomasys:isQAtype navigation:qa_environment_light ;
                                          tomasys:qa_has_value 1.0 .
+
+
+###  http://www.metacontrol.org/navigation#qa_v_environment_light_low
+navigation:qa_v_environment_light_low rdf:type owl:NamedIndividual ,
+                                               tomasys:QAvalue ;
+                                      tomasys:isQAtype navigation:qa_environment_light ;
+                                      tomasys:qa_has_value 0.0 .
 
 
 #################################################################

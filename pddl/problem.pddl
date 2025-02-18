@@ -22,11 +22,15 @@
     (corridor wp9 wp10)
     (corridor wp10 wp1)
 
-    (dark_corridor wp3 wp4)
-    (dark_corridor wp4 wp7)
+    ; (dark_corridor wp1 wp2)
+    ; (dark_corridor wp3 wp4)
+    ; (dark_corridor wp4 wp7)
+    ; (dark_corridor wp9 wp8)
 
-    (unsafe_corridor wp3 wp8)
-    (unsafe_corridor wp4 wp7)
+    ; (unsafe_corridor wp1 wp2)
+    ; (unsafe_corridor wp1 wp10)
+    ; (unsafe_corridor wp3 wp8)
+    ; (unsafe_corridor wp4 wp7)
 
     ; (corridor wpf wp1)
     ; (corridor wpf wp2)

@@ -14,12 +14,24 @@
 	)
 
 	(:constants
-		1.0_decimal ERROR_string a_move c_camera c_headlamp c_kinect c_lidar f_localization false_boolean fd_amcl_kinect fd_amcl_lidar fd_aruco fd_aruco_headlamp fd_mrpt_kinect fd_mrpt_lidar fd_unground obs_environment_light performance qa_accuracy qa_energy_cost qa_environment_light qa_performance_zero qa_v_accuracy_bad qa_v_accuracy_excellent qa_v_accuracy_good qa_v_accuracy_medium qa_v_accuracy_really_good qa_v_energy_cost_bad qa_v_energy_cost_excellent qa_v_energy_cost_good qa_v_energy_cost_medium qa_v_energy_cost_really_bad qa_v_energy_cost_really_good qa_v_environment_light_bright true_boolean - object
+		1.0_decimal ERROR_string a_move c_camera c_headlamp c_kinect c_lidar f_localization false_boolean fd_amcl_kinect fd_amcl_lidar fd_aruco fd_aruco_headlamp fd_mrpt_kinect fd_mrpt_lidar fd_unground obs_environment_light performance qa_accuracy qa_energy_cost qa_environment_light qa_performance_zero qa_v_accuracy_bad qa_v_accuracy_excellent qa_v_accuracy_good qa_v_accuracy_medium qa_v_accuracy_really_good qa_v_energy_cost_bad qa_v_energy_cost_excellent qa_v_energy_cost_good qa_v_energy_cost_medium qa_v_energy_cost_really_bad qa_v_energy_cost_really_good qa_v_environment_light_bright qa_v_environment_light_low true_boolean - object
 	)
 
   (:predicates
     (robot_at ?wp - waypoint)
     (corridor ?wp1 ?wp2 - waypoint)
+    (dark_corridor ?wp1 ?wp2 - waypoint)
+    (unsafe_corridor ?wp1 ?wp2 - waypoint)
+    
+    (inferred-corridor ?wp1 ?wp2 - waypoint)
+    (inferred-dark_corridor ?wp1 ?wp2 - waypoint)
+    (inferred-unsafe_corridor ?wp1 ?wp2 - waypoint)
+
+    (safety_requirement ?wp1 ?wp2 - waypoint ?v - numerical-object)
+    
+    (light_requirement ?wp1 ?wp2 - waypoint ?v - numerical-object)
+
+    (function_nfr_satisfied ?f - inferred-Function ?qa - inferred-QualityAttributeType ?v - numerical-object)
 
 		(Action ?x)
 		(Component ?x)
@@ -545,6 +557,85 @@
 
 
 
+  (:derived (function_nfr_satisfied ?f ?qa ?v)
+		(exists (?fd ?qae ?qav) 
+			(and 
+				(inferred-SolvesF ?fd ?f)
+				(not (= ?fd fd_unground))
+				(inferred-FunctionGrounding ?f ?fd)
+				(inferred-HasQAestimation ?fd ?qae)
+				(inferred-IsQAtype ?qae ?qa)
+				(inferred-Qa_has_value ?qae ?qav)
+				(or
+				  (lessThan ?v ?qav)
+				  (equalTo ?v ?qav)
+				)				
+			)
+		)
+  )
+  
+  (:derived (safety_requirement ?wp1 ?wp2 - waypoint ?v - numerical-object)
+    (and
+      (inferred-unsafe_corridor ?wp1 ?wp2)
+      (= ?v 0.8_decimal)
+    ) 
+  )
+  
+  (:derived (safety_requirement ?wp1 ?wp2 - waypoint ?v - numerical-object)
+    (and
+      (not (inferred-unsafe_corridor ?wp1 ?wp2))
+      (= ?v 0.0_decimal)
+    ) 
+  )
+
+  (:derived (light_requirement ?wp1 ?wp2 - waypoint ?v - numerical-object)
+    (and
+      (inferred-dark_corridor ?wp1 ?wp2)
+      (= ?v 1.0_decimal)
+    ) 
+  )
+  
+  (:derived (light_requirement ?wp1 ?wp2 - waypoint ?v - numerical-object)
+    (and
+      (not (inferred-dark_corridor ?wp1 ?wp2))
+      (= ?v 0.0_decimal)
+    ) 
+  )
+
+  
+  (:derived (inferred-corridor ?wp1 ?wp2 - waypoint)
+    (and
+      (corridor ?wp1 ?wp2)
+    ) 
+  )
+  (:derived (inferred-corridor ?wp1 ?wp2 - waypoint)
+    (and
+      (corridor ?wp2 ?wp1)
+    ) 
+  )
+
+  (:derived (inferred-dark_corridor ?wp1 ?wp2 - waypoint)
+    (and
+      (dark_corridor ?wp1 ?wp2)
+    ) 
+  )
+  (:derived (inferred-dark_corridor ?wp1 ?wp2 - waypoint)
+    (and
+      (dark_corridor ?wp2 ?wp1)
+    ) 
+  )
+  
+  (:derived (inferred-unsafe_corridor ?wp1 ?wp2 - waypoint)
+    (and
+      (unsafe_corridor ?wp1 ?wp2)
+    ) 
+  )
+  (:derived (inferred-unsafe_corridor ?wp1 ?wp2 - waypoint)
+    (and
+      (unsafe_corridor ?wp2 ?wp1)
+    ) 
+  )
+
   (:action reconfigure
     :parameters (?f ?fd_initial ?fd_goal)
     :precondition (and
@@ -610,16 +701,20 @@
   )
 
   (:action move
-    :parameters (?wp1 ?wp2 - waypoint)
+    :parameters (?wp1 ?wp2 - waypoint ?safety_requirement ?light_requirement - numerical-object)
     :precondition (and
       (robot_at ?wp1)
-      (corridor ?wp1 ?wp2)
-      (exists (?a ?f1 ?fd1)
+      (inferred-corridor ?wp1 ?wp2)
+      (safety_requirement ?wp1 ?wp2 ?safety_requirement)
+      (light_requirement ?wp1 ?wp2 ?light_requirement)
+      (exists (?a ?f1)
         (and
           (inferred-Action ?a)
           (= ?a a_move)
           (inferred-requiresF ?a ?f1)
           (inferred-F_active ?f1 true_boolean)
+          (function_nfr_satisfied ?f1 qa_accuracy ?safety_requirement)
+          ; (function_nfr_satisfied ?f1 qa_environment_light ?light_requirement)
         )
       )
     )
