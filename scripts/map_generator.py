@@ -174,7 +174,7 @@ class MapGenerator:
         self.move.add_effect(self.robot_at(wp2), True)
 
     def generate_problem(self):
-        self.problem = Problem('robot')
+        self.problem = Problem('navigation')
         self.problem.add_fluent(self.robot_at, default_initial_value=False)
         self.problem.add_fluent(self.corridor, default_initial_value=False)
         self.problem.add_action(self.move)
@@ -203,7 +203,7 @@ class MapGenerator:
         writer = PDDLWriter(self.problem)
         # domain_filename = "domain.pddl"
         # writer.write_domain(domain_filename)
-        problem_filename = "problem.pddl"
+        problem_filename = "pddl/problem.pddl"
         writer.write_problem(problem_filename)
 
 if __name__ == '__main__':

@@ -1,4 +1,4 @@
-(define (domain navigation)
+(define (domain navigation-domain)
   (:requirements
     :strips
     :typing
@@ -106,47 +106,4 @@
       (robot_at ?wp2)
     )
   )
-  
-  ; (:action move_dark
-  ;   :parameters (?wp1 ?wp2 - waypoint)
-  ;   :precondition (and
-  ;     (robot_at ?wp1)
-  ;     (inferred-corridor ?wp1 ?wp2)
-  ;     (inferred-dark_corridor ?wp1 ?wp2)
-  ;     (not (inferred-unsafe_corridor ?wp1 ?wp2))
-  ;   )
-  ;   :effect (and
-  ;     (not(robot_at ?wp1))
-  ;     (robot_at ?wp2)
-  ;   )
-  ; )  
-  
-  ; (:action move_unsafe
-  ;   :parameters (?wp1 ?wp2 - waypoint)
-  ;   :precondition (and
-  ;     (robot_at ?wp1)
-  ;     (inferred-corridor ?wp1 ?wp2)
-  ;     (not (inferred-dark_corridor ?wp1 ?wp2))
-  ;     (inferred-unsafe_corridor ?wp1 ?wp2)
-  ;   )
-  ;   :effect (and
-  ;     (not(robot_at ?wp1))
-  ;     (robot_at ?wp2)
-  ;   )
-  ; )
-  
-  ; (:action move_dark_unsafe
-  ;   :parameters (?wp1 ?wp2 - waypoint)
-  ;   :precondition (and
-  ;     (robot_at ?wp1)
-  ;     (inferred-corridor ?wp1 ?wp2)
-  ;     (inferred-dark_corridor ?wp1 ?wp2)
-  ;     (inferred-unsafe_corridor ?wp1 ?wp2)
-  ;   )
-  ;   :effect (and
-  ;     (not(robot_at ?wp1))
-  ;     (robot_at ?wp2)
-  ;   )
-  ; )
-
 )
