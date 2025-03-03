@@ -230,11 +230,11 @@ navigation:qa_v_environment_light_low rdf:type owl:NamedIndividual ,
 
 <http://www.metacontrol.org/qav> rdf:type <http://www.w3.org/2003/11/swrl#Variable> .
 
-<http://www.metacontrol.org/fd1> rdf:type <http://www.w3.org/2003/11/swrl#Variable> .
+navigation:fd1 rdf:type <http://www.w3.org/2003/11/swrl#Variable> .
 
-<http://www.metacontrol.org/mqa> rdf:type <http://www.w3.org/2003/11/swrl#Variable> .
+navigation:mqa rdf:type <http://www.w3.org/2003/11/swrl#Variable> .
 
-<http://www.metacontrol.org/mqav> rdf:type <http://www.w3.org/2003/11/swrl#Variable> .
+navigation:mqav rdf:type <http://www.w3.org/2003/11/swrl#Variable> .
 
 [ <http://swrl.stanford.edu/ontologies/3.3/swrla.owl#isRuleEnabled> "true"^^xsd:boolean ;
    rdfs:comment ""^^xsd:string ;
@@ -298,42 +298,42 @@ navigation:qa_v_environment_light_low rdf:type owl:NamedIndividual ,
    <http://www.w3.org/2003/11/swrl#body> [ rdf:type <http://www.w3.org/2003/11/swrl#AtomList> ;
                                            rdf:first [ rdf:type <http://www.w3.org/2003/11/swrl#ClassAtom> ;
                                                        <http://www.w3.org/2003/11/swrl#classPredicate> tomasys:FunctionDesign ;
-                                                       <http://www.w3.org/2003/11/swrl#argument1> <http://www.metacontrol.org/fd1>
+                                                       <http://www.w3.org/2003/11/swrl#argument1> navigation:fd1
                                                      ] ;
                                            rdf:rest [ rdf:type <http://www.w3.org/2003/11/swrl#AtomList> ;
                                                       rdf:first [ rdf:type <http://www.w3.org/2003/11/swrl#SameIndividualAtom> ;
-                                                                  <http://www.w3.org/2003/11/swrl#argument1> <http://www.metacontrol.org/fd1> ;
+                                                                  <http://www.w3.org/2003/11/swrl#argument1> navigation:fd1 ;
                                                                   <http://www.w3.org/2003/11/swrl#argument2> navigation:fd_aruco
                                                                 ] ;
                                                       rdf:rest [ rdf:type <http://www.w3.org/2003/11/swrl#AtomList> ;
                                                                  rdf:first [ rdf:type <http://www.w3.org/2003/11/swrl#ClassAtom> ;
                                                                              <http://www.w3.org/2003/11/swrl#classPredicate> tomasys:QAvalue ;
-                                                                             <http://www.w3.org/2003/11/swrl#argument1> <http://www.metacontrol.org/mqa>
+                                                                             <http://www.w3.org/2003/11/swrl#argument1> navigation:mqa
                                                                            ] ;
                                                                  rdf:rest [ rdf:type <http://www.w3.org/2003/11/swrl#AtomList> ;
                                                                             rdf:first [ rdf:type <http://www.w3.org/2003/11/swrl#SameIndividualAtom> ;
-                                                                                        <http://www.w3.org/2003/11/swrl#argument1> <http://www.metacontrol.org/mqa> ;
+                                                                                        <http://www.w3.org/2003/11/swrl#argument1> navigation:mqa ;
                                                                                         <http://www.w3.org/2003/11/swrl#argument2> navigation:obs_environment_light
                                                                                       ] ;
                                                                             rdf:rest [ rdf:type <http://www.w3.org/2003/11/swrl#AtomList> ;
                                                                                        rdf:first [ rdf:type <http://www.w3.org/2003/11/swrl#DatavaluedPropertyAtom> ;
                                                                                                    <http://www.w3.org/2003/11/swrl#propertyPredicate> tomasys:qa_has_value ;
-                                                                                                   <http://www.w3.org/2003/11/swrl#argument1> <http://www.metacontrol.org/mqa> ;
-                                                                                                   <http://www.w3.org/2003/11/swrl#argument2> <http://www.metacontrol.org/mqav>
+                                                                                                   <http://www.w3.org/2003/11/swrl#argument1> navigation:mqa ;
+                                                                                                   <http://www.w3.org/2003/11/swrl#argument2> navigation:mqav
                                                                                                  ] ;
                                                                                        rdf:rest [ rdf:type <http://www.w3.org/2003/11/swrl#AtomList> ;
                                                                                                   rdf:first [ rdf:type <http://www.w3.org/2003/11/swrl#IndividualPropertyAtom> ;
                                                                                                               <http://www.w3.org/2003/11/swrl#propertyPredicate> tomasys:isQAtype ;
-                                                                                                              <http://www.w3.org/2003/11/swrl#argument1> <http://www.metacontrol.org/mqa> ;
+                                                                                                              <http://www.w3.org/2003/11/swrl#argument1> navigation:mqa ;
                                                                                                               <http://www.w3.org/2003/11/swrl#argument2> navigation:qa_environment_light
                                                                                                             ] ;
                                                                                                   rdf:rest [ rdf:type <http://www.w3.org/2003/11/swrl#AtomList> ;
                                                                                                              rdf:first [ rdf:type <http://www.w3.org/2003/11/swrl#BuiltinAtom> ;
                                                                                                                          <http://www.w3.org/2003/11/swrl#builtin> <http://www.w3.org/2003/11/swrlb#lessThan> ;
                                                                                                                          <http://www.w3.org/2003/11/swrl#arguments> [ rdf:type rdf:List ;
-                                                                                                                                                                      rdf:first <http://www.metacontrol.org/mqav> ;
+                                                                                                                                                                      rdf:first navigation:mqav ;
                                                                                                                                                                       rdf:rest [ rdf:type rdf:List ;
-                                                                                                                                                                                 rdf:first 1.0 ;
+                                                                                                                                                                                 rdf:first 0.9 ;
                                                                                                                                                                                  rdf:rest rdf:nil
                                                                                                                                                                                ]
                                                                                                                                                                     ]
@@ -349,7 +349,7 @@ navigation:qa_v_environment_light_low rdf:type owl:NamedIndividual ,
    <http://www.w3.org/2003/11/swrl#head> [ rdf:type <http://www.w3.org/2003/11/swrl#AtomList> ;
                                            rdf:first [ rdf:type <http://www.w3.org/2003/11/swrl#DatavaluedPropertyAtom> ;
                                                        <http://www.w3.org/2003/11/swrl#propertyPredicate> tomasys:fd_realisability ;
-                                                       <http://www.w3.org/2003/11/swrl#argument1> <http://www.metacontrol.org/fd1> ;
+                                                       <http://www.w3.org/2003/11/swrl#argument1> navigation:fd1 ;
                                                        <http://www.w3.org/2003/11/swrl#argument2> "false"^^xsd:boolean
                                                      ] ;
                                            rdf:rest rdf:nil

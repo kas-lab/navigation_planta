@@ -3,7 +3,7 @@
 
   (:objects 
     wp1 wp2 wp3 wp4 wp5 wp6 wp7 wp8 wp9 wp10 - waypoint 
-    0.0_decimal 0.6_decimal 0.7_decimal 0.8_decimal 0.9_decimal 16963.0_decimal 17790.0_decimal 18942.0_decimal 19790.0_decimal 20942.0_decimal 26963.0_decimal - numerical-object 
+    0.0_decimal 0.6_decimal 0.7_decimal 0.8_decimal 0.9_decimal 1.0_decimal 16963.0_decimal 17790.0_decimal 18942.0_decimal 19790.0_decimal 20942.0_decimal 26963.0_decimal - numerical-object 
 )
 
   (:init
@@ -23,10 +23,10 @@
     (corridor wp9 wp10)
     (corridor wp10 wp1)
     
-    ; (dark_corridor wp1 wp2)
-    ; (dark_corridor wp3 wp4)
-    ; (dark_corridor wp4 wp7)
-    ; (dark_corridor wp9 wp8)
+    (dark_corridor wp1 wp2)
+    (dark_corridor wp3 wp4)
+    (dark_corridor wp4 wp7)
+    (dark_corridor wp9 wp8)
     
     ; (unsafe_corridor wp1 wp2)
     ; (unsafe_corridor wp1 wp10)
@@ -154,19 +154,19 @@
     (hasQAestimation fd_amcl_kinect qa_v_environment_light_low)
     (hasQAestimation fd_amcl_lidar qa_v_accuracy_medium)
     (hasQAestimation fd_amcl_lidar qa_v_energy_cost_medium)
-    (hasQAestimation fd_amcl_lidar qa_v_environment_light_low)
+    (hasQAestimation fd_amcl_lidar qa_v_environment_light_bright)
     (hasQAestimation fd_aruco qa_v_accuracy_good)
     (hasQAestimation fd_aruco qa_v_energy_cost_excellent)
-    (hasQAestimation fd_aruco qa_v_environment_light_low)
+    (hasQAestimation fd_aruco qa_v_environment_light_bright)
     (hasQAestimation fd_aruco_headlamp qa_v_accuracy_good)
     (hasQAestimation fd_aruco_headlamp qa_v_energy_cost_really_bad)
     (hasQAestimation fd_aruco_headlamp qa_v_environment_light_bright)
     (hasQAestimation fd_mrpt_kinect qa_v_accuracy_really_good)
     (hasQAestimation fd_mrpt_kinect qa_v_energy_cost_good)
-    (hasQAestimation fd_mrpt_kinect qa_v_environment_light_low)
+    (hasQAestimation fd_mrpt_kinect qa_v_environment_light_bright)
     (hasQAestimation fd_mrpt_lidar qa_v_accuracy_bad)
     (hasQAestimation fd_mrpt_lidar qa_v_energy_cost_bad)
-    (hasQAestimation fd_mrpt_lidar qa_v_environment_light_low)
+    (hasQAestimation fd_mrpt_lidar qa_v_environment_light_bright)
     (hasQAestimation fd_unground qa_performance_zero)
     (isQAtype qa_performance_zero performance)
     (isQAtype qa_v_accuracy_bad qa_accuracy)

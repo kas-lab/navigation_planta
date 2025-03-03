@@ -22,9 +22,8 @@
     (inferred-dark_corridor ?wp1 ?wp2 - waypoint)
     (inferred-unsafe_corridor ?wp1 ?wp2 - waypoint)
 
-    (safety_requirement ?wp1 ?wp2 - waypoint ?v - numerical-object)
-    
-    (light_requirement ?wp1 ?wp2 - waypoint ?v - numerical-object)
+    (safety_requirement ?wp1 ?wp2 ?v)
+    (light_requirement ?wp1 ?wp2 ?v)
 
     (function_nfr_satisfied ?f - inferred-Function ?qa - inferred-QualityAttributeType ?v - numerical-object)
   )
@@ -186,7 +185,7 @@
           (inferred-requiresF ?a ?f1)
           (inferred-F_active ?f1 true_boolean)
           (function_nfr_satisfied ?f1 qa_accuracy ?safety_requirement)
-          ; (function_nfr_satisfied ?f1 qa_environment_light ?light_requirement)
+          (function_nfr_satisfied ?f1 qa_environment_light ?light_requirement)
         )
       )
     )

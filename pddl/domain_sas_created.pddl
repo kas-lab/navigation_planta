@@ -14,7 +14,7 @@
 	)
 
 	(:constants
-		1.0_decimal ERROR_string a_move c_camera c_headlamp c_kinect c_lidar f_localization false_boolean fd_amcl_kinect fd_amcl_lidar fd_aruco fd_aruco_headlamp fd_mrpt_kinect fd_mrpt_lidar fd_unground obs_environment_light performance qa_accuracy qa_energy_cost qa_environment_light qa_performance_zero qa_v_accuracy_bad qa_v_accuracy_excellent qa_v_accuracy_good qa_v_accuracy_medium qa_v_accuracy_really_good qa_v_energy_cost_bad qa_v_energy_cost_excellent qa_v_energy_cost_good qa_v_energy_cost_medium qa_v_energy_cost_really_bad qa_v_energy_cost_really_good qa_v_environment_light_bright qa_v_environment_light_low true_boolean - object
+		ERROR_string a_move c_camera c_headlamp c_kinect c_lidar f_localization false_boolean fd_amcl_kinect fd_amcl_lidar fd_aruco fd_aruco_headlamp fd_mrpt_kinect fd_mrpt_lidar fd_unground obs_environment_light performance qa_accuracy qa_energy_cost qa_environment_light qa_performance_zero qa_v_accuracy_bad qa_v_accuracy_excellent qa_v_accuracy_good qa_v_accuracy_medium qa_v_accuracy_really_good qa_v_energy_cost_bad qa_v_energy_cost_excellent qa_v_energy_cost_good qa_v_energy_cost_medium qa_v_energy_cost_really_bad qa_v_energy_cost_really_good qa_v_environment_light_bright qa_v_environment_light_low true_boolean - object
 	)
 
   (:predicates
@@ -27,11 +27,10 @@
     (inferred-dark_corridor ?wp1 ?wp2 - waypoint)
     (inferred-unsafe_corridor ?wp1 ?wp2 - waypoint)
 
-    (safety_requirement ?wp1 ?wp2 - waypoint ?v - numerical-object)
-    
-    (light_requirement ?wp1 ?wp2 - waypoint ?v - numerical-object)
+    (safety_requirement ?wp1 ?wp2 ?v)
+    (light_requirement ?wp1 ?wp2 ?v)
 
-    (function_nfr_satisfied ?f - inferred-Function ?qa - inferred-QualityAttributeType ?v - numerical-object)
+    (function_nfr_satisfied ?f ?qa ?v)
 
 		(Action ?x)
 		(Component ?x)
@@ -205,7 +204,7 @@
 				(= ?mqa obs_environment_light)
 				(inferred-Qa_has_value ?mqa ?mqav)
 				(inferred-IsQAtype ?mqa qa_environment_light)
-				(lessThan ?mqav 1.0_decimal)
+				(lessThan 0.9_decimal ?mqav)
 			)
 		)
  	)
@@ -567,8 +566,8 @@
 				(inferred-IsQAtype ?qae ?qa)
 				(inferred-Qa_has_value ?qae ?qav)
 				(or
-				  (lessThan ?v ?qav)
 				  (equalTo ?v ?qav)
+				  (lessThan ?v ?qav)
 				)				
 			)
 		)
@@ -701,7 +700,7 @@
   )
 
   (:action move
-    :parameters (?wp1 ?wp2 - waypoint ?safety_requirement ?light_requirement - numerical-object)
+    :parameters (?wp1 ?wp2 - waypoint ?safety_requirement ?light_requirement)
     :precondition (and
       (robot_at ?wp1)
       (inferred-corridor ?wp1 ?wp2)
@@ -714,7 +713,7 @@
           (inferred-requiresF ?a ?f1)
           (inferred-F_active ?f1 true_boolean)
           (function_nfr_satisfied ?f1 qa_accuracy ?safety_requirement)
-          ; (function_nfr_satisfied ?f1 qa_environment_light ?light_requirement)
+          (function_nfr_satisfied ?f1 qa_environment_light ?light_requirement)
         )
       )
     )
