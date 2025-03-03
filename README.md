@@ -12,8 +12,11 @@ pip install matplotlib
 pip install scipy
 ```
 
-Install [Unified Planning](https://unified-planning.readthedocs.io/en/latest/getting_started/installation.html)
+Install [Unified Planning](https://unified-planning.readthedocs.io/en/latest/getting_started/installation.html):
 
+```bash
+pip install unified-planning
+```
 Install fast-downward unified planning engine:
 
 ```bash
