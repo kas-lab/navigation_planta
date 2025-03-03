@@ -26,11 +26,12 @@ pip install unified-planning[fast-downward]
 colcon build --symlink-install --packages-skip plansys2_downward_planner
 ```
 
-## Generate random maps
+## Generate random maps and test with fast-downard
 
-In the scripts folder
+In the main folder
 ```bash
-python map_generator.py
+python scripts/map_generator.py
+ros2 run downward_ros fast-downward.py --alias lama-first pddl/domain.pddl pddl/problem.pddl
 ```
 
 ## Convert OWL ontology to PDDL
@@ -45,4 +46,55 @@ ros2 run owl_to_pddl owl_to_pddl.py --ros-args -p owl_file:=owl/navigation.owl -
 ros2 run downward_ros fast-downward.py --alias lama-first pddl/domain_sas_created.pddl pddl/problem_created.pddl
 ```
 
-![Map example](IMG_0006.JPEG)
+## Example of results
+
+Parameters:
+
+```python
+self.num_nodes = 30
+self.nodes_skip = 0.1 # 10%
+self.unconnected_amount = 0.15 # 10%
+self.unsafe_amount = 0.25 # 10%
+self.dark_amount = 0.25 # 10%
+```
+
+time:
+```bash
+Solution found.
+Peak memory: 45500 KB
+Remove intermediate file output.sas
+search exit code: 0
+
+INFO     Planner time: 0.15s
+
+real	0m0,325s
+user	0m0,270s
+sys	0m0,054s
+```
+
+Parameters:
+```python
+self.num_nodes = 300
+self.nodes_skip = 0.1 # 10%
+self.unconnected_amount = 0.15 # 10%
+self.unsafe_amount = 0.25 # 10%
+self.dark_amount = 0.25 # 10%
+```
+
+time:
+```bash
+Solution found.
+Peak memory: 50856 KB
+Remove intermediate file output.sas
+search exit code: 0
+
+INFO     Planner time: 8.33s
+
+real	0m8,517s
+user	0m8,230s
+sys	0m0,287s
+```
+
+## Map example
+
+![alt text](image.png)
