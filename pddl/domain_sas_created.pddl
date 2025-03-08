@@ -1,4 +1,4 @@
-(define (domain navigation)
+(define (domain navigation-domain)
   (:requirements
     :strips
     :typing
@@ -9,12 +9,12 @@
 
 	(:types
 		waypoint
-		action
 		numerical-object
 	)
 
 	(:constants
-		ERROR_string a_move c_camera c_headlamp c_kinect c_lidar f_localization false_boolean fd_amcl_kinect fd_amcl_lidar fd_aruco fd_aruco_headlamp fd_mrpt_kinect fd_mrpt_lidar fd_unground obs_environment_light performance qa_accuracy qa_energy_cost qa_environment_light qa_performance_zero qa_v_accuracy_bad qa_v_accuracy_excellent qa_v_accuracy_good qa_v_accuracy_medium qa_v_accuracy_really_good qa_v_energy_cost_bad qa_v_energy_cost_excellent qa_v_energy_cost_good qa_v_energy_cost_medium qa_v_energy_cost_really_bad qa_v_energy_cost_really_good qa_v_environment_light_bright qa_v_environment_light_low true_boolean - object
+		ERROR_string a_move c_camera c_headlamp c_kinect c_lidar f_localization false_boolean fd_amcl_kinect fd_amcl_lidar fd_aruco fd_aruco_headlamp fd_mrpt_kinect fd_mrpt_lidar fd_unground obs_environment_light performance qa_accuracy qa_energy_cost qa_environment_light qa_performance_zero qa_v_accuracy_bad qa_v_accuracy_excellent qa_v_accuracy_good qa_v_accuracy_medium qa_v_accuracy_really_good qa_v_energy_cost_bad qa_v_energy_cost_excellent qa_v_energy_cost_good qa_v_energy_cost_medium qa_v_energy_cost_really_bad qa_v_energy_cost_really_good qa_v_environment_light_bright qa_v_environment_light_low true_boolean - object 
+		0.9_decimal - numerical-object
 	)
 
   (:predicates
@@ -30,7 +30,8 @@
     (safety_requirement ?wp1 ?wp2 ?v)
     (light_requirement ?wp1 ?wp2 ?v)
 
-    (function_nfr_satisfied ?f ?qa ?v)
+    (function_nfr_satisfied ?f - inferred-Function ?qa - inferred-QualityAttributeType ?v - numerical-object)
+    (fd_nfr_satisfied ?fd - inferred-FunctionDesign ?qa - inferred-QualityAttributeType ?v - numerical-object)
 
 		(Action ?x)
 		(Component ?x)
@@ -204,7 +205,7 @@
 				(= ?mqa obs_environment_light)
 				(inferred-Qa_has_value ?mqa ?mqav)
 				(inferred-IsQAtype ?mqa qa_environment_light)
-				(lessThan 0.9_decimal ?mqav)
+				(lessThan ?mqav 0.9_decimal)
 			)
 		)
  	)
@@ -566,8 +567,23 @@
 				(inferred-IsQAtype ?qae ?qa)
 				(inferred-Qa_has_value ?qae ?qav)
 				(or
-				  (equalTo ?v ?qav)
 				  (lessThan ?v ?qav)
+				  (equalTo ?v ?qav)
+				)				
+			)
+		)
+  )
+  
+  (:derived (fd_nfr_satisfied ?fd ?qa ?v)
+		(exists (?qae ?qav) 
+			(and 
+				(not (= ?fd fd_unground))
+				(inferred-HasQAestimation ?fd ?qae)
+				(inferred-IsQAtype ?qae ?qa)
+				(inferred-Qa_has_value ?qae ?qav)
+				(or
+				  (lessThan ?v ?qav)
+				  (equalTo ?v ?qav)
 				)				
 			)
 		)
@@ -648,17 +664,17 @@
       (FunctionDesign ?fd_goal)
       (not (inferred-Fd_realisability ?fd_goal false_boolean))
 
-      (or (= ?fd_goal fd_unground)
-        (not
-          (exists (?fd)
-            (and
-              (inferred-SolvesF ?fd ?f)
-              (not (inferred-Fd_realisability ?fd false_boolean))
-              (inferred-FdBetterUtility  ?fd ?fd_goal)
-            )
-          )
-        )
-      )
+      ; (or (= ?fd_goal fd_unground)
+      ;   (not
+      ;     (exists (?fd)
+      ;       (and
+      ;         (inferred-SolvesF ?fd ?f)
+      ;         (not (inferred-Fd_realisability ?fd false_boolean))
+      ;         ; (inferred-FdBetterUtility  ?fd ?fd_goal)
+      ;       )
+      ;     )
+      ;   )
+      ; )
     )
     :effect (and
       (not (functionGrounding ?f ?fd_initial))
@@ -682,17 +698,17 @@
           )
         )
       )
-      (or (= ?fd_goal fd_unground)
-        (not
-          (exists (?fd)
-            (and
-              (inferred-SolvesF ?fd ?f)
-              (not (inferred-Fd_realisability ?fd false_boolean))
-              (inferred-FdBetterUtility  ?fd ?fd_goal)
-            )
-          )
-        )
-      )
+      ; (or (= ?fd_goal fd_unground)
+      ;   (not
+      ;     (exists (?fd)
+      ;       (and
+      ;         (inferred-SolvesF ?fd ?f)
+      ;         (not (inferred-Fd_realisability ?fd false_boolean))
+      ;         ; (inferred-FdBetterUtility  ?fd ?fd_goal)
+      ;       )
+      ;     )
+      ;   )
+      ; )
     )
     :effect (and
       (functionGrounding ?f ?fd_goal)
@@ -700,20 +716,36 @@
   )
 
   (:action move
-    :parameters (?wp1 ?wp2 - waypoint ?safety_requirement ?light_requirement)
+    :parameters (?wp1 ?wp2 - waypoint ?safety_requirement ?light_requirement - numerical-object)
     :precondition (and
       (robot_at ?wp1)
       (inferred-corridor ?wp1 ?wp2)
       (safety_requirement ?wp1 ?wp2 ?safety_requirement)
       (light_requirement ?wp1 ?wp2 ?light_requirement)
-      (exists (?a ?f1)
+      (exists (?a ?f1 ?fd1)
         (and
           (inferred-Action ?a)
           (= ?a a_move)
           (inferred-requiresF ?a ?f1)
           (inferred-F_active ?f1 true_boolean)
-          (function_nfr_satisfied ?f1 qa_accuracy ?safety_requirement)
-          (function_nfr_satisfied ?f1 qa_environment_light ?light_requirement)
+          (inferred-FunctionGrounding ?f1 ?fd1)
+          (fd_nfr_satisfied ?fd1 qa_accuracy ?safety_requirement)	
+          (fd_nfr_satisfied ?fd1 qa_environment_light ?light_requirement)
+          (not 
+            (exists (?fd2)
+              (and
+                (not (= ?fd2 ?fd1))
+                (inferred-SolvesF ?fd2 ?f1)
+                (not (inferred-Fd_realisability ?fd2 false_boolean))
+                (inferred-FdBetterUtility  ?fd2 ?fd1)
+                (fd_nfr_satisfied ?fd2 qa_accuracy ?safety_requirement)	
+                (fd_nfr_satisfied ?fd2 qa_environment_light ?light_requirement)
+              )
+            )
+          )
+          
+          ; (function_nfr_satisfied ?f1 qa_accuracy ?safety_requirement)
+          ; (function_nfr_satisfied ?f1 qa_environment_light ?light_requirement)
         )
       )
     )

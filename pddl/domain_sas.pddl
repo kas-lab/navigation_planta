@@ -1,4 +1,4 @@
-(define (domain navigation)
+(define (domain navigation-domain)
   (:requirements
     :strips
     :typing
@@ -8,7 +8,6 @@
 
   (:types
     waypoint
-    action
     numerical-object
   )
 
@@ -26,6 +25,7 @@
     (light_requirement ?wp1 ?wp2 ?v)
 
     (function_nfr_satisfied ?f - inferred-Function ?qa - inferred-QualityAttributeType ?v - numerical-object)
+    (fd_nfr_satisfied ?fd - inferred-FunctionDesign ?qa - inferred-QualityAttributeType ?v - numerical-object)
   )
 
   (:derived (function_nfr_satisfied ?f ?qa ?v)
@@ -34,6 +34,21 @@
 				(inferred-SolvesF ?fd ?f)
 				(not (= ?fd fd_unground))
 				(inferred-FunctionGrounding ?f ?fd)
+				(inferred-HasQAestimation ?fd ?qae)
+				(inferred-IsQAtype ?qae ?qa)
+				(inferred-Qa_has_value ?qae ?qav)
+				(or
+				  (lessThan ?v ?qav)
+				  (equalTo ?v ?qav)
+				)				
+			)
+		)
+  )
+  
+  (:derived (fd_nfr_satisfied ?fd ?qa ?v)
+		(exists (?qae ?qav) 
+			(and 
+				(not (= ?fd fd_unground))
 				(inferred-HasQAestimation ?fd ?qae)
 				(inferred-IsQAtype ?qae ?qa)
 				(inferred-Qa_has_value ?qae ?qav)
@@ -120,17 +135,6 @@
       (FunctionDesign ?fd_goal)
       (not (inferred-Fd_realisability ?fd_goal false_boolean))
 
-      (or (= ?fd_goal fd_unground)
-        (not
-          (exists (?fd)
-            (and
-              (inferred-SolvesF ?fd ?f)
-              (not (inferred-Fd_realisability ?fd false_boolean))
-              (inferred-FdBetterUtility  ?fd ?fd_goal)
-            )
-          )
-        )
-      )
     )
     :effect (and
       (not (functionGrounding ?f ?fd_initial))
@@ -154,17 +158,6 @@
           )
         )
       )
-      (or (= ?fd_goal fd_unground)
-        (not
-          (exists (?fd)
-            (and
-              (inferred-SolvesF ?fd ?f)
-              (not (inferred-Fd_realisability ?fd false_boolean))
-              (inferred-FdBetterUtility  ?fd ?fd_goal)
-            )
-          )
-        )
-      )
     )
     :effect (and
       (functionGrounding ?f ?fd_goal)
@@ -178,14 +171,27 @@
       (inferred-corridor ?wp1 ?wp2)
       (safety_requirement ?wp1 ?wp2 ?safety_requirement)
       (light_requirement ?wp1 ?wp2 ?light_requirement)
-      (exists (?a ?f1)
+      (exists (?a ?f1 ?fd1)
         (and
           (inferred-Action ?a)
           (= ?a a_move)
           (inferred-requiresF ?a ?f1)
           (inferred-F_active ?f1 true_boolean)
-          (function_nfr_satisfied ?f1 qa_accuracy ?safety_requirement)
-          (function_nfr_satisfied ?f1 qa_environment_light ?light_requirement)
+          (inferred-FunctionGrounding ?f1 ?fd1)
+          (fd_nfr_satisfied ?fd1 qa_accuracy ?safety_requirement)	
+          (fd_nfr_satisfied ?fd1 qa_environment_light ?light_requirement)
+          (not 
+            (exists (?fd2)
+              (and
+                (not (= ?fd2 ?fd1))
+                (inferred-SolvesF ?fd2 ?f1)
+                (not (inferred-Fd_realisability ?fd2 false_boolean))
+                (inferred-FdBetterUtility  ?fd2 ?fd1)
+                (fd_nfr_satisfied ?fd2 qa_accuracy ?safety_requirement)	
+                (fd_nfr_satisfied ?fd2 qa_environment_light ?light_requirement)
+              )
+            )
+          )
         )
       )
     )

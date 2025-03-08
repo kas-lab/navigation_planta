@@ -1,42 +1,13 @@
-(define (problem navigation)
-  (:domain navigation )
+(define (problem navigation-problem)
+  (:domain navigation-domain)
 
   (:objects 
-    wp1 wp2 wp3 wp4 wp5 wp6 wp7 wp8 wp9 wp10 - waypoint 
-    0.0_decimal 0.6_decimal 0.7_decimal 0.8_decimal 0.9_decimal 1.0_decimal 16963.0_decimal 17790.0_decimal 18942.0_decimal 19790.0_decimal 20942.0_decimal 26963.0_decimal - numerical-object 
+    wp0 wp1 wp2 wp3 wp4 wp5 wp6 wp7 wp8 wp9 wp10 wp11 wp12 wp13 wp14 wp15 wp16 wp17 wp18 wp19 wp20 wp21 wp22 wp23 wp24 wp25 wp26 - waypoint 
+    0.0_decimal 0.6_decimal 0.7_decimal 0.8_decimal 1.0_decimal 16963.0_decimal 17790.0_decimal 18942.0_decimal 19790.0_decimal 20942.0_decimal 26963.0_decimal - numerical-object 
 )
 
   (:init
-    (robot_at wp1)
-    
-    ; (corridor wp_initial wp1)
-    (corridor wp1 wp2)
-    (corridor wp2 wp3)
-    (corridor wp3 wp4)
-    (corridor wp3 wp8)
-    (corridor wp4 wp5)
-    (corridor wp4 wp7)
-    (corridor wp5 wp6)
-    (corridor wp6 wp7)
-    (corridor wp7 wp8)
-    (corridor wp8 wp9)
-    (corridor wp9 wp10)
-    (corridor wp10 wp1)
-    
-    (dark_corridor wp1 wp2)
-    (dark_corridor wp3 wp4)
-    (dark_corridor wp4 wp7)
-    (dark_corridor wp9 wp8)
-    
-    ; (unsafe_corridor wp1 wp2)
-    ; (unsafe_corridor wp1 wp10)
-    ; (unsafe_corridor wp3 wp8)
-    ; (unsafe_corridor wp4 wp7)
-    
-    ; (corridor wpf wp1)
-    ; (corridor wpf wp2)
-    ; (corridor wpf wp3)
-    ; (corridor wpf wp4)
+    (corridor wp0 wp1) (dark_corridor wp0 wp1) (corridor wp0 wp4) (dark_corridor wp0 wp4) (unsafe_corridor wp0 wp4) (corridor wp2 wp3) (dark_corridor wp2 wp3) (unsafe_corridor wp2 wp3) (corridor wp2 wp6) (unsafe_corridor wp2 wp6) (corridor wp4 wp8) (corridor wp5 wp6) (dark_corridor wp5 wp6) (corridor wp6 wp7) (corridor wp6 wp10) (dark_corridor wp6 wp10) (corridor wp7 wp11) (corridor wp8 wp9) (unsafe_corridor wp8 wp9) (corridor wp8 wp12) (unsafe_corridor wp8 wp12) (corridor wp9 wp13) (corridor wp10 wp11) (corridor wp10 wp15) (unsafe_corridor wp10 wp15) (corridor wp11 wp16) (corridor wp12 wp17) (corridor wp13 wp14) (corridor wp13 wp18) (corridor wp14 wp15) (corridor wp14 wp19) (dark_corridor wp14 wp19) (corridor wp15 wp16) (dark_corridor wp15 wp16) (corridor wp15 wp20) (corridor wp16 wp21) (corridor wp17 wp18) (unsafe_corridor wp17 wp18) (corridor wp17 wp22) (corridor wp18 wp19) (unsafe_corridor wp18 wp19) (corridor wp18 wp23) (corridor wp19 wp20) (corridor wp19 wp24) (corridor wp20 wp21) (dark_corridor wp20 wp21) (corridor wp20 wp25) (corridor wp22 wp23) (corridor wp23 wp24) (corridor wp25 wp26) (robot_at wp0)
     
     (equalTo 0.0_decimal 0.0_decimal)
     (equalTo 0.6_decimal 0.6_decimal)
@@ -154,19 +125,19 @@
     (hasQAestimation fd_amcl_kinect qa_v_environment_light_low)
     (hasQAestimation fd_amcl_lidar qa_v_accuracy_medium)
     (hasQAestimation fd_amcl_lidar qa_v_energy_cost_medium)
-    (hasQAestimation fd_amcl_lidar qa_v_environment_light_bright)
+    (hasQAestimation fd_amcl_lidar qa_v_environment_light_low)
     (hasQAestimation fd_aruco qa_v_accuracy_good)
     (hasQAestimation fd_aruco qa_v_energy_cost_excellent)
-    (hasQAestimation fd_aruco qa_v_environment_light_bright)
+    (hasQAestimation fd_aruco qa_v_environment_light_low)
     (hasQAestimation fd_aruco_headlamp qa_v_accuracy_good)
     (hasQAestimation fd_aruco_headlamp qa_v_energy_cost_really_bad)
     (hasQAestimation fd_aruco_headlamp qa_v_environment_light_bright)
     (hasQAestimation fd_mrpt_kinect qa_v_accuracy_really_good)
     (hasQAestimation fd_mrpt_kinect qa_v_energy_cost_good)
-    (hasQAestimation fd_mrpt_kinect qa_v_environment_light_bright)
+    (hasQAestimation fd_mrpt_kinect qa_v_environment_light_low)
     (hasQAestimation fd_mrpt_lidar qa_v_accuracy_bad)
     (hasQAestimation fd_mrpt_lidar qa_v_energy_cost_bad)
-    (hasQAestimation fd_mrpt_lidar qa_v_environment_light_bright)
+    (hasQAestimation fd_mrpt_lidar qa_v_environment_light_low)
     (hasQAestimation fd_unground qa_performance_zero)
     (isQAtype qa_performance_zero performance)
     (isQAtype qa_v_accuracy_bad qa_accuracy)
@@ -212,7 +183,7 @@
     (solvesF fd_mrpt_lidar f_localization)
   )
 
-  (:goal (and
-    (robot_at wp4)
-  ))
+  (:goal 
+    (and (robot_at wp26))
+  )
 )
