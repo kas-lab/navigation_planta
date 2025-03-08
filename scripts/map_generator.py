@@ -135,7 +135,7 @@ class MapGenerator:
         # Find shortest path using Dijkstra (example: node 0 to node 10)
         return nx.shortest_path(self.graph, source=from_node, target=to_node, weight='weight')
 
-    def plot_graph(self):
+    def plot_graph(self, show_plot = False, save_file = False, filename = "map.png"):
         plt.figure(figsize=(8, 8))
         pos_ = {n: pos['pos'] for n, pos in self.graph.nodes().items()}
         nx.draw(self.graph, pos=pos_, with_labels=True, node_size=100)
@@ -157,7 +157,10 @@ class MapGenerator:
 
         # Add legend to the plot
         plt.legend(handles=[dark_handle, unsafe_handle, unsafe_dark_handle], loc='best')
-        plt.show()
+        if save_file:
+            plt.savefig(filename, format='png', dpi=300, bbox_inches='tight')
+        if show_plot:
+            plt.show()
 
     def generate_domain_problem_files(self):
         self.generate_domain()
@@ -227,4 +230,4 @@ if __name__ == '__main__':
     mp.generate_connected_grid_map()
     mp.generate_domain_problem_files()
     mp.solve_plan()
-    mp.plot_graph()
+    mp.plot_graph(show_plot=True)
