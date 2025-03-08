@@ -11,7 +11,7 @@ from unified_planning.engines import PlanGenerationResultStatus
 
 class MapGenerator:
     def __init__(self):
-        self.G = nx.Graph()
+        self.graph = nx.Graph()
         self.num_nodes = 30
         self.nodes_skip = 0.1 # 10%
         self.unconnected_amount = 0.15 # 10%
@@ -31,16 +31,16 @@ class MapGenerator:
 
         # Construct graph with weighted edges
         for i, pos in enumerate(positions):
-            self.G.add_node(i, pos=pos)
+            self.graph.add_node(i, pos=pos)
 
         for u, v in edges:
             weight = np.linalg.norm(positions[u] - positions[v])  # Euclidean distance
-            self.G.add_edge(u, v, weight=weight, dark=False, unsafe=False)
+            self.graph.add_edge(u, v, weight=weight, dark=False, unsafe=False)
 
         # Retain cycles by keeping extra edges from Delaunay
         # extra_edges = list(edges)
         # np.random.shuffle(extra_edges)
-        # self.G.add_edges_from(extra_edges[:len(extra_edges) // 3])  # Adding back some cycles
+        # self.graph.add_edges_from(extra_edges[:len(extra_edges) // 3])  # Adding back some cycles
 
     def generate_grid_graph(self):
         # Define grid dimensions with some flexibility
@@ -66,9 +66,9 @@ class MapGenerator:
         self.num_nodes -= num_nodes_to_skip
 
         # Construct graph with weighted edges
-        self.G = nx.Graph()
+        graph_ = nx.Graph()
         for i, pos in enumerate(positions):
-            self.G.add_node(i, pos=pos)
+            graph_.add_node(i, pos=pos)
 
         # Add edges between adjacent nodes (either horizontal or vertical)
         edges = []
@@ -82,58 +82,65 @@ class MapGenerator:
                 (pos_i[1] == pos_j[1] and abs(pos_i[0] - pos_j[0]) == 10):
                     # Calculate Euclidean distance as edge weight
                     weight = np.linalg.norm(pos_i - pos_j)
-                    self.G.add_edge(i, j, weight=weight, dark=False, unsafe=False)
+                    graph_.add_edge(i, j, weight=weight, dark=False, unsafe=False)
                     edges.append((i, j))
 
-        # Remove 10% of the edges but ensure connectivity
+        # Remove 10% of the edges
         total_edges = len(edges)
         num_edges_to_remove = int(self.unconnected_amount * total_edges)
         random.shuffle(edges)
 
-        # Temporarily remove edges and check for connectivity
+        # Remove edges
         edges_to_remove = edges[:num_edges_to_remove]
         for u, v in edges_to_remove:
-            self.G.remove_edge(u, v)
+            graph_.remove_edge(u, v)
+        
+        return graph_
 
-        # Ensure the graph remains connected
-        if not nx.is_connected(self.G):
-            weight = np.linalg.norm(edges[0][0] - edges[0][1])
-            self.G.add_edge(edges[0][0], edges[0][1], weight=weight, dark=False, unsafe=False)  # Reconnect first edge if disconnected
-
+    def assign_dark_unsafe_corridors(self, graph):
         # Randomly assign "unsafe" and "dark" labels to 10% of the remaining edges
-        remaining_edges = list(self.G.edges)
+        remaining_edges = list(graph.edges)
         num_unsafe_edges = int(self.unsafe_amount * len(remaining_edges))
         num_dark_edges = int(self.dark_amount * len(remaining_edges))
 
         # Assign "unsafe" to 10% of edges
         unsafe_edges = random.sample(remaining_edges, num_unsafe_edges)
         for u, v in unsafe_edges:
-            self.G[u][v]['unsafe'] = True
+            graph[u][v]['unsafe'] = True
 
         # Assign "dark" to 10% of edges
         dark_edges = random.sample(remaining_edges, num_dark_edges)
         for u, v in dark_edges:
-            self.G[u][v]['dark'] = True
+            graph[u][v]['dark'] = True
+        
+        return graph
+
+    def generate_connected_grid_map(self):
+        graph = self.generate_grid_graph()
+        # If not connected, generate a new graph
+        while not nx.is_connected(graph):
+            graph = self.generate_grid_graph()
+        self.graph = self.assign_dark_unsafe_corridors(graph)
 
 
     def find_shortest_path(self, from_node=0, to_node=0):
         # Find shortest path using Dijkstra (example: node 0 to node 10)
-        return nx.shortest_path(self.G, source=from_node, target=to_node, weight='weight')
+        return nx.shortest_path(self.graph, source=from_node, target=to_node, weight='weight')
 
     def plot_graph(self):
         plt.figure(figsize=(8, 8))
-        pos_ = {n: pos['pos'] for n, pos in self.G.nodes().items()}
-        nx.draw(self.G, pos=pos_, with_labels=True, node_size=100)
+        pos_ = {n: pos['pos'] for n, pos in self.graph.nodes().items()}
+        nx.draw(self.graph, pos=pos_, with_labels=True, node_size=100)
         
-        dark_corridors = [(u, v) for u,v in self.G.edges if self.G[u][v]['dark'] == True and self.G[u][v]['unsafe'] == False]
-        unsafe_corridors = [(u, v) for u,v in self.G.edges if self.G[u][v]['dark'] == False and self.G[u][v]['unsafe'] == True]
-        unsafe_dark_corridors = [(u, v) for u,v in self.G.edges if self.G[u][v]['dark'] == True and self.G[u][v]['unsafe'] == True]
+        dark_corridors = [(u, v) for u,v in self.graph.edges if self.graph[u][v]['dark'] == True and self.graph[u][v]['unsafe'] == False]
+        unsafe_corridors = [(u, v) for u,v in self.graph.edges if self.graph[u][v]['dark'] == False and self.graph[u][v]['unsafe'] == True]
+        unsafe_dark_corridors = [(u, v) for u,v in self.graph.edges if self.graph[u][v]['dark'] == True and self.graph[u][v]['unsafe'] == True]
         
-        nx.draw_networkx_edges(self.G, pos=pos_, edgelist=dark_corridors, edge_color='y', width=2)
-        nx.draw_networkx_edges(self.G, pos=pos_, edgelist=unsafe_corridors, edge_color='b', width=2)
-        nx.draw_networkx_edges(self.G, pos=pos_, edgelist=unsafe_dark_corridors, edge_color='r', width=2)
+        nx.draw_networkx_edges(self.graph, pos=pos_, edgelist=dark_corridors, edge_color='y', width=2)
+        nx.draw_networkx_edges(self.graph, pos=pos_, edgelist=unsafe_corridors, edge_color='b', width=2)
+        nx.draw_networkx_edges(self.graph, pos=pos_, edgelist=unsafe_dark_corridors, edge_color='r', width=2)
 
-        nx.draw_networkx_edges(self.G, pos=pos_)
+        nx.draw_networkx_edges(self.graph, pos=pos_)
 
         # Create custom legend handles
         dark_handle = Line2D([0], [0], color='y', lw=2, label='Dark Corridors')
@@ -174,19 +181,22 @@ class MapGenerator:
         self.move.add_effect(self.robot_at(wp2), True)
 
     def generate_problem(self):
-        self.problem = Problem('navigation')
+        self.problem = Problem(name = 'navigation')
         self.problem.add_fluent(self.robot_at, default_initial_value=False)
         self.problem.add_fluent(self.corridor, default_initial_value=False)
         self.problem.add_action(self.move)
 
         waypoints = [Object('wp%s' % i, self.waypoint_type) for i in range(self.num_nodes)]
         self.problem.add_objects(waypoints)
-        for u, v in self.G.edges:
+        for u, v in self.graph.edges:
             self.problem.set_initial_value(self.corridor(waypoints[u], waypoints[v]), True)
-            if 'dark' in self.G.edges[u, v] and self.G.edges[u, v]['dark'] == True:
+            self.problem.set_initial_value(self.corridor(waypoints[v], waypoints[u]), True)
+            if 'dark' in self.graph.edges[u, v] and self.graph.edges[u, v]['dark'] == True:
                 self.problem.set_initial_value(self.dark_corridor(waypoints[u], waypoints[v]), True)
-            if 'unsafe' in self.G.edges[u, v] and self.G.edges[u, v]['unsafe'] == True:
+                self.problem.set_initial_value(self.dark_corridor(waypoints[v], waypoints[u]), True)
+            if 'unsafe' in self.graph.edges[u, v] and self.graph.edges[u, v]['unsafe'] == True:
                 self.problem.set_initial_value(self.unsafe_corridor(waypoints[u], waypoints[v]), True)
+                self.problem.set_initial_value(self.unsafe_corridor(waypoints[v], waypoints[u]), True)
 
         self.problem.set_initial_value(self.robot_at(waypoints[0]), True)
         self.problem.add_goal(self.robot_at(waypoints[-1]))
@@ -201,15 +211,12 @@ class MapGenerator:
     
     def write_pddl_files(self):
         writer = PDDLWriter(self.problem)
-        # domain_filename = "domain.pddl"
-        # writer.write_domain(domain_filename)
         problem_filename = "pddl/problem.pddl"
         writer.write_problem(problem_filename)
 
 if __name__ == '__main__':
     mp = MapGenerator()
-    # mp.generate_graph()
-    mp.generate_grid_graph()
+    mp.generate_connected_grid_map()
     mp.generate_domain_problem_files()
     mp.solve_plan()
     mp.plot_graph()
