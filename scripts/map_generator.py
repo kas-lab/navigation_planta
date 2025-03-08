@@ -10,13 +10,19 @@ from unified_planning.io import PDDLWriter
 from unified_planning.engines import PlanGenerationResultStatus
 
 class MapGenerator:
-    def __init__(self):
+    def __init__(
+     self, 
+     num_nodes = 30, 
+     nodes_skip = 0.1, 
+     unconnected_amount = 0.15, 
+     unsafe_amount = 0.25, 
+     dark_amount = 0.25):
         self.graph = nx.Graph()
-        self.num_nodes = 30
-        self.nodes_skip = 0.1 # 10%
-        self.unconnected_amount = 0.15 # 10%
-        self.unsafe_amount = 0.25 # 10%
-        self.dark_amount = 0.25 # 10%
+        self.num_nodes = num_nodes
+        self.nodes_skip = nodes_skip
+        self.unconnected_amount = unconnected_amount
+        self.unsafe_amount = unsafe_amount
+        self.dark_amount = dark_amount
 
     def generate_graph(self):
         # Generate random office-like positions
@@ -63,7 +69,9 @@ class MapGenerator:
         positions = [pos for idx, pos in enumerate(positions) if idx not in nodes_to_skip]
         
         # Adjust the number of nodes after skipping
+        print("before ",self.num_nodes)
         self.num_nodes -= num_nodes_to_skip
+        print("after ", self.num_nodes)
 
         # Construct graph with weighted edges
         graph_ = nx.Graph()
