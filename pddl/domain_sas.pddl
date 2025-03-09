@@ -17,10 +17,6 @@
     (dark_corridor ?wp1 ?wp2 - waypoint)
     (unsafe_corridor ?wp1 ?wp2 - waypoint)
     
-    (inferred-corridor ?wp1 ?wp2 - waypoint)
-    (inferred-dark_corridor ?wp1 ?wp2 - waypoint)
-    (inferred-unsafe_corridor ?wp1 ?wp2 - waypoint)
-
     (safety_requirement ?wp1 ?wp2 ?v)
     (light_requirement ?wp1 ?wp2 ?v)
 
@@ -62,63 +58,29 @@
   
   (:derived (safety_requirement ?wp1 ?wp2 - waypoint ?v - numerical-object)
     (and
-      (inferred-unsafe_corridor ?wp1 ?wp2)
+      (unsafe_corridor ?wp1 ?wp2)
       (= ?v 0.8_decimal)
     ) 
   )
   
   (:derived (safety_requirement ?wp1 ?wp2 - waypoint ?v - numerical-object)
     (and
-      (not (inferred-unsafe_corridor ?wp1 ?wp2))
+      (not (unsafe_corridor ?wp1 ?wp2))
       (= ?v 0.0_decimal)
     ) 
   )
 
   (:derived (light_requirement ?wp1 ?wp2 - waypoint ?v - numerical-object)
     (and
-      (inferred-dark_corridor ?wp1 ?wp2)
+      (dark_corridor ?wp1 ?wp2)
       (= ?v 1.0_decimal)
     ) 
   )
   
   (:derived (light_requirement ?wp1 ?wp2 - waypoint ?v - numerical-object)
     (and
-      (not (inferred-dark_corridor ?wp1 ?wp2))
+      (not (dark_corridor ?wp1 ?wp2))
       (= ?v 0.0_decimal)
-    ) 
-  )
-
-  
-  (:derived (inferred-corridor ?wp1 ?wp2 - waypoint)
-    (and
-      (corridor ?wp1 ?wp2)
-    ) 
-  )
-  (:derived (inferred-corridor ?wp1 ?wp2 - waypoint)
-    (and
-      (corridor ?wp2 ?wp1)
-    ) 
-  )
-
-  (:derived (inferred-dark_corridor ?wp1 ?wp2 - waypoint)
-    (and
-      (dark_corridor ?wp1 ?wp2)
-    ) 
-  )
-  (:derived (inferred-dark_corridor ?wp1 ?wp2 - waypoint)
-    (and
-      (dark_corridor ?wp2 ?wp1)
-    ) 
-  )
-  
-  (:derived (inferred-unsafe_corridor ?wp1 ?wp2 - waypoint)
-    (and
-      (unsafe_corridor ?wp1 ?wp2)
-    ) 
-  )
-  (:derived (inferred-unsafe_corridor ?wp1 ?wp2 - waypoint)
-    (and
-      (unsafe_corridor ?wp2 ?wp1)
     ) 
   )
 
@@ -168,7 +130,7 @@
     :parameters (?wp1 ?wp2 - waypoint ?safety_requirement ?light_requirement - numerical-object)
     :precondition (and
       (robot_at ?wp1)
-      (inferred-corridor ?wp1 ?wp2)
+      (corridor ?wp1 ?wp2)
       (safety_requirement ?wp1 ?wp2 ?safety_requirement)
       (light_requirement ?wp1 ?wp2 ?light_requirement)
       (exists (?a ?f1 ?fd1)
