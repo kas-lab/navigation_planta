@@ -133,20 +133,18 @@ class MapGenerator:
         # Find shortest path using Dijkstra (example: node 0 to node 10)
         return nx.shortest_path(self.graph, source=from_node, target=to_node, weight='weight')
 
-    def plot_graph(self, show_plot = False, save_file = False, filename = "map.png"):
-        plt.figure(figsize=(8, 8))
+    def plot_graph(self, show_plot=False, save_file=False, filename="map.png"):
+        fig, ax = plt.subplots(figsize=(8, 8))  # Create a figure and axis
         pos_ = {n: pos['pos'] for n, pos in self.graph.nodes().items()}
-        nx.draw(self.graph, pos=pos_, with_labels=True, node_size=100)
-        
-        dark_corridors = [(u, v) for u,v in self.graph.edges if self.graph[u][v]['dark'] == True and self.graph[u][v]['unsafe'] == False]
-        unsafe_corridors = [(u, v) for u,v in self.graph.edges if self.graph[u][v]['dark'] == False and self.graph[u][v]['unsafe'] == True]
-        unsafe_dark_corridors = [(u, v) for u,v in self.graph.edges if self.graph[u][v]['dark'] == True and self.graph[u][v]['unsafe'] == True]
-        
-        nx.draw_networkx_edges(self.graph, pos=pos_, edgelist=dark_corridors, edge_color='y', width=2)
-        nx.draw_networkx_edges(self.graph, pos=pos_, edgelist=unsafe_corridors, edge_color='b', width=2)
-        nx.draw_networkx_edges(self.graph, pos=pos_, edgelist=unsafe_dark_corridors, edge_color='r', width=2)
+        nx.draw(self.graph, pos=pos_, with_labels=True, node_size=100, ax=ax)
 
-        nx.draw_networkx_edges(self.graph, pos=pos_)
+        dark_corridors = [(u, v) for u, v in self.graph.edges if self.graph[u][v]['dark'] and not self.graph[u][v]['unsafe']]
+        unsafe_corridors = [(u, v) for u, v in self.graph.edges if not self.graph[u][v]['dark'] and self.graph[u][v]['unsafe']]
+        unsafe_dark_corridors = [(u, v) for u, v in self.graph.edges if self.graph[u][v]['dark'] and self.graph[u][v]['unsafe']]
+
+        nx.draw_networkx_edges(self.graph, pos=pos_, edgelist=dark_corridors, edge_color='y', width=2, ax=ax)
+        nx.draw_networkx_edges(self.graph, pos=pos_, edgelist=unsafe_corridors, edge_color='b', width=2, ax=ax)
+        nx.draw_networkx_edges(self.graph, pos=pos_, edgelist=unsafe_dark_corridors, edge_color='r', width=2, ax=ax)
 
         # Create custom legend handles
         dark_handle = Line2D([0], [0], color='y', lw=2, label='Dark Corridors')
@@ -154,11 +152,17 @@ class MapGenerator:
         unsafe_dark_handle = Line2D([0], [0], color='r', lw=2, label='Unsafe and Dark Corridors')
 
         # Add legend to the plot
-        plt.legend(handles=[dark_handle, unsafe_handle, unsafe_dark_handle], loc='best')
+        ax.legend(handles=[dark_handle, unsafe_handle, unsafe_dark_handle], loc='best')
+
         if save_file:
             plt.savefig(filename, format='png', dpi=300, bbox_inches='tight')
+
         if show_plot:
-            plt.show()
+            plt.show(block=True)  # Block only this figure
+            plt.close(fig)  # Close the figure to avoid affecting other plots
+        else:
+            plt.close(fig)  # Ensure the figure is always closed if not shown
+
 
     def generate_domain_problem_files(self, save_domain=False, domain_filename='domain.pddl', save_problem=True, problem_filename='problem.pddl'):
         self.generate_domain()
