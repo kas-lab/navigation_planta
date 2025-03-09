@@ -69,9 +69,7 @@ class MapGenerator:
         positions = [pos for idx, pos in enumerate(positions) if idx not in nodes_to_skip]
         
         # Adjust the number of nodes after skipping
-        print("before ",self.num_nodes)
-        self.num_nodes -= num_nodes_to_skip
-        print("after ", self.num_nodes)
+        num_nodes_updated_ = self.num_nodes - num_nodes_to_skip
 
         # Construct graph with weighted edges
         graph_ = nx.Graph()
@@ -80,8 +78,8 @@ class MapGenerator:
 
         # Add edges between adjacent nodes (either horizontal or vertical)
         edges = []
-        for i in range(self.num_nodes):
-            for j in range(i + 1, self.num_nodes):
+        for i in range(num_nodes_updated_):
+            for j in range(i + 1, num_nodes_updated_):
                 pos_i = positions[i]
                 pos_j = positions[j]
                 
