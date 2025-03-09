@@ -2,6 +2,18 @@
 
 PDDL-TOMASys ontology for a navigation scenario
 
+## Docker
+
+Build:
+```bash
+docker build -t pddl_tomasys .
+```
+
+Run:
+```bash
+docker run --rm -it -v $HOME/navigation_pddl_tomasys_ws/src/navigation_pddl_tomasys/results:/navigation_pddl_tomasys/results pddl_tomasys:latest python scripts/runner.py
+```
+
 ## Install
 
 Install deps:
