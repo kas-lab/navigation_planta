@@ -69,7 +69,7 @@ class MapGenerator:
         positions = [pos for idx, pos in enumerate(positions) if idx not in nodes_to_skip]
         
         # Adjust the number of nodes after skipping
-        num_nodes_updated_ = self.num_nodes - num_nodes_to_skip
+        self.num_node_resulting = self.num_nodes - num_nodes_to_skip
 
         # Construct graph with weighted edges
         graph_ = nx.Graph()
@@ -78,8 +78,8 @@ class MapGenerator:
 
         # Add edges between adjacent nodes (either horizontal or vertical)
         edges = []
-        for i in range(num_nodes_updated_):
-            for j in range(i + 1, num_nodes_updated_):
+        for i in range(self.num_node_resulting):
+            for j in range(i + 1, self.num_node_resulting):
                 pos_i = positions[i]
                 pos_j = positions[j]
                 
@@ -160,10 +160,14 @@ class MapGenerator:
         if show_plot:
             plt.show()
 
-    def generate_domain_problem_files(self):
+    def generate_domain_problem_files(self, save_domain=False, domain_filename='domain.pddl', save_problem=True, problem_filename='problem.pddl'):
         self.generate_domain()
         self.generate_problem()
-        self.write_pddl_files()
+        writer = PDDLWriter(self.problem)
+        if save_domain is True:
+            writer.write_domain(domain_filename)
+        if save_problem is True:
+            writer.write_problem(problem_filename)
         
 
     def generate_domain(self):
@@ -195,7 +199,7 @@ class MapGenerator:
         self.problem.add_fluent(self.corridor, default_initial_value=False)
         self.problem.add_action(self.move)
 
-        waypoints = [Object('wp%s' % i, self.waypoint_type) for i in range(self.num_nodes)]
+        waypoints = [Object('wp%s' % i, self.waypoint_type) for i in range(self.num_node_resulting)]
         self.problem.add_objects(waypoints)
         for u, v in self.graph.edges:
             self.problem.set_initial_value(self.corridor(waypoints[u], waypoints[v]), True)
@@ -218,11 +222,6 @@ class MapGenerator:
         else:
             print("No plan found.")
     
-    def write_pddl_files(self):
-        writer = PDDLWriter(self.problem)
-        problem_filename = "pddl/problem.pddl"
-        writer.write_problem(problem_filename)
-
 if __name__ == '__main__':
     mp = MapGenerator()
     mp.generate_connected_grid_map()
