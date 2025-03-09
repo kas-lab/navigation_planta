@@ -39,11 +39,26 @@ ros2 run downward_ros fast-downward.py --alias lama-first pddl/domain.pddl pddl/
 
 ## Convert OWL ontology to PDDL
 
+Normal version:
+
+```
+export PATH=$HOME/navigation_pddl_tomasys_ws/src/owl_to_pddl:$PATH
+```
+
+```bash
+OWLToPDDL.sh --owl=owl/navigation.owl --tBox --inDomain=pddl/domain_sas.pddl --outDomain=pddl/domain_sas_created.pddl --aBox --inProblem=pddl/problem.pddl --outProblem=pddl/problem_created.pddl --replace-output --add-num-comparisons
+```
+
+ROS version:
 ```bash
 ros2 run owl_to_pddl owl_to_pddl.py --ros-args -p owl_file:=owl/navigation.owl -p in_domain_file:=pddl/domain_sas.pddl -p out_domain_file:=pddl/domain_sas_created.pddl -p in_problem_file:=pddl/problem.pddl -p out_problem_file:=pddl/problem_created.pddl
 ```
 
 ## Run fast-downward solver
+
+```
+fast-downward.py  pddl/domain_sas_created.pddl pddl/problem_created.pddl --search "astar(blind())"
+```
 
 ```bash
 ros2 run downward_ros fast-downward.py --alias lama-first pddl/domain_sas_created.pddl pddl/problem_created.pddl
