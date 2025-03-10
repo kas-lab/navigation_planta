@@ -6,7 +6,7 @@ import time
 import matplotlib.pyplot as plt
 import numpy as np
 
-def run(folder_name, n_nodes, nodes_skip, unconnected_amount, unsafe_amount, dark_amount):
+def run(folder_name, run, n_nodes, nodes_skip, unconnected_amount, unsafe_amount, dark_amount):
     n_nodes_resulting = n_nodes - int(n_nodes*nodes_skip)
     map_generator = MapGenerator(
         n_nodes,
@@ -16,7 +16,7 @@ def run(folder_name, n_nodes, nodes_skip, unconnected_amount, unsafe_amount, dar
         dark_amount)
     map_generator.generate_connected_grid_map()
     
-    map_folder_name = f'{n_nodes}_{nodes_skip}_{unconnected_amount}_{unsafe_amount}_{dark_amount}'
+    map_folder_name = f'{n_nodes}_{nodes_skip}_{unconnected_amount}_{unsafe_amount}_{dark_amount}_{run}'
     map_folder = folder_name / map_folder_name
     if map_folder.is_dir() is False:
         map_folder.mkdir(parents=True)
@@ -67,7 +67,7 @@ def run(folder_name, n_nodes, nodes_skip, unconnected_amount, unsafe_amount, dar
 def runner():
     n_runs_per_n_nodes = 10
     min_nodes = 10
-    max_nodes = 300
+    max_nodes = 100
     nodes_interval = 5
 
     nodes_skip = 0.1 # percentage
@@ -84,7 +84,7 @@ def runner():
 
     for n_nodes in range(min_nodes, max_nodes + nodes_interval, nodes_interval):
         for n in range(n_runs_per_n_nodes):
-            n_nodes_resulting, elapsed_time = run(folder_name, n_nodes, nodes_skip, unconnected_amount, unsafe_amount, dark_amount)
+            n_nodes_resulting, elapsed_time = run(folder_name, n, n_nodes, nodes_skip, unconnected_amount, unsafe_amount, dark_amount)
             planning_time_list.append((n_nodes_resulting, elapsed_time))
     
     planning_time_csv = folder_name / 'planning_times.csv'
@@ -93,22 +93,11 @@ def runner():
     np.savetxt(planning_time_csv, planning_time_array, delimiter=",", header="nodes,time", comments="")
     
     unique_nodes, indices = np.unique(planning_time_array["nodes"], return_inverse=True)
-    print("unique nodes")
-    print(unique_nodes)
-    print("indices")
-    print(indices)
-    print("bincount")
-    print(np.bincount(indices))
-    print(np.bincount(indices, weights=planning_time_array["time"]))
     mean_times = np.bincount(indices, weights=planning_time_array["time"]) / np.bincount(indices)
-    print("means")
-    print(mean_times)
 
     # Compute standard deviation for each group
     sum_squared_diffs = np.bincount(indices, weights=(planning_time_array["time"] - mean_times[indices])**2) 
     std_dev_times = np.sqrt(sum_squared_diffs / np.bincount(indices))  # Standard deviation formula
-    print("std_dev")
-    print(std_dev_times)
 
     # Create the plot
     fig, ax = plt.subplots(figsize=(8, 5))
