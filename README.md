@@ -69,6 +69,10 @@ ros2 run owl_to_pddl owl_to_pddl.py --ros-args -p owl_file:=owl/navigation.owl -
 ## Run fast-downward solver
 
 ```
+export PATH=$HOME/navigation_pddl_tomasys_ws/src/downward:$PATH
+```
+
+```
 fast-downward.py  pddl/domain_sas_created.pddl pddl/problem_created.pddl --search "astar(blind())"
 ```
 
