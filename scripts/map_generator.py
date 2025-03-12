@@ -1,3 +1,4 @@
+import json
 import networkx as nx
 import numpy as np
 import matplotlib.pyplot as plt
@@ -164,9 +165,11 @@ class MapGenerator:
             plt.close(fig)  # Ensure the figure is always closed if not shown
 
 
-    def generate_domain_problem_files(self, save_domain=False, domain_filename='domain.pddl', save_problem=True, problem_filename='problem.pddl'):
+    def generate_domain_problem_files(self, save_domain=False, domain_filename='domain.pddl', save_problem=True, problem_filename='problem.pddl', init_goal=None):
         self.generate_domain()
-        self.generate_problem()
+        self.generate_problem(init_goal==None)
+        if init_goal is not None:
+            self.define_init_goal_waypoints(init_goal)
         writer = PDDLWriter(self.problem)
         if save_domain is True:
             writer.write_domain(domain_filename)
@@ -197,14 +200,14 @@ class MapGenerator:
         self.move.add_effect(self.robot_at(wp1), False) 
         self.move.add_effect(self.robot_at(wp2), True)
 
-    def generate_problem(self):
+    def generate_problem(self, add_init_goal = True):
         self.problem = Problem(name = 'navigation')
         self.problem.add_fluent(self.robot_at, default_initial_value=False)
         self.problem.add_fluent(self.corridor, default_initial_value=False)
         self.problem.add_action(self.move)
 
-        waypoints = [Object('wp%s' % i, self.waypoint_type) for i in range(self.num_node_resulting)]
-        self.problem.add_objects(waypoints)
+        waypoints = {node_id: Object('wp%s' % node_id, self.waypoint_type) for node_id in self.graph.nodes}
+        self.problem.add_objects(waypoints.values())
         for u, v in self.graph.edges:
             self.problem.set_initial_value(self.corridor(waypoints[u], waypoints[v]), True)
             self.problem.set_initial_value(self.corridor(waypoints[v], waypoints[u]), True)
@@ -215,8 +218,16 @@ class MapGenerator:
                 self.problem.set_initial_value(self.unsafe_corridor(waypoints[u], waypoints[v]), True)
                 self.problem.set_initial_value(self.unsafe_corridor(waypoints[v], waypoints[u]), True)
 
-        self.problem.set_initial_value(self.robot_at(waypoints[0]), True)
-        self.problem.add_goal(self.robot_at(waypoints[-1]))
+        if add_init_goal is True:
+            sorted_waypoints = sorted(waypoints.keys())
+            init_wp_key= sorted_waypoints[0]
+            goal_wp_key= sorted_waypoints[-1]
+            self.problem.set_initial_value(self.robot_at(waypoints[init_wp_key]), True)
+            self.problem.add_goal(self.robot_at(waypoints[goal_wp_key]))
+
+    def define_init_goal_waypoints(self, init_goal):
+        self.problem.set_initial_value(self.robot_at(Object('wp%i' % init_goal[0], self.waypoint_type)), True)
+        self.problem.add_goal(self.robot_at(Object('wp%i' % init_goal[1], self.waypoint_type)))
 
     def solve_plan(self):
         planner = OneshotPlanner(name="fast-downward")
@@ -226,6 +237,40 @@ class MapGenerator:
         else:
             print("No plan found.")
     
+    def load_json(self, file_path):
+        with open(file_path, "r") as file:
+            data = json.load(file)
+
+        # Create a graph
+        self.graph = nx.Graph()
+
+        # Extract nodes and positions from the "map" section
+        positions = {}
+        for node in data["map"]:
+            node_id = int(node["node-id"][1:])
+            x, y = node["coords"]["x"], node["coords"]["y"]
+            positions[node_id] = (x, y)
+            self.graph.add_node(node_id, pos=(x, y))
+
+        # Extract edges from the "map" section
+        for node in data["map"]:
+            node_id = int(node["node-id"][1:])
+            for neighbor in node["connected-to"]:
+                self.graph.add_edge(node_id, int(neighbor[1:]), dark=False, unsafe=False)
+        # l15 to l14 - unsafe
+        self.graph[15][14]['unsafe'] = True
+        # l18 to l19 - dark
+        self.graph[18][19]['dark'] = True
+        # l3  to l4  - dark
+        self.graph[3][4]['dark'] = True
+        # l6  to l8  - unsafe
+        self.graph[6][8]['unsafe'] = True
+        # l56 to l55 - unsafe
+        self.graph[56][55]['unsafe'] = True
+        # l12 to l11 - dark and unsafe
+        self.graph[12][11]['unsafe'] = True
+        self.graph[12][11]['dark'] = True
+
 if __name__ == '__main__':
     mp = MapGenerator()
     mp.generate_connected_grid_map()
