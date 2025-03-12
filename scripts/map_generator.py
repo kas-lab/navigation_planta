@@ -271,6 +271,48 @@ class MapGenerator:
         self.graph[12][11]['unsafe'] = True
         self.graph[12][11]['dark'] = True
 
+    def load_and_discretize_json(self, file_path):
+        self.load_json(file_path)
+        self.discretize_graph()
+    
+    def discretize_graph(self):
+        """Discretizes the graph so that all edges have the same maximum possible length."""
+        edge_lengths = [
+            np.linalg.norm(np.array(self.graph.nodes[u]['pos']) - np.array(self.graph.nodes[v]['pos']))
+            for u, v in self.graph.edges
+        ]
+
+        max_length = min(edge_lengths)  # Use the smallest edge length
+
+        new_edges = []
+        new_nodes = {}
+        max_node_id = max(self.graph.nodes)  # Start new node IDs from the highest existing ID
+
+        for u, v in list(self.graph.edges):  # Iterate over original edges
+            pos_u = np.array(self.graph.nodes[u]['pos'])
+            pos_v = np.array(self.graph.nodes[v]['pos'])
+            dist = np.linalg.norm(pos_v - pos_u)
+
+            if dist > max_length:
+                num_segments = int(np.ceil(dist / max_length))  # Number of segments needed
+                prev_node = u
+
+                for i in range(1, num_segments):
+                    # Interpolate new node position
+                    new_pos = pos_u + (pos_v - pos_u) * (i / num_segments)
+                    max_node_id += 1  # Increment node ID
+                    new_nodes[max_node_id] = tuple(new_pos)
+                    new_edges.append((prev_node, max_node_id))  # Connect to previous node
+                    prev_node = max_node_id
+
+                new_edges.append((prev_node, v))  # Connect last new node to original end node
+                self.graph.remove_edge(u, v)  # Remove the original long edge
+
+        # Add new nodes and edges
+        for node_id, pos in new_nodes.items():
+            self.graph.add_node(node_id, pos=pos)
+        self.graph.add_edges_from(new_edges, dark=False, unsafe=False)
+
 if __name__ == '__main__':
     mp = MapGenerator()
     mp.generate_connected_grid_map()
