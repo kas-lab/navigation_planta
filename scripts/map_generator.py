@@ -10,6 +10,8 @@ from unified_planning.shortcuts import *
 from unified_planning.io import PDDLWriter
 from unified_planning.engines import PlanGenerationResultStatus
 
+import re
+
 class MapGenerator:
     def __init__(
      self, 
@@ -175,6 +177,18 @@ class MapGenerator:
             writer.write_domain(domain_filename)
         if save_problem is True:
             writer.write_problem(problem_filename)
+
+        # problem file parsing fix
+        with open(problem_filename, "r") as file:
+            content = file.read()
+
+            # Replace all occurrences
+            updated_content = re.sub(r"o_0_0_decimal", "0.0_decimal", content)
+            updated_content = re.sub(r"o_0_8_decimal", "0.8_decimal", updated_content)
+            updated_content = re.sub(r"o_1_0_decimal", "1.0_decimal", updated_content)
+
+        with open(problem_filename, "w") as file:
+            file.write(updated_content)
         
 
     def generate_domain(self):
@@ -188,7 +202,11 @@ class MapGenerator:
             'dark_corridor', BoolType(), wp1=self.waypoint_type, wp2=self.waypoint_type)
         self.unsafe_corridor = unified_planning.model.Fluent(
             'unsafe_corridor', BoolType(), wp1=self.waypoint_type, wp2=self.waypoint_type)
-        
+        self.light_requirement = unified_planning.model.Fluent(
+            'light_requirement', BoolType(), wp1=self.waypoint_type, wp2=self.waypoint_type, v=self.numerical_object_type)
+        self.safety_requirement = unified_planning.model.Fluent(
+            'safety_requirement', BoolType(), wp1=self.waypoint_type, wp2=self.waypoint_type, v=self.numerical_object_type)
+
         # self.distance = unified_planning.model.Fluent(
         #     'distance', BoolType(), wp1=self.waypoint_type, wp2=self.waypoint_type, d=self.numerical_object_type)
         
@@ -208,15 +226,31 @@ class MapGenerator:
 
         waypoints = {node_id: Object('wp%s' % node_id, self.waypoint_type) for node_id in self.graph.nodes}
         self.problem.add_objects(waypoints.values())
+        zero_decimal = Object("0.0_decimal", self.numerical_object_type)
+        zero_eight_decimal = Object("0.8_decimal", self.numerical_object_type)
+        one_decimal = Object("1.0_decimal", self.numerical_object_type)
+        # self.problem.add_object(zero_decimal)
+        # self.problem.add_object(zero_eight_decimal)
+        # self.problem.add_object(one_decimal)
         for u, v in self.graph.edges:
             self.problem.set_initial_value(self.corridor(waypoints[u], waypoints[v]), True)
             self.problem.set_initial_value(self.corridor(waypoints[v], waypoints[u]), True)
             if 'dark' in self.graph.edges[u, v] and self.graph.edges[u, v]['dark'] == True:
-                self.problem.set_initial_value(self.dark_corridor(waypoints[u], waypoints[v]), True)
-                self.problem.set_initial_value(self.dark_corridor(waypoints[v], waypoints[u]), True)
+                # self.problem.set_initial_value(self.dark_corridor(waypoints[u], waypoints[v]), True)
+                # self.problem.set_initial_value(self.dark_corridor(waypoints[v], waypoints[u]), True)
+                self.problem.set_initial_value(self.light_requirement(waypoints[u], waypoints[v], one_decimal), True)
+                self.problem.set_initial_value(self.light_requirement(waypoints[v], waypoints[u], one_decimal), True)
+            else:
+                self.problem.set_initial_value(self.light_requirement(waypoints[u], waypoints[v], zero_decimal), True)
+                self.problem.set_initial_value(self.light_requirement(waypoints[v], waypoints[u], zero_decimal), True)
             if 'unsafe' in self.graph.edges[u, v] and self.graph.edges[u, v]['unsafe'] == True:
-                self.problem.set_initial_value(self.unsafe_corridor(waypoints[u], waypoints[v]), True)
-                self.problem.set_initial_value(self.unsafe_corridor(waypoints[v], waypoints[u]), True)
+                # self.problem.set_initial_value(self.unsafe_corridor(waypoints[u], waypoints[v]), True)
+                # self.problem.set_initial_value(self.unsafe_corridor(waypoints[v], waypoints[u]), True)
+                self.problem.set_initial_value(self.safety_requirement(waypoints[u], waypoints[v], zero_eight_decimal), True)
+                self.problem.set_initial_value(self.safety_requirement(waypoints[v], waypoints[u], zero_eight_decimal), True)
+            else:
+                self.problem.set_initial_value(self.safety_requirement(waypoints[u], waypoints[v], zero_decimal), True)
+                self.problem.set_initial_value(self.safety_requirement(waypoints[v], waypoints[u], zero_decimal), True)
 
         if add_init_goal is True:
             sorted_waypoints = sorted(waypoints.keys())

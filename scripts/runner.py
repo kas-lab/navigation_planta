@@ -67,7 +67,7 @@ def run(folder_name, run, n_nodes, nodes_skip, unconnected_amount, unsafe_amount
 def runner():
     n_runs_per_n_nodes = 10
     min_nodes = 10
-    max_nodes = 100
+    max_nodes = 300
     nodes_interval = 5
 
     nodes_skip = 0.1 # percentage
