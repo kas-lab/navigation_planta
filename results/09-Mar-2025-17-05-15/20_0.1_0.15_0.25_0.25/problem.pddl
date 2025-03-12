@@ -1,8 +1,0 @@
-(define (problem navigation-problem)
- (:domain navigation-domain)
- (:objects
-   wp0 wp1 wp2 wp3 wp4 wp5 wp6 wp7 wp8 wp9 wp10 wp11 wp12 wp13 wp14 wp15 wp16 wp17 - waypoint
- )
- (:init (corridor wp0 wp1) (corridor wp1 wp0) (dark_corridor wp0 wp1) (dark_corridor wp1 wp0) (corridor wp1 wp2) (corridor wp2 wp1) (dark_corridor wp1 wp2) (dark_corridor wp2 wp1) (corridor wp1 wp4) (corridor wp4 wp1) (corridor wp2 wp3) (corridor wp3 wp2) (corridor wp2 wp5) (corridor wp5 wp2) (corridor wp3 wp6) (corridor wp6 wp3) (corridor wp4 wp5) (corridor wp5 wp4) (corridor wp4 wp7) (corridor wp7 wp4) (dark_corridor wp4 wp7) (dark_corridor wp7 wp4) (corridor wp5 wp6) (corridor wp6 wp5) (corridor wp6 wp9) (corridor wp9 wp6) (unsafe_corridor wp6 wp9) (unsafe_corridor wp9 wp6) (corridor wp7 wp8) (corridor wp8 wp7) (unsafe_corridor wp7 wp8) (unsafe_corridor wp8 wp7) (corridor wp8 wp9) (corridor wp9 wp8) (unsafe_corridor wp8 wp9) (unsafe_corridor wp9 wp8) (corridor wp8 wp12) (corridor wp12 wp8) (corridor wp9 wp13) (corridor wp13 wp9) (dark_corridor wp9 wp13) (dark_corridor wp13 wp9) (corridor wp10 wp11) (corridor wp11 wp10) (corridor wp10 wp14) (corridor wp14 wp10) (corridor wp11 wp12) (corridor wp12 wp11) (corridor wp12 wp13) (corridor wp13 wp12) (corridor wp12 wp16) (corridor wp16 wp12) (corridor wp13 wp17) (corridor wp17 wp13) (unsafe_corridor wp13 wp17) (unsafe_corridor wp17 wp13) (corridor wp14 wp15) (corridor wp15 wp14) (corridor wp15 wp16) (corridor wp16 wp15) (dark_corridor wp15 wp16) (dark_corridor wp16 wp15) (unsafe_corridor wp15 wp16) (unsafe_corridor wp16 wp15) (corridor wp16 wp17) (corridor wp17 wp16) (robot_at wp0))
- (:goal (and (robot_at wp17)))
-)
