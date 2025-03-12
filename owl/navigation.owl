@@ -3,13 +3,15 @@
 @prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
 @prefix xml: <http://www.w3.org/XML/1998/namespace> .
 @prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+@prefix pddl: <http://www.metacontrol.org/pddl#> .
 @prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
 @prefix tomasys: <http://www.metacontrol.org/tomasys#> .
 @prefix navigation: <http://www.metacontrol.org/navigation#> .
 @base <http://www.metacontrol.org/navigation> .
 
 <http://www.metacontrol.org/navigation> rdf:type owl:Ontology ;
-                                         owl:imports <https://raw.githubusercontent.com/kas-lab/pddl_tomasys/refs/heads/main/config/pddl_tomasys.owl> .
+                                         owl:imports <https://raw.githubusercontent.com/kas-lab/pddl_tomasys/refs/heads/main/config/pddl.owl> ,
+                                                     <https://raw.githubusercontent.com/kas-lab/pddl_tomasys/refs/heads/main/config/pddl_tomasys.owl> .
 
 #################################################################
 #    Individuals
@@ -18,37 +20,44 @@
 ###  http://www.metacontrol.org/navigation#a_move
 navigation:a_move rdf:type owl:NamedIndividual ,
                            tomasys:Action ;
+                  pddl:hasPddlType pddl:type_action ;
                   tomasys:requiresF navigation:f_localization .
 
 
 ###  http://www.metacontrol.org/navigation#c_camera
 navigation:c_camera rdf:type owl:NamedIndividual ,
-                             tomasys:Component .
+                             tomasys:Component ;
+                    pddl:hasPddlType pddl:type_component .
 
 
 ###  http://www.metacontrol.org/navigation#c_headlamp
 navigation:c_headlamp rdf:type owl:NamedIndividual ,
-                               tomasys:Component .
+                               tomasys:Component ;
+                      pddl:hasPddlType pddl:type_component .
 
 
 ###  http://www.metacontrol.org/navigation#c_kinect
 navigation:c_kinect rdf:type owl:NamedIndividual ,
-                             tomasys:Component .
+                             tomasys:Component ;
+                    pddl:hasPddlType pddl:type_component .
 
 
 ###  http://www.metacontrol.org/navigation#c_lidar
 navigation:c_lidar rdf:type owl:NamedIndividual ,
-                            tomasys:Component .
+                            tomasys:Component ;
+                   pddl:hasPddlType pddl:type_component .
 
 
 ###  http://www.metacontrol.org/navigation#f_localization
 navigation:f_localization rdf:type owl:NamedIndividual ,
-                                   tomasys:Function .
+                                   tomasys:Function ;
+                          pddl:hasPddlType pddl:type_function .
 
 
 ###  http://www.metacontrol.org/navigation#fd_amcl_kinect
 navigation:fd_amcl_kinect rdf:type owl:NamedIndividual ,
                                    tomasys:FunctionDesign ;
+                          pddl:hasPddlType pddl:type_function_design ;
                           tomasys:hasQAestimation navigation:qa_v_accuracy_excellent ,
                                                   navigation:qa_v_energy_cost_really_good ,
                                                   navigation:qa_v_environment_light_low ;
@@ -59,6 +68,7 @@ navigation:fd_amcl_kinect rdf:type owl:NamedIndividual ,
 ###  http://www.metacontrol.org/navigation#fd_amcl_lidar
 navigation:fd_amcl_lidar rdf:type owl:NamedIndividual ,
                                   tomasys:FunctionDesign ;
+                         pddl:hasPddlType pddl:type_function_design ;
                          tomasys:hasQAestimation navigation:qa_v_accuracy_medium ,
                                                  navigation:qa_v_energy_cost_medium ,
                                                  navigation:qa_v_environment_light_low ;
@@ -69,6 +79,7 @@ navigation:fd_amcl_lidar rdf:type owl:NamedIndividual ,
 ###  http://www.metacontrol.org/navigation#fd_aruco
 navigation:fd_aruco rdf:type owl:NamedIndividual ,
                              tomasys:FunctionDesign ;
+                    pddl:hasPddlType pddl:type_function_design ;
                     tomasys:hasQAestimation navigation:qa_v_accuracy_good ,
                                             navigation:qa_v_energy_cost_excellent ,
                                             navigation:qa_v_environment_light_low ;
@@ -79,6 +90,7 @@ navigation:fd_aruco rdf:type owl:NamedIndividual ,
 ###  http://www.metacontrol.org/navigation#fd_aruco_headlamp
 navigation:fd_aruco_headlamp rdf:type owl:NamedIndividual ,
                                       tomasys:FunctionDesign ;
+                             pddl:hasPddlType pddl:type_function_design ;
                              tomasys:hasQAestimation navigation:qa_v_accuracy_good ,
                                                      navigation:qa_v_energy_cost_really_bad ,
                                                      navigation:qa_v_environment_light_bright ;
@@ -90,6 +102,7 @@ navigation:fd_aruco_headlamp rdf:type owl:NamedIndividual ,
 ###  http://www.metacontrol.org/navigation#fd_mrpt_kinect
 navigation:fd_mrpt_kinect rdf:type owl:NamedIndividual ,
                                    tomasys:FunctionDesign ;
+                          pddl:hasPddlType pddl:type_function_design ;
                           tomasys:hasQAestimation navigation:qa_v_accuracy_really_good ,
                                                   navigation:qa_v_energy_cost_good ,
                                                   navigation:qa_v_environment_light_low ;
@@ -100,6 +113,7 @@ navigation:fd_mrpt_kinect rdf:type owl:NamedIndividual ,
 ###  http://www.metacontrol.org/navigation#fd_mrpt_lidar
 navigation:fd_mrpt_lidar rdf:type owl:NamedIndividual ,
                                   tomasys:FunctionDesign ;
+                         pddl:hasPddlType pddl:type_function_design ;
                          tomasys:hasQAestimation navigation:qa_v_accuracy_bad ,
                                                  navigation:qa_v_energy_cost_bad ,
                                                  navigation:qa_v_environment_light_low ;
@@ -109,27 +123,32 @@ navigation:fd_mrpt_lidar rdf:type owl:NamedIndividual ,
 
 ###  http://www.metacontrol.org/navigation#obs_environment_light
 navigation:obs_environment_light rdf:type owl:NamedIndividual ,
-                                          tomasys:QualityAttributeType .
+                                          tomasys:QualityAttributeType ;
+                                 pddl:hasPddlType pddl:type_quality_attribute_type .
 
 
 ###  http://www.metacontrol.org/navigation#qa_accuracy
 navigation:qa_accuracy rdf:type owl:NamedIndividual ,
-                                tomasys:QualityAttributeType .
+                                tomasys:QualityAttributeType ;
+                       pddl:hasPddlType pddl:type_quality_attribute_type .
 
 
 ###  http://www.metacontrol.org/navigation#qa_energy_cost
 navigation:qa_energy_cost rdf:type owl:NamedIndividual ,
-                                   tomasys:QualityAttributeType .
+                                   tomasys:QualityAttributeType ;
+                          pddl:hasPddlType pddl:type_quality_attribute_type .
 
 
 ###  http://www.metacontrol.org/navigation#qa_environment_light
 navigation:qa_environment_light rdf:type owl:NamedIndividual ,
-                                         tomasys:QualityAttributeType .
+                                         tomasys:QualityAttributeType ;
+                                pddl:hasPddlType pddl:type_quality_attribute_type .
 
 
 ###  http://www.metacontrol.org/navigation#qa_v_accuracy_bad
 navigation:qa_v_accuracy_bad rdf:type owl:NamedIndividual ,
                                       tomasys:QAvalue ;
+                             pddl:hasPddlType pddl:type_qa_value ;
                              tomasys:isQAtype navigation:qa_accuracy ;
                              tomasys:qa_has_value 0.6 .
 
@@ -137,6 +156,7 @@ navigation:qa_v_accuracy_bad rdf:type owl:NamedIndividual ,
 ###  http://www.metacontrol.org/navigation#qa_v_accuracy_excellent
 navigation:qa_v_accuracy_excellent rdf:type owl:NamedIndividual ,
                                             tomasys:QAvalue ;
+                                   pddl:hasPddlType pddl:type_qa_value ;
                                    tomasys:isQAtype navigation:qa_accuracy ;
                                    tomasys:qa_has_value 1.0 .
 
@@ -144,6 +164,7 @@ navigation:qa_v_accuracy_excellent rdf:type owl:NamedIndividual ,
 ###  http://www.metacontrol.org/navigation#qa_v_accuracy_good
 navigation:qa_v_accuracy_good rdf:type owl:NamedIndividual ,
                                        tomasys:QAvalue ;
+                              pddl:hasPddlType pddl:type_qa_value ;
                               tomasys:isQAtype navigation:qa_accuracy ;
                               tomasys:qa_has_value 0.8 .
 
@@ -151,6 +172,7 @@ navigation:qa_v_accuracy_good rdf:type owl:NamedIndividual ,
 ###  http://www.metacontrol.org/navigation#qa_v_accuracy_medium
 navigation:qa_v_accuracy_medium rdf:type owl:NamedIndividual ,
                                          tomasys:QAvalue ;
+                                pddl:hasPddlType pddl:type_qa_value ;
                                 tomasys:isQAtype navigation:qa_accuracy ;
                                 tomasys:qa_has_value 0.7 .
 
@@ -158,6 +180,7 @@ navigation:qa_v_accuracy_medium rdf:type owl:NamedIndividual ,
 ###  http://www.metacontrol.org/navigation#qa_v_accuracy_really_good
 navigation:qa_v_accuracy_really_good rdf:type owl:NamedIndividual ,
                                               tomasys:QAvalue ;
+                                     pddl:hasPddlType pddl:type_qa_value ;
                                      tomasys:isQAtype navigation:qa_accuracy ;
                                      tomasys:qa_has_value 0.9 .
 
@@ -165,6 +188,7 @@ navigation:qa_v_accuracy_really_good rdf:type owl:NamedIndividual ,
 ###  http://www.metacontrol.org/navigation#qa_v_energy_cost_bad
 navigation:qa_v_energy_cost_bad rdf:type owl:NamedIndividual ,
                                          tomasys:QAvalue ;
+                                pddl:hasPddlType pddl:type_qa_value ;
                                 tomasys:isQAtype navigation:qa_energy_cost ;
                                 tomasys:qa_has_value 20942.0 .
 
@@ -172,6 +196,7 @@ navigation:qa_v_energy_cost_bad rdf:type owl:NamedIndividual ,
 ###  http://www.metacontrol.org/navigation#qa_v_energy_cost_excellent
 navigation:qa_v_energy_cost_excellent rdf:type owl:NamedIndividual ,
                                                tomasys:QAvalue ;
+                                      pddl:hasPddlType pddl:type_qa_value ;
                                       tomasys:isQAtype navigation:qa_energy_cost ;
                                       tomasys:qa_has_value 16963.0 .
 
@@ -179,6 +204,7 @@ navigation:qa_v_energy_cost_excellent rdf:type owl:NamedIndividual ,
 ###  http://www.metacontrol.org/navigation#qa_v_energy_cost_good
 navigation:qa_v_energy_cost_good rdf:type owl:NamedIndividual ,
                                           tomasys:QAvalue ;
+                                 pddl:hasPddlType pddl:type_qa_value ;
                                  tomasys:isQAtype navigation:qa_energy_cost ;
                                  tomasys:qa_has_value 18942.0 .
 
@@ -186,6 +212,7 @@ navigation:qa_v_energy_cost_good rdf:type owl:NamedIndividual ,
 ###  http://www.metacontrol.org/navigation#qa_v_energy_cost_medium
 navigation:qa_v_energy_cost_medium rdf:type owl:NamedIndividual ,
                                             tomasys:QAvalue ;
+                                   pddl:hasPddlType pddl:type_qa_value ;
                                    tomasys:isQAtype navigation:qa_energy_cost ;
                                    tomasys:qa_has_value 19790.0 .
 
@@ -193,6 +220,7 @@ navigation:qa_v_energy_cost_medium rdf:type owl:NamedIndividual ,
 ###  http://www.metacontrol.org/navigation#qa_v_energy_cost_really_bad
 navigation:qa_v_energy_cost_really_bad rdf:type owl:NamedIndividual ,
                                                 tomasys:QAvalue ;
+                                       pddl:hasPddlType pddl:type_qa_value ;
                                        tomasys:isQAtype navigation:qa_energy_cost ;
                                        tomasys:qa_has_value 26963.0 .
 
@@ -200,6 +228,7 @@ navigation:qa_v_energy_cost_really_bad rdf:type owl:NamedIndividual ,
 ###  http://www.metacontrol.org/navigation#qa_v_energy_cost_really_good
 navigation:qa_v_energy_cost_really_good rdf:type owl:NamedIndividual ,
                                                  tomasys:QAvalue ;
+                                        pddl:hasPddlType pddl:type_qa_value ;
                                         tomasys:isQAtype navigation:qa_energy_cost ;
                                         tomasys:qa_has_value 17790.0 .
 
@@ -207,6 +236,7 @@ navigation:qa_v_energy_cost_really_good rdf:type owl:NamedIndividual ,
 ###  http://www.metacontrol.org/navigation#qa_v_environment_light_bright
 navigation:qa_v_environment_light_bright rdf:type owl:NamedIndividual ,
                                                   tomasys:QAvalue ;
+                                         pddl:hasPddlType pddl:type_qa_value ;
                                          tomasys:isQAtype navigation:qa_environment_light ;
                                          tomasys:qa_has_value 1.0 .
 
@@ -214,8 +244,21 @@ navigation:qa_v_environment_light_bright rdf:type owl:NamedIndividual ,
 ###  http://www.metacontrol.org/navigation#qa_v_environment_light_low
 navigation:qa_v_environment_light_low rdf:type owl:NamedIndividual ,
                                                tomasys:QAvalue ;
+                                      pddl:hasPddlType pddl:type_qa_value ;
                                       tomasys:isQAtype navigation:qa_environment_light ;
                                       tomasys:qa_has_value 0.0 .
+
+
+###  http://www.metacontrol.org/tomasys#fd_unground
+tomasys:fd_unground pddl:hasPddlType pddl:type_function_design .
+
+
+###  http://www.metacontrol.org/tomasys#performance
+tomasys:performance pddl:hasPddlType pddl:type_quality_attribute_type .
+
+
+###  http://www.metacontrol.org/tomasys#qa_performance_zero
+tomasys:qa_performance_zero pddl:hasPddlType pddl:type_qa_value .
 
 
 #################################################################
