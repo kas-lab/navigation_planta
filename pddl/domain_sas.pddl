@@ -14,35 +14,15 @@
   (:predicates
     (robot_at ?wp - waypoint)
     (corridor ?wp1 ?wp2 - waypoint)
-    (dark_corridor ?wp1 ?wp2 - waypoint)
-    (unsafe_corridor ?wp1 ?wp2 - waypoint)
     
-    (safety_requirement ?wp1 ?wp2 ?v)
-    (light_requirement ?wp1 ?wp2 ?v)
+    (safety_requirement ?wp1 - waypoint ?wp2 - waypoint ?v - numerical-object)
+    (light_requirement ?wp1 - waypoint ?wp2 - waypoint ?v - numerical-object)
 
-    (function_nfr_satisfied ?f - inferred-Function ?qa - inferred-QualityAttributeType ?v - numerical-object)
     (fd_nfr_satisfied ?fd - inferred-FunctionDesign ?qa - inferred-QualityAttributeType ?v - numerical-object)
   )
 
-  (:derived (function_nfr_satisfied ?f ?qa ?v)
-		(exists (?fd ?qae ?qav) 
-			(and 
-				(inferred-SolvesF ?fd ?f)
-				(not (= ?fd fd_unground))
-				(inferred-FunctionGrounding ?f ?fd)
-				(inferred-HasQAestimation ?fd ?qae)
-				(inferred-IsQAtype ?qae ?qa)
-				(inferred-Qa_has_value ?qae ?qav)
-				(or
-				  (lessThan ?v ?qav)
-				  (equalTo ?v ?qav)
-				)				
-			)
-		)
-  )
-  
-  (:derived (fd_nfr_satisfied ?fd ?qa ?v)
-		(exists (?qae ?qav) 
+  (:derived (fd_nfr_satisfied ?fd - function-design ?qa - quality-attribute-type ?v - numerical-object)
+		(exists (?qae - qa-value ?qav - numerical-object) 
 			(and 
 				(not (= ?fd fd_unground))
 				(inferred-HasQAestimation ?fd ?qae)
@@ -56,36 +36,8 @@
 		)
   )
   
-  (:derived (safety_requirement ?wp1 ?wp2 - waypoint ?v - numerical-object)
-    (and
-      (unsafe_corridor ?wp1 ?wp2)
-      (= ?v 0.8_decimal)
-    ) 
-  )
-  
-  (:derived (safety_requirement ?wp1 ?wp2 - waypoint ?v - numerical-object)
-    (and
-      (not (unsafe_corridor ?wp1 ?wp2))
-      (= ?v 0.0_decimal)
-    ) 
-  )
-
-  (:derived (light_requirement ?wp1 ?wp2 - waypoint ?v - numerical-object)
-    (and
-      (dark_corridor ?wp1 ?wp2)
-      (= ?v 1.0_decimal)
-    ) 
-  )
-  
-  (:derived (light_requirement ?wp1 ?wp2 - waypoint ?v - numerical-object)
-    (and
-      (not (dark_corridor ?wp1 ?wp2))
-      (= ?v 0.0_decimal)
-    ) 
-  )
-
   (:action reconfigure
-    :parameters (?f ?fd_initial ?fd_goal)
+    :parameters (?f - function ?fd_initial ?fd_goal - function-design)
     :precondition (and
       (not (= ?fd_initial ?fd_goal))
 
@@ -105,14 +57,14 @@
   )
 
   (:action reconfigure
-    :parameters (?f ?fd_goal)
+    :parameters (?f - function ?fd_goal - function-design)
     :precondition (and
       (Function ?f)
       (inferred-SolvesF ?fd_goal ?f)
       (FunctionDesign ?fd_goal)
       (not (inferred-Fd_realisability ?fd_goal false_boolean))
       (not
-        (exists (?fd)
+        (exists (?fd - function-design)
           (and
             (inferred-SolvesF ?fd ?f)
             (FunctionDesign ?fd)
@@ -133,7 +85,7 @@
       (corridor ?wp1 ?wp2)
       (safety_requirement ?wp1 ?wp2 ?safety_requirement)
       (light_requirement ?wp1 ?wp2 ?light_requirement)
-      (exists (?a ?f1 ?fd1)
+      (exists (?a - action ?f1 - function ?fd1 - function-design)
         (and
           (inferred-Action ?a)
           (= ?a a_move)
@@ -143,7 +95,7 @@
           (fd_nfr_satisfied ?fd1 qa_accuracy ?safety_requirement)	
           (fd_nfr_satisfied ?fd1 qa_environment_light ?light_requirement)
           (not 
-            (exists (?fd2)
+            (exists (?fd2 - function-design)
               (and
                 (not (= ?fd2 ?fd1))
                 (inferred-SolvesF ?fd2 ?f1)
