@@ -1,0 +1,116 @@
+
+mdp
+
+const MAX_BATTERY=32560;
+const MIN_BATTERY=500;
+const INITIAL_BATTERY;
+const INITIAL_LOCATION;
+const TARGET_LOCATION;
+const INITIAL_CONFIGURATION;
+
+const conf_amcl_kinect=0;
+const conf_amcl_lidar=1;
+const conf_mprt_kinect=2;
+const conf_mprt_lidar=3;
+const conf_aruco=4;
+const conf_aruco_headlamp=5;
+
+const l1=0;
+const l3=1;
+const l8=2;
+const l34=3;
+const l33=4;
+const l32=5;
+const l31=6;
+const l30=7;
+
+formula dist_l1_l3=6.216;
+formula dist_l3_l8=10.27;
+formula dist_l8_l34=9.73;
+formula dist_l34_l33=8.108;
+formula dist_l33_l32=3.5139999999999993;
+formula dist_l32_l31=6.757;
+formula dist_l31_l30=6.541;
+
+formula b_upd_l1_l3= c=conf_amcl_kinect? max(0, b-751) : c=conf_amcl_lidar? max(0, b-836) : c=conf_mprt_kinect? max(0, b-800) : c=conf_mprt_lidar? max(0, b-885) : c=conf_aruco? max(0, b-717) : c=conf_aruco_headlamp? max(0, b-1139) : 0;
+formula b_upd_l3_l8= c=conf_amcl_kinect? max(0, b-1242) : c=conf_amcl_lidar? max(0, b-1382) : c=conf_mprt_kinect? max(0, b-1322) : c=conf_mprt_lidar? max(0, b-1462) : c=conf_aruco? max(0, b-1184) : c=conf_aruco_headlamp? max(0, b-1882) : 0;
+formula b_upd_l8_l34= c=conf_amcl_kinect? max(0, b-1177) : c=conf_amcl_lidar? max(0, b-1309) : c=conf_mprt_kinect? max(0, b-1253) : c=conf_mprt_lidar? max(0, b-1385) : c=conf_aruco? max(0, b-1122) : c=conf_aruco_headlamp? max(0, b-1783) : 0;
+formula b_upd_l34_l33= c=conf_amcl_kinect? max(0, b-980) : c=conf_amcl_lidar? max(0, b-1091) : c=conf_mprt_kinect? max(0, b-1044) : c=conf_mprt_lidar? max(0, b-1154) : c=conf_aruco? max(0, b-935) : c=conf_aruco_headlamp? max(0, b-1486) : 0;
+formula b_upd_l33_l32= c=conf_amcl_kinect? max(0, b-425) : c=conf_amcl_lidar? max(0, b-472) : c=conf_mprt_kinect? max(0, b-452) : c=conf_mprt_lidar? max(0, b-500) : c=conf_aruco? max(0, b-405) : c=conf_aruco_headlamp? max(0, b-644) : 0;
+formula b_upd_l32_l31= c=conf_amcl_kinect? max(0, b-817) : c=conf_amcl_lidar? max(0, b-909) : c=conf_mprt_kinect? max(0, b-870) : c=conf_mprt_lidar? max(0, b-962) : c=conf_aruco? max(0, b-779) : c=conf_aruco_headlamp? max(0, b-1238) : 0;
+formula b_upd_l31_l30= c=conf_amcl_kinect? max(0, b-791) : c=conf_amcl_lidar? max(0, b-880) : c=conf_mprt_kinect? max(0, b-842) : c=conf_mprt_lidar? max(0, b-931) : c=conf_aruco? max(0, b-754) : c=conf_aruco_headlamp? max(0, b-1199) : 0;
+
+formula p_col_l1_l3=0;
+formula p_col_l3_l8=0;
+formula p_col_l8_l34=0;
+formula p_col_l34_l33=0;
+formula p_col_l33_l32=0;
+formula p_col_l32_l31=0;
+formula p_col_l31_l30=0;
+
+formula goal = l=TARGET_LOCATION;
+formula stop = goal | b<MIN_BATTERY;
+
+module robot
+
+b:[0..MAX_BATTERY] init INITIAL_BATTERY;
+l:[0..7] init INITIAL_LOCATION;
+c:[0..5] init INITIAL_CONFIGURATION;
+
+rd: bool init false; collided: bool init false;
+
+[t_set_conf_amcl_kinect] (c!=conf_amcl_kinect) & (!rd) &(!stop) -> (c'=conf_amcl_kinect) & (rd'=true);
+[t_set_conf_amcl_lidar] (c!=conf_amcl_lidar) & (!rd) &(!stop) -> (c'=conf_amcl_lidar) & (rd'=true);
+[t_set_conf_mprt_kinect] (c!=conf_mprt_kinect) & (!rd) &(!stop) -> (c'=conf_mprt_kinect) & (rd'=true);
+[t_set_conf_mprt_lidar] (c!=conf_mprt_lidar) & (!rd) &(!stop) -> (c'=conf_mprt_lidar) & (rd'=true);
+[t_set_conf_aruco] (c!=conf_aruco) & (!rd) &(!stop) -> (c'=conf_aruco) & (rd'=true);
+[t_set_conf_aruco_headlamp] (c!=conf_aruco_headlamp) & (!rd) &(!stop) -> (c'=conf_aruco_headlamp) & (rd'=true);
+
+[l1_l3] (l=l1) & (!stop) & (c=conf_amcl_kinect) -> p_col_l1_l3:(l'=l3) & (b'=b_upd_l1_l3) & (collided'=true) + 1-(p_col_l1_l3):(l'=l3) & (b'=b_upd_l1_l3) & (collided'=false);
+[l1_l3] (l=l1) & (!stop) & (c=conf_amcl_lidar) -> p_col_l1_l3:(l'=l3) & (b'=b_upd_l1_l3) & (collided'=true) + 1-(p_col_l1_l3):(l'=l3) & (b'=b_upd_l1_l3) & (collided'=false);
+[l1_l3] (l=l1) & (!stop) & (c=conf_mprt_kinect) -> p_col_l1_l3:(l'=l3) & (b'=b_upd_l1_l3) & (collided'=true) + 1-(p_col_l1_l3):(l'=l3) & (b'=b_upd_l1_l3) & (collided'=false);
+[l1_l3] (l=l1) & (!stop) & (c=conf_mprt_lidar) -> p_col_l1_l3:(l'=l3) & (b'=b_upd_l1_l3) & (collided'=true) + 1-(p_col_l1_l3):(l'=l3) & (b'=b_upd_l1_l3) & (collided'=false);
+[l1_l3] (l=l1) & (!stop) & (c=conf_aruco) -> p_col_l1_l3:(l'=l3) & (b'=b_upd_l1_l3) & (collided'=true) + 1-(p_col_l1_l3):(l'=l3) & (b'=b_upd_l1_l3) & (collided'=false);
+[l1_l3] (l=l1) & (!stop) & (c=conf_aruco_headlamp) -> p_col_l1_l3:(l'=l3) & (b'=b_upd_l1_l3) & (collided'=true) + 1-(p_col_l1_l3):(l'=l3) & (b'=b_upd_l1_l3) & (collided'=false);
+[l3_l8] (l=l3) & (!stop) & (c=conf_amcl_kinect) -> p_col_l3_l8:(l'=l8) & (b'=b_upd_l3_l8) & (collided'=true) + 1-(p_col_l3_l8):(l'=l8) & (b'=b_upd_l3_l8) & (collided'=false);
+[l3_l8] (l=l3) & (!stop) & (c=conf_amcl_lidar) -> p_col_l3_l8:(l'=l8) & (b'=b_upd_l3_l8) & (collided'=true) + 1-(p_col_l3_l8):(l'=l8) & (b'=b_upd_l3_l8) & (collided'=false);
+[l3_l8] (l=l3) & (!stop) & (c=conf_mprt_kinect) -> p_col_l3_l8:(l'=l8) & (b'=b_upd_l3_l8) & (collided'=true) + 1-(p_col_l3_l8):(l'=l8) & (b'=b_upd_l3_l8) & (collided'=false);
+[l3_l8] (l=l3) & (!stop) & (c=conf_mprt_lidar) -> p_col_l3_l8:(l'=l8) & (b'=b_upd_l3_l8) & (collided'=true) + 1-(p_col_l3_l8):(l'=l8) & (b'=b_upd_l3_l8) & (collided'=false);
+[l3_l8] (l=l3) & (!stop) & (c=conf_aruco) -> p_col_l3_l8:(l'=l8) & (b'=b_upd_l3_l8) & (collided'=true) + 1-(p_col_l3_l8):(l'=l8) & (b'=b_upd_l3_l8) & (collided'=false);
+[l3_l8] (l=l3) & (!stop) & (c=conf_aruco_headlamp) -> p_col_l3_l8:(l'=l8) & (b'=b_upd_l3_l8) & (collided'=true) + 1-(p_col_l3_l8):(l'=l8) & (b'=b_upd_l3_l8) & (collided'=false);
+[l8_l34] (l=l8) & (!stop) & (c=conf_amcl_kinect) -> p_col_l8_l34:(l'=l34) & (b'=b_upd_l8_l34) & (collided'=true) + 1-(p_col_l8_l34):(l'=l34) & (b'=b_upd_l8_l34) & (collided'=false);
+[l8_l34] (l=l8) & (!stop) & (c=conf_amcl_lidar) -> p_col_l8_l34:(l'=l34) & (b'=b_upd_l8_l34) & (collided'=true) + 1-(p_col_l8_l34):(l'=l34) & (b'=b_upd_l8_l34) & (collided'=false);
+[l8_l34] (l=l8) & (!stop) & (c=conf_mprt_kinect) -> p_col_l8_l34:(l'=l34) & (b'=b_upd_l8_l34) & (collided'=true) + 1-(p_col_l8_l34):(l'=l34) & (b'=b_upd_l8_l34) & (collided'=false);
+[l8_l34] (l=l8) & (!stop) & (c=conf_mprt_lidar) -> p_col_l8_l34:(l'=l34) & (b'=b_upd_l8_l34) & (collided'=true) + 1-(p_col_l8_l34):(l'=l34) & (b'=b_upd_l8_l34) & (collided'=false);
+[l8_l34] (l=l8) & (!stop) & (c=conf_aruco) -> p_col_l8_l34:(l'=l34) & (b'=b_upd_l8_l34) & (collided'=true) + 1-(p_col_l8_l34):(l'=l34) & (b'=b_upd_l8_l34) & (collided'=false);
+[l8_l34] (l=l8) & (!stop) & (c=conf_aruco_headlamp) -> p_col_l8_l34:(l'=l34) & (b'=b_upd_l8_l34) & (collided'=true) + 1-(p_col_l8_l34):(l'=l34) & (b'=b_upd_l8_l34) & (collided'=false);
+[l34_l33] (l=l34) & (!stop) & (c=conf_amcl_kinect) -> p_col_l34_l33:(l'=l33) & (b'=b_upd_l34_l33) & (collided'=true) + 1-(p_col_l34_l33):(l'=l33) & (b'=b_upd_l34_l33) & (collided'=false);
+[l34_l33] (l=l34) & (!stop) & (c=conf_amcl_lidar) -> p_col_l34_l33:(l'=l33) & (b'=b_upd_l34_l33) & (collided'=true) + 1-(p_col_l34_l33):(l'=l33) & (b'=b_upd_l34_l33) & (collided'=false);
+[l34_l33] (l=l34) & (!stop) & (c=conf_mprt_kinect) -> p_col_l34_l33:(l'=l33) & (b'=b_upd_l34_l33) & (collided'=true) + 1-(p_col_l34_l33):(l'=l33) & (b'=b_upd_l34_l33) & (collided'=false);
+[l34_l33] (l=l34) & (!stop) & (c=conf_mprt_lidar) -> p_col_l34_l33:(l'=l33) & (b'=b_upd_l34_l33) & (collided'=true) + 1-(p_col_l34_l33):(l'=l33) & (b'=b_upd_l34_l33) & (collided'=false);
+[l34_l33] (l=l34) & (!stop) & (c=conf_aruco) -> p_col_l34_l33:(l'=l33) & (b'=b_upd_l34_l33) & (collided'=true) + 1-(p_col_l34_l33):(l'=l33) & (b'=b_upd_l34_l33) & (collided'=false);
+[l34_l33] (l=l34) & (!stop) & (c=conf_aruco_headlamp) -> p_col_l34_l33:(l'=l33) & (b'=b_upd_l34_l33) & (collided'=true) + 1-(p_col_l34_l33):(l'=l33) & (b'=b_upd_l34_l33) & (collided'=false);
+[l33_l32] (l=l33) & (!stop) & (c=conf_amcl_kinect) -> p_col_l33_l32:(l'=l32) & (b'=b_upd_l33_l32) & (collided'=true) + 1-(p_col_l33_l32):(l'=l32) & (b'=b_upd_l33_l32) & (collided'=false);
+[l33_l32] (l=l33) & (!stop) & (c=conf_amcl_lidar) -> p_col_l33_l32:(l'=l32) & (b'=b_upd_l33_l32) & (collided'=true) + 1-(p_col_l33_l32):(l'=l32) & (b'=b_upd_l33_l32) & (collided'=false);
+[l33_l32] (l=l33) & (!stop) & (c=conf_mprt_kinect) -> p_col_l33_l32:(l'=l32) & (b'=b_upd_l33_l32) & (collided'=true) + 1-(p_col_l33_l32):(l'=l32) & (b'=b_upd_l33_l32) & (collided'=false);
+[l33_l32] (l=l33) & (!stop) & (c=conf_mprt_lidar) -> p_col_l33_l32:(l'=l32) & (b'=b_upd_l33_l32) & (collided'=true) + 1-(p_col_l33_l32):(l'=l32) & (b'=b_upd_l33_l32) & (collided'=false);
+[l33_l32] (l=l33) & (!stop) & (c=conf_aruco) -> p_col_l33_l32:(l'=l32) & (b'=b_upd_l33_l32) & (collided'=true) + 1-(p_col_l33_l32):(l'=l32) & (b'=b_upd_l33_l32) & (collided'=false);
+[l33_l32] (l=l33) & (!stop) & (c=conf_aruco_headlamp) -> p_col_l33_l32:(l'=l32) & (b'=b_upd_l33_l32) & (collided'=true) + 1-(p_col_l33_l32):(l'=l32) & (b'=b_upd_l33_l32) & (collided'=false);
+[l32_l31] (l=l32) & (!stop) & (c=conf_amcl_kinect) -> p_col_l32_l31:(l'=l31) & (b'=b_upd_l32_l31) & (collided'=true) + 1-(p_col_l32_l31):(l'=l31) & (b'=b_upd_l32_l31) & (collided'=false);
+[l32_l31] (l=l32) & (!stop) & (c=conf_amcl_lidar) -> p_col_l32_l31:(l'=l31) & (b'=b_upd_l32_l31) & (collided'=true) + 1-(p_col_l32_l31):(l'=l31) & (b'=b_upd_l32_l31) & (collided'=false);
+[l32_l31] (l=l32) & (!stop) & (c=conf_mprt_kinect) -> p_col_l32_l31:(l'=l31) & (b'=b_upd_l32_l31) & (collided'=true) + 1-(p_col_l32_l31):(l'=l31) & (b'=b_upd_l32_l31) & (collided'=false);
+[l32_l31] (l=l32) & (!stop) & (c=conf_mprt_lidar) -> p_col_l32_l31:(l'=l31) & (b'=b_upd_l32_l31) & (collided'=true) + 1-(p_col_l32_l31):(l'=l31) & (b'=b_upd_l32_l31) & (collided'=false);
+[l32_l31] (l=l32) & (!stop) & (c=conf_aruco) -> p_col_l32_l31:(l'=l31) & (b'=b_upd_l32_l31) & (collided'=true) + 1-(p_col_l32_l31):(l'=l31) & (b'=b_upd_l32_l31) & (collided'=false);
+[l32_l31] (l=l32) & (!stop) & (c=conf_aruco_headlamp) -> p_col_l32_l31:(l'=l31) & (b'=b_upd_l32_l31) & (collided'=true) + 1-(p_col_l32_l31):(l'=l31) & (b'=b_upd_l32_l31) & (collided'=false);
+[l31_l30] (l=l31) & (!stop) & (c=conf_amcl_kinect) -> p_col_l31_l30:(l'=l30) & (b'=b_upd_l31_l30) & (collided'=true) + 1-(p_col_l31_l30):(l'=l30) & (b'=b_upd_l31_l30) & (collided'=false);
+[l31_l30] (l=l31) & (!stop) & (c=conf_amcl_lidar) -> p_col_l31_l30:(l'=l30) & (b'=b_upd_l31_l30) & (collided'=true) + 1-(p_col_l31_l30):(l'=l30) & (b'=b_upd_l31_l30) & (collided'=false);
+[l31_l30] (l=l31) & (!stop) & (c=conf_mprt_kinect) -> p_col_l31_l30:(l'=l30) & (b'=b_upd_l31_l30) & (collided'=true) + 1-(p_col_l31_l30):(l'=l30) & (b'=b_upd_l31_l30) & (collided'=false);
+[l31_l30] (l=l31) & (!stop) & (c=conf_mprt_lidar) -> p_col_l31_l30:(l'=l30) & (b'=b_upd_l31_l30) & (collided'=true) + 1-(p_col_l31_l30):(l'=l30) & (b'=b_upd_l31_l30) & (collided'=false);
+[l31_l30] (l=l31) & (!stop) & (c=conf_aruco) -> p_col_l31_l30:(l'=l30) & (b'=b_upd_l31_l30) & (collided'=true) + 1-(p_col_l31_l30):(l'=l30) & (b'=b_upd_l31_l30) & (collided'=false);
+[l31_l30] (l=l31) & (!stop) & (c=conf_aruco_headlamp) -> p_col_l31_l30:(l'=l30) & (b'=b_upd_l31_l30) & (collided'=true) + 1-(p_col_l31_l30):(l'=l30) & (b'=b_upd_l31_l30) & (collided'=false);
+
+endmodule
+
+rewards "energy"
+    stop : b;
+endrewards
