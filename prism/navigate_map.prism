@@ -1,0 +1,237 @@
+mdp
+
+const MAX_BATTERY=5000;
+const MIN_BATTERY=500;
+const INITIAL_BATTERY;
+const INITIAL_LOCATION;
+const TARGET_LOCATION;
+const INITIAL_CONFIGURATION;
+
+const conf_1=1;
+const conf_2=2;
+const conf_3=3;
+
+const l1=1;
+const l2=2;
+const l3=3;
+const l4=4;
+const l5=5;
+
+formula deplete_battery_reconf = 0;
+formula e_lx_ly_conf_1 = 100;
+formula e_lx_ly_conf_2 = 125;
+formula e_lx_ly_conf_3 = 150;
+
+formula t_lx_ly_conf_1 = 1.5;
+formula t_lx_ly_conf_2 = 1.25;
+formula t_lx_ly_conf_3 = 1.0;
+
+formula p_col_conf_1_l1_to_l2 = 0;
+formula p_col_conf_2_l1_to_l2 = 0;
+formula p_col_conf_3_l1_to_l2 = 0;
+
+formula p_col_conf_1_l1_to_l4 = 0;
+formula p_col_conf_2_l1_to_l4 = 0;
+formula p_col_conf_3_l1_to_l4 = 0;
+
+formula p_col_conf_1_l2_to_l1 = 0;
+formula p_col_conf_2_l2_to_l1 = 0;
+formula p_col_conf_3_l2_to_l1 = 0;
+
+formula p_col_conf_1_l2_to_l3 = 0.6;
+formula p_col_conf_2_l2_to_l3 = 0.7;
+formula p_col_conf_3_l2_to_l3 = 0.8;
+
+formula p_col_conf_1_l3_to_l2 = 0.6;
+formula p_col_conf_2_l3_to_l2 = 0.7;
+formula p_col_conf_3_l3_to_l2 = 0.8;
+
+formula p_col_conf_1_l3_to_l4 = 0;
+formula p_col_conf_2_l3_to_l4 = 0;
+formula p_col_conf_3_l3_to_l4 = 0;
+
+formula p_col_conf_1_l3_to_l5 = 0;
+formula p_col_conf_2_l3_to_l5 = 0;
+formula p_col_conf_3_l3_to_l5 = 0;
+
+formula p_col_conf_1_l4_to_l1 = 0;
+formula p_col_conf_2_l4_to_l1 = 0;
+formula p_col_conf_3_l4_to_l1 = 0;
+
+formula p_col_conf_1_l4_to_l3 = 0;
+formula p_col_conf_2_l4_to_l3 = 0;
+formula p_col_conf_3_l4_to_l3 = 0;
+
+formula p_col_conf_1_l5_to_l3 = 0;
+formula p_col_conf_2_l5_to_l3 = 0;
+formula p_col_conf_3_l5_to_l3 = 0;
+
+module robot
+b:[0..MAX_BATTERY] init INITIAL_BATTERY;
+l:[1..5] init INITIAL_LOCATION;
+c:[1..3] init INITIAL_CONFIGURATION;
+
+rd: bool init false; collided: bool init false;
+    // One command per legal target configuration
+    [t_set_conf_1] (c!=conf_1) & (b>MIN_BATTERY + deplete_battery_reconf
+        ) & (!rd) & (!stop) -> (c'=conf_1) & (rd'=true) & (b'=b-deplete_battery_reconf);
+    [t_set_conf_2] (c!=conf_2) & (b>MIN_BATTERY + deplete_battery_reconf
+        ) & (!rd) & (!stop) -> (c'=conf_2) & (rd'=true) & (b'=b-deplete_battery_reconf);
+    [t_set_conf_3] (c!=conf_3) & (b>MIN_BATTERY + deplete_battery_reconf
+        ) & (!rd) & (!stop) -> (c'=conf_2) & (rd'=true) & (b'=b-deplete_battery_reconf);
+    
+    // One command per combination of legal config/arc among adjacent map locations
+    [l1_to_l2] (l=l1) & (!stop) & (c=conf_1) -> p_col_conf_1_l1_to_l2: 
+        (l'=l2) & (b'=b_upd_l1_l2) & (collided'=true) + 1-(p_col_conf_1_l1_to_l2):
+        (l'=l2) & (b'=b_upd_l1_l2) & (collided'=false);
+    [l1_to_l2] (l=l1) & (!stop) & (c=conf_2) -> p_col_conf_2_l1_to_l2: 
+        (l'=l2) & (b'=b_upd_l1_l2) & (collided'=true) + 1-(p_col_conf_2_l1_to_l2):
+        (l'=l2) & (b'=b_upd_l1_l2) & (collided'=false);
+    [l1_to_l2] (l=l1) & (!stop) & (c=conf_3) -> p_col_conf_3_l1_to_l2: 
+        (l'=l2) & (b'=b_upd_l1_l2) & (collided'=true) + 1-(p_col_conf_3_l1_to_l2):
+        (l'=l2) & (b'=b_upd_l1_l2) & (collided'=false);
+
+    [l1_to_l4] (l=l1) & (!stop) & (c=conf_1) -> p_col_conf_1_l1_to_l4: 
+        (l'=l4) & (b'=b_upd_l1_l4) & (collided'=true) + 1-(p_col_conf_1_l1_to_l4):
+        (l'=l4) & (b'=b_upd_l1_l4) & (collided'=false);
+    [l1_to_l4] (l=l1) & (!stop) & (c=conf_2) -> p_col_conf_2_l1_to_l4: 
+        (l'=l4) & (b'=b_upd_l1_l4) & (collided'=true) + 1-(p_col_conf_2_l1_to_l4):
+        (l'=l4) & (b'=b_upd_l1_l4) & (collided'=false);
+    [l1_to_l4] (l=l1) & (!stop) & (c=conf_3) -> p_col_conf_3_l1_to_l4: 
+        (l'=l4) & (b'=b_upd_l1_l4) & (collided'=true) + 1-(p_col_conf_3_l1_to_l4):
+        (l'=l4) & (b'=b_upd_l1_l4) & (collided'=false);
+    
+    [l2_to_l1] (l=l2) & (!stop) & (c=conf_1) -> p_col_conf_1_l2_to_l1: 
+        (l'=l1) & (b'=b_upd_l2_l1) & (collided'=true) + 1-(p_col_conf_1_l2_to_l1):
+        (l'=l1) & (b'=b_upd_l2_l1) & (collided'=false);
+    [l2_to_l1] (l=l2) & (!stop) & (c=conf_2) -> p_col_conf_2_l2_to_l1: 
+        (l'=l1) & (b'=b_upd_l2_l1) & (collided'=true) + 1-(p_col_conf_2_l2_to_l1):
+        (l'=l1) & (b'=b_upd_l2_l1) & (collided'=false);
+    [l2_to_l1] (l=l2) & (!stop) & (c=conf_3) -> p_col_conf_3_l2_to_l1: 
+        (l'=l1) & (b'=b_upd_l2_l1) & (collided'=true) + 1-(p_col_conf_3_l2_to_l1):
+        (l'=l1) & (b'=b_upd_l2_l1) & (collided'=false);
+    
+    [l2_to_l3] (l=l2) & (!stop) & (c=conf_1) -> p_col_conf_1_l2_to_l3: 
+        (l'=l3) & (b'=b_upd_l2_l3) & (collided'=true) + 1-(p_col_conf_1_l2_to_l3):
+        (l'=l3) & (b'=b_upd_l2_l3) & (collided'=false);
+    [l2_to_l3] (l=l2) & (!stop) & (c=conf_2) -> p_col_conf_2_l2_to_l3: 
+        (l'=l3) & (b'=b_upd_l2_l3) & (collided'=true) + 1-(p_col_conf_2_l2_to_l3):
+        (l'=l3) & (b'=b_upd_l2_l3) & (collided'=false);
+    [l2_to_l3] (l=l2) & (!stop) & (c=conf_3) -> p_col_conf_3_l2_to_l3: 
+        (l'=l3) & (b'=b_upd_l2_l3) & (collided'=true) + 1-(p_col_conf_3_l2_to_l3):
+        (l'=l3) & (b'=b_upd_l2_l3) & (collided'=false);
+
+    [l4_to_l1] (l=l4) & (!stop) & (c=conf_1) -> p_col_conf_1_l4_to_l1: 
+        (l'=l1) & (b'=b_upd_l4_l1) & (collided'=true) + 1-(p_col_conf_1_l4_to_l1):
+        (l'=l1) & (b'=b_upd_l4_l1) & (collided'=false);
+    [l4_to_l1] (l=l4) & (!stop) & (c=conf_2) -> p_col_conf_2_l4_to_l1: 
+        (l'=l1) & (b'=b_upd_l4_l1) & (collided'=true) + 1-(p_col_conf_2_l4_to_l1):
+        (l'=l1) & (b'=b_upd_l4_l1) & (collided'=false);
+    [l4_to_l1] (l=l4) & (!stop) & (c=conf_3) -> p_col_conf_3_l4_to_l1: 
+        (l'=l1) & (b'=b_upd_l4_l1) & (collided'=true) + 1-(p_col_conf_3_l4_to_l1):
+        (l'=l1) & (b'=b_upd_l4_l1) & (collided'=false);
+    
+    [l4_to_l3] (l=l4) & (!stop) & (c=conf_1) -> p_col_conf_1_l4_to_l3: 
+        (l'=l3) & (b'=b_upd_l4_l3) & (collided'=true) + 1-(p_col_conf_1_l4_to_l3):
+        (l'=l3) & (b'=b_upd_l4_l3) & (collided'=false);
+    [l4_to_l3] (l=l4) & (!stop) & (c=conf_2) -> p_col_conf_2_l4_to_l3: 
+        (l'=l3) & (b'=b_upd_l4_l3) & (collided'=true) + 1-(p_col_conf_2_l4_to_l3):
+        (l'=l3) & (b'=b_upd_l4_l3) & (collided'=false);
+    [l4_to_l3] (l=l4) & (!stop) & (c=conf_3) -> p_col_conf_3_l4_to_l3: 
+        (l'=l3) & (b'=b_upd_l4_l3) & (collided'=true) + 1-(p_col_conf_3_l4_to_l3):
+        (l'=l3) & (b'=b_upd_l4_l3) & (collided'=false);
+    
+    [l3_to_l4] (l=l3) & (!stop) & (c=conf_1) -> p_col_conf_1_l3_to_l4: 
+        (l'=l4) & (b'=b_upd_l3_l4) & (collided'=true) + 1-(p_col_conf_1_l3_to_l4):
+        (l'=l4) & (b'=b_upd_l3_l4) & (collided'=false);
+    [l3_to_l4] (l=l3) & (!stop) & (c=conf_2) -> p_col_conf_2_l3_to_l4: 
+        (l'=l4) & (b'=b_upd_l3_l4) & (collided'=true) + 1-(p_col_conf_2_l3_to_l4):
+        (l'=l4) & (b'=b_upd_l3_l4) & (collided'=false);
+    [l3_to_l4] (l=l3) & (!stop) & (c=conf_3) -> p_col_conf_3_l3_to_l4: 
+        (l'=l4) & (b'=b_upd_l3_l4) & (collided'=true) + 1-(p_col_conf_3_l3_to_l4):
+        (l'=l4) & (b'=b_upd_l3_l4) & (collided'=false);
+
+    [l3_to_l2] (l=l3) & (!stop) & (c=conf_1) -> p_col_conf_1_l3_to_l2: 
+        (l'=l2) & (b'=b_upd_l3_l2) & (collided'=true) + 1-(p_col_conf_1_l3_to_l2):
+        (l'=l2) & (b'=b_upd_l3_l2) & (collided'=false);
+    [l3_to_l2] (l=l3) & (!stop) & (c=conf_2) -> p_col_conf_2_l3_to_l2: 
+        (l'=l2) & (b'=b_upd_l3_l2) & (collided'=true) + 1-(p_col_conf_2_l3_to_l2):
+        (l'=l2) & (b'=b_upd_l3_l2) & (collided'=false);
+    [l3_to_l2] (l=l3) & (!stop) & (c=conf_3) -> p_col_conf_3_l3_to_l2: 
+        (l'=l2) & (b'=b_upd_l3_l2) & (collided'=true) + 1-(p_col_conf_3_l3_to_l2):
+        (l'=l2) & (b'=b_upd_l3_l2) & (collided'=false);
+    
+    [l3_to_l5] (l=l3) & (!stop) & (c=conf_1) -> p_col_conf_1_l3_to_l5: 
+        (l'=l5) & (b'=b_upd_l3_l5) & (collided'=true) + 1-(p_col_conf_1_l3_to_l5):
+        (l'=l5) & (b'=b_upd_l3_l5) & (collided'=false);
+    [l3_to_l5] (l=l3) & (!stop) & (c=conf_2) -> p_col_conf_2_l3_to_l5: 
+        (l'=l5) & (b'=b_upd_l3_l5) & (collided'=true) + 1-(p_col_conf_2_l3_to_l5):
+        (l'=l5) & (b'=b_upd_l3_l5) & (collided'=false);
+    [l3_to_l5] (l=l3) & (!stop) & (c=conf_3) -> p_col_conf_3_l3_to_l5: 
+        (l'=l5) & (b'=b_upd_l3_l5) & (collided'=true) + 1-(p_col_conf_3_l3_to_l5):
+        (l'=l5) & (b'=b_upd_l3_l5) & (collided'=false);
+    
+    [l5_to_l3] (l=l5) & (!stop) & (c=conf_1) -> p_col_conf_1_l5_to_l3: 
+        (l'=l3) & (b'=b_upd_l5_l3) & (collided'=true) + 1-(p_col_conf_1_l5_to_l3):
+        (l'=l3) & (b'=b_upd_l5_l3) & (collided'=false);
+    [l5_to_l3] (l=l5) & (!stop) & (c=conf_2) -> p_col_conf_2_l5_to_l3: 
+        (l'=l3) & (b'=b_upd_l5_l3) & (collided'=true) + 1-(p_col_conf_2_l5_to_l3):
+        (l'=l3) & (b'=b_upd_l5_l3) & (collided'=false);
+    [l5_to_l3] (l=l5) & (!stop) & (c=conf_3) -> p_col_conf_3_l5_to_l3: 
+        (l'=l3) & (b'=b_upd_l5_l3) & (collided'=true) + 1-(p_col_conf_3_l5_to_l3):
+        (l'=l3) & (b'=b_upd_l5_l3) & (collided'=false);
+endmodule
+
+formula b_upd_l1_l2= c=conf_1? max(0,b-e_lx_ly_conf_1) : c=conf_2? max(0,b-e_lx_ly_conf_3) :
+    c=conf_3? max(0,b-e_lx_ly_conf_3) : 0; // I am not sure this one is correct
+formula b_upd_l1_l4= c=conf_1? max(0, b-e_lx_ly_conf_1) : c=conf_2? max(0,b-e_lx_ly_conf_3) :
+    c=conf_3? max(0,b-e_lx_ly_conf_3) : 0;
+formula b_upd_l2_l1= c=conf_1? max(0, b-e_lx_ly_conf_1) : c=conf_2? max(0,b-e_lx_ly_conf_3) :
+    c=conf_3? max(0,b-e_lx_ly_conf_3) : 0;
+formula b_upd_l2_l3= c=conf_1? max(0, b-e_lx_ly_conf_1) : c=conf_2? max(0,b-e_lx_ly_conf_3) :
+    c=conf_3? max(0,b-e_lx_ly_conf_3) : 0;
+formula b_upd_l3_l2= c=conf_1? max(0, b-e_lx_ly_conf_1) : c=conf_2? max(0,b-e_lx_ly_conf_3) :
+    c=conf_3? max(0,b-e_lx_ly_conf_3) : 0;
+formula b_upd_l3_l4= c=conf_1? max(0, b-e_lx_ly_conf_1) : c=conf_2? max(0,b-e_lx_ly_conf_3) :
+    c=conf_3? max(0,b-e_lx_ly_conf_3) : 0;
+formula b_upd_l3_l5= c=conf_1? max(0, b-e_lx_ly_conf_1) : c=conf_2? max(0,b-e_lx_ly_conf_3) :
+    c=conf_3? max(0,b-e_lx_ly_conf_3) : 0;
+formula b_upd_l4_l1= c=conf_1? max(0, b-e_lx_ly_conf_1) : c=conf_2? max(0,b-e_lx_ly_conf_3) :
+    c=conf_3? max(0,b-e_lx_ly_conf_3) : 0;
+formula b_upd_l4_l3= c=conf_1? max(0, b-e_lx_ly_conf_1) : c=conf_2? max(0,b-e_lx_ly_conf_3) :
+    c=conf_3? max(0,b-e_lx_ly_conf_3) : 0;
+formula b_upd_l5_l3= c=conf_1? max(0, b-e_lx_ly_conf_1) : c=conf_2? max(0,b-e_lx_ly_conf_3) :
+    c=conf_3? max(0,b-e_lx_ly_conf_3) : 0;
+
+formula goal = l=TARGET_LOCATION;
+formula stop = goal | b<MIN_BATTERY;
+
+rewards "time"
+    [l1_to_l2] true :c=conf_1 ? t_lx_ly_conf_1 : c=conf_2 ? t_lx_ly_conf_2 : c=conf_3 ? t_lx_ly_conf_3 :
+        MAX_BATTERY; // One per arc between adjacent map locations;
+    [l1_to_l4] true :c=conf_1 ? t_lx_ly_conf_1 : c=conf_2 ? t_lx_ly_conf_2 : c=conf_3 ? t_lx_ly_conf_3 :
+        MAX_BATTERY; // One per arc between adjacent map locations;
+    [l2_to_l1] true :c=conf_1 ? t_lx_ly_conf_1 : c=conf_2 ? t_lx_ly_conf_2 : c=conf_3 ? t_lx_ly_conf_3 :
+        MAX_BATTERY; // One per arc between adjacent map locations;
+    [l2_to_l3] true :c=conf_1 ? t_lx_ly_conf_1 : c=conf_2 ? t_lx_ly_conf_2 : c=conf_3 ? t_lx_ly_conf_3 :
+        MAX_BATTERY; // One per arc between adjacent map locations;
+    [l3_to_l2] true :c=conf_1 ? t_lx_ly_conf_1 : c=conf_2 ? t_lx_ly_conf_2 : c=conf_3 ? t_lx_ly_conf_3 :
+        MAX_BATTERY; // One per arc between adjacent map locations;
+    [l3_to_l4] true :c=conf_1 ? t_lx_ly_conf_1 : c=conf_2 ? t_lx_ly_conf_2 : c=conf_3 ? t_lx_ly_conf_3 :
+        MAX_BATTERY; // One per arc between adjacent map locations;
+    [l3_to_l5] true :c=conf_1 ? t_lx_ly_conf_1 : c=conf_2 ? t_lx_ly_conf_2 : c=conf_3 ? t_lx_ly_conf_3 :
+        MAX_BATTERY; // One per arc between adjacent map locations;
+    [l4_to_l1] true :c=conf_1 ? t_lx_ly_conf_1 : c=conf_2 ? t_lx_ly_conf_2 : c=conf_3 ? t_lx_ly_conf_3 :
+        MAX_BATTERY; // One per arc between adjacent map locations;
+    [l4_to_l3] true :c=conf_1 ? t_lx_ly_conf_1 : c=conf_2 ? t_lx_ly_conf_2 : c=conf_3 ? t_lx_ly_conf_3 :
+        MAX_BATTERY; // One per arc between adjacent map locations;
+    [l5_to_l3] true :c=conf_1 ? t_lx_ly_conf_1 : c=conf_2 ? t_lx_ly_conf_2 : c=conf_3 ? t_lx_ly_conf_3 :
+        MAX_BATTERY; // One per arc between adjacent map locations;
+    
+    // [t_set_conf_1] true :c=conf_2 ? t_set_conf_2_conf_1 11
+    //    : ... c=conf_M ? t_set_conf_M_conf_1 : 0; ... // One per legal target configuration
+endrewards
+
+rewards "energy"
+    stop : b;
+endrewards
