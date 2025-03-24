@@ -1,0 +1,84 @@
+time prism navigate_map_one_path.prism -pf 'R{"time"}min=? [ F stop ]' -exportstrat stdout -const INITIAL_BATTERY=5000,INITIAL_LOCATION=1,TARGET_LOCATION=5,INITIAL_CONFIGURATION=1
+PRISM
+=====
+
+Version: 4.8.1.dev
+Date: Mon Mar 24 13:44:19 CET 2025
+Hostname: alien
+Memory limits: cudd=1g, java(heap)=1g
+Command line: prism navigate_map_one_path.prism -pf 'R{"time"}min=? [ F stop ]' -exportstrat stdout -const 'INITIAL_BATTERY=5000,INITIAL_LOCATION=1,TARGET_LOCATION=5,INITIAL_CONFIGURATION=1'
+
+Parsing PRISM model file "navigate_map_one_path.prism"...
+
+Type:        MDP
+Modules:     robot
+Variables:   b l c rd collided
+Rewards:     "time" "energy"
+
+1 property:
+(1) R{"time"}min=? [ F stop ]
+
+---------------------------------------------------------------------
+
+Model checking: R{"time"}min=? [ F stop ]
+Model constants: INITIAL_BATTERY=5000,INITIAL_LOCATION=1,TARGET_LOCATION=5,INITIAL_CONFIGURATION=1
+
+Warning: Switching to explicit engine to allow strategy generation.
+
+Building model (engine:explicit)...
+Model constants: INITIAL_BATTERY=5000,INITIAL_LOCATION=1,TARGET_LOCATION=5,INITIAL_CONFIGURATION=1
+
+Computing reachable states... 17 states
+Reachable states exploration and model construction done in 0.007 secs.
+Sorting reachable states list...
+
+Time for model construction: 0.024 seconds.
+
+Warning: Deadlocks detected and fixed in 4 states
+
+Type:        MDP
+States:      17 (1 initial)
+Transitions: 28
+Choices:     25
+Max/avg:     3/1.47
+Building reward structure...
+
+Starting expected reachability (min)...
+Starting Prob1 (max)...
+Prob1 (max) took 4 iterations and 0.0 seconds.
+target=4, inf=0, rest=13
+For Rmin, checking for zero-reward ECs...
+Time for checking for zero-reward ECs: 0.004 seconds, no zero-reward ECs found, proceeding normally.
+Starting value iteration (min, with Power method)...
+Value iteration (min, with Power method) took 5 iterations, 120 multiplications and 0.001 seconds.
+Expected reachability took 0.013 seconds.
+
+Value in the initial state: 3.75
+
+Time for model checking: 0.02 seconds.
+
+Result: 3.75 (exact floating point)
+
+Exporting strategy as actions below:
+(4700,3,2,true,false)=l3_to_l5
+(4700,3,2,true,true)=l3_to_l5
+(4750,3,2,true,false)=l3_to_l5
+(4750,3,2,true,true)=l3_to_l5
+(4800,3,1,false,false)=t_set_conf_2
+(4800,3,1,false,true)=t_set_conf_2
+(4800,3,2,true,false)=l3_to_l5
+(4800,3,2,true,true)=l3_to_l5
+(4850,2,2,true,false)=l2_to_l3
+(4900,2,1,false,false)=t_set_conf_2
+(4900,2,2,true,false)=l2_to_l3
+(5000,1,1,false,false)=t_set_conf_2
+(5000,1,2,true,false)=l1_to_l2
+
+---------------------------------------------------------------------
+
+Note: There were 2 warnings during computation.
+
+
+real	0m1,251s
+user	0m1,270s
+sys	0m0,132s
