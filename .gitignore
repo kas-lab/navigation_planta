@@ -1,6 +1,7 @@
 __pycache__
 catalog-v*.xml
 sas_plan
+results/
 
 # Prerequisites
 *.d
