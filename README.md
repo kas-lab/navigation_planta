@@ -139,6 +139,19 @@ time prism navigate_map_one_path.prism -pf 'R{"time"}min=? [ F stop ]' -exportst
 time prism test.prism -pf 'R{"energy"}min=? [ F stop ]' -exportstrat stdout -const INITIAL_BATTERY=32560,INITIAL_LOCATION=0,TARGET_LOCATION=7,INITIAL_CONFIGURATION=1
 ```
 
+```Bash
+python scripts/run_camara_prism_scenario.py
+```
+
+Run with docker:
+```bash
+docker run --rm -it -v $HOME/navigation_pddl_tomasys_ws/src/navigation_pddl_tomasys/results:/navigation_pddl_tomasys/results pddl_tomasys:latest python scripts/run_camara_prism_scenario.py
+```
+
+```bash
+docker run --rm -it -v $HOME/navigation_pddl_tomasys_ws/src/navigation_pddl_tomasys/results:/navigation_pddl_tomasys/results  ghcr.io/rezenders/navigation_pddl_tomasys:main python scripts/run_camara_prism_scenario.py
+```
+
 ## Map example
 
 ![alt text](image.png)
