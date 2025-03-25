@@ -12,6 +12,17 @@ custom_lookup_table = {
 def custom_lookup(a: bool, b: bool) -> bool:
     return custom_lookup_table[(a, b)]
 
+custom_conf_equivalence = {
+    "conf_amcl_kinect": "amcl-kinect",
+    "conf_amcl_lidar": "amcl-lidar",
+    "conf_mprt_kinect": "mrpt-kinect",
+    "conf_mprt_lidar": "mrpt-kinect",
+    "conf_aruco": "aruco",
+    "conf_aruco_headlamp": "aruco",
+}
+def conf_equivalence(conf):
+    return custom_conf_equivalence[conf]
+
 class Conf:
     def __init__(self, name, energy, accuracy, dark, unsafe):
         self.name = name
@@ -38,7 +49,7 @@ class PrismModelgenerator(MapGenerator):
             Conf("conf_mprt_kinect", 18942.0, 0.9, False, True),
             Conf("conf_mprt_lidar", 20942.0, 0.6, False, False),
             Conf("conf_aruco", 16963.0, 0.8, False, True),
-            Conf("conf_aruco_headlamp", 26963.0, 0.8, False, True)
+            Conf("conf_aruco_headlamp", 26963.0, 0.8, True, True)
         ]
 
         self.file_header = textwrap.dedent(f'''
@@ -52,7 +63,7 @@ class PrismModelgenerator(MapGenerator):
         const INITIAL_CONFIGURATION;\n
         ''')
         
-    def generate_prism_model(self, file_path, nav_path):
+    def generate_prism_model(self, file_path, nav_path, with_probabilities=True):
         consts = ""
         for i in range(len(self.configurations)):
             consts += f"const {self.configurations[i].name}={i};\n"
@@ -70,15 +81,21 @@ class PrismModelgenerator(MapGenerator):
             formula_distances += f"formula dist_l{nav_path[i]}_l{nav_path[i+1]}={distance};\n"
             
             # energy = speed*
-            formula_bat_update_ = f"formula b_upd_l{nav_path[i]}_l{nav_path[i+1]}="
+            formula_bat_update_ = f"formula b_upd_l{nav_path[i]}_l{nav_path[i+1]}=\n"
             for conf in self.configurations:
                 energy = int(distance*speed*conf.energy*0.01)
-                formula_bat_update_ +=f" c={conf.name}? max(0, b-{energy}) :"
-            formula_bat_update_ += " 0;\n"
+                formula_bat_update_ +=f"\tc={conf.name}? max(0, b-{energy}) :\n"
+                hitrate = 0.0
+                if with_probabilities is True:
+                    conf_name_ = conf_equivalence(conf.name)
+                    try:
+                        hitrate = self.graph[nav_path[i]][nav_path[i+1]]['hitrate'][conf_name_]['hitrate']
+                    except KeyError:
+                        hitrate = 0.0
+                formula_p_collide += f"formula p_col_{conf.name}_l{nav_path[i]}_l{nav_path[i+1]}={hitrate};\n"
+            formula_bat_update_ += " \t0;\n"
             formula_bat_update += formula_bat_update_
                 
-            formula_p_collide += f"formula p_col_l{nav_path[i]}_l{nav_path[i+1]}=0;\n"
-
         robot_module = textwrap.dedent(f'''
         module robot
         
@@ -97,11 +114,12 @@ class PrismModelgenerator(MapGenerator):
         for i in range(len(nav_path)-1):
             for conf in self.configurations:
                 move_action = ""
-                if custom_lookup(self.graph[nav_path[i]][nav_path[i+1]]['dark'], conf.dark) and  custom_lookup(self.graph[nav_path[i]][nav_path[i+1]]['unsafe'], conf.unsafe):
-                    move_action = f"[l{nav_path[i]}_l{nav_path[i+1]}] (l=l{nav_path[i]}) & (!stop) & (c={conf.name}) -> p_col_l{nav_path[i]}_l{nav_path[i+1]}:"
-                    move_action += f"(l'=l{nav_path[i+1]}) & (b'=b_upd_l{nav_path[i]}_l{nav_path[i+1]}) & (collided'=true) + 1-(p_col_l{nav_path[i]}_l{nav_path[i+1]}):"
-                    move_action += f"(l'=l{nav_path[i+1]}) & (b'=b_upd_l{nav_path[i]}_l{nav_path[i+1]}) & (collided'=false);\n"
+                if custom_lookup(self.graph[nav_path[i]][nav_path[i+1]]['dark'], conf.dark):
+                    move_action = f"[l{nav_path[i]}_l{nav_path[i+1]}] (l=l{nav_path[i]}) & (!stop) & (c={conf.name}) ->"
+                    move_action += f"\n\tp_col_{conf.name}_l{nav_path[i]}_l{nav_path[i+1]}: (l'=l{nav_path[i+1]}) & (b'=b_upd_l{nav_path[i]}_l{nav_path[i+1]}) & (collided'=true)"
+                    move_action += f"\n\t+ 1-(p_col_{conf.name}_l{nav_path[i]}_l{nav_path[i+1]}): (l'=l{nav_path[i+1]}) & (b'=b_upd_l{nav_path[i]}_l{nav_path[i+1]}) & (collided'=false);\n"
                 move_actions += move_action
+            move_actions += "\n"
 
         energy_reward = textwrap.dedent(f'''
             rewards "energy"
@@ -127,6 +145,6 @@ if __name__ == '__main__':
     prism_generator = PrismModelgenerator()
     base_folder = Path("map_camara_2020_paper")
     prism_generator.load_json(base_folder / "map-p2cp3.json")
-    nav_path = prism_generator.find_shortest_path(from_node=1, to_node=30)
+    nav_path = prism_generator.find_shortest_path(from_node=1, to_node=18)
     print(nav_path)
     prism_generator.generate_prism_model("prism/test.prism", nav_path)

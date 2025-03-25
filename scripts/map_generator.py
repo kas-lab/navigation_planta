@@ -294,6 +294,15 @@ class MapGenerator:
             for neighbor in node["connected-to"]:
                 weight = math.dist(positions[node_id], positions[int(neighbor[1:])])
                 self.graph.add_edge(node_id, int(neighbor[1:]), weight=weight, dark=False, unsafe=False)
+        
+        for hitrate in data["hitrate"]:
+            to_node = int(hitrate["to"][1:])
+            from_node = int(hitrate["from"][1:])
+            if self.graph.has_edge(from_node, to_node):
+                self.graph[from_node][to_node]["hitrate"] = hitrate
+            if self.graph.has_edge(to_node, from_node):  
+                self.graph[to_node][from_node]["hitrate"] = hitrate
+        
         # l15 to l14 - unsafe
         self.graph[15][14]['unsafe'] = True
         # l18 to l19 - dark

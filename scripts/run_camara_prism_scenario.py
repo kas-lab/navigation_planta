@@ -27,7 +27,7 @@ def run(folder_name, run, init, goal):
         prism_filename, 
         "-pf", 'R{"energy"}min=? [ F stop ]', 
         "-exportstrat", "stdout", 
-        "-const", "INITIAL_BATTERY=32560,INITIAL_LOCATION=0,TARGET_LOCATION=7,INITIAL_CONFIGURATION=1"
+        "-const", f"INITIAL_BATTERY=32560,INITIAL_LOCATION=0,TARGET_LOCATION={len(nav_path)-1},INITIAL_CONFIGURATION=1"
     ]
 
     # Start high-precision timer
