@@ -12,6 +12,8 @@ from unified_planning.engines import PlanGenerationResultStatus
 
 import re
 
+import math
+
 class MapGenerator:
     def __init__(
      self, 
@@ -285,12 +287,13 @@ class MapGenerator:
             x, y = node["coords"]["x"], node["coords"]["y"]
             positions[node_id] = (x, y)
             self.graph.add_node(node_id, pos=(x, y))
-
+        
         # Extract edges from the "map" section
         for node in data["map"]:
             node_id = int(node["node-id"][1:])
             for neighbor in node["connected-to"]:
-                self.graph.add_edge(node_id, int(neighbor[1:]), dark=False, unsafe=False)
+                weight = math.dist(positions[node_id], positions[int(neighbor[1:])])
+                self.graph.add_edge(node_id, int(neighbor[1:]), weight=weight, dark=False, unsafe=False)
         # l15 to l14 - unsafe
         self.graph[15][14]['unsafe'] = True
         # l18 to l19 - dark

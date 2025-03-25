@@ -112,7 +112,7 @@ class PrismModelgenerator(MapGenerator):
         with open(file_path, "w") as file:
             file.write(self.file_header)
             file.write(consts)
-            file.write(formula_distances)
+            # file.write(formula_distances)
             file.write(formula_bat_update)
             file.write(formula_p_collide)
             file.write("\nformula goal = l=TARGET_LOCATION;\n")
