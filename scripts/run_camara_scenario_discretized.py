@@ -59,7 +59,7 @@ def runner():
     planning_time_list = []  # List of (n_nodes_resulting, elapsed_time)
 
     date = datetime.now().strftime("%d-%b-%Y-%H-%M-%S")
-    folder_name =  Path('map_camara_2020_paper', 'discretized', date)
+    folder_name =  Path('results', 'map_camara_2020_paper', 'discretized', date)
     if folder_name.is_dir() is False:
         folder_name.mkdir(parents=True)
 

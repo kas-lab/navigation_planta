@@ -78,7 +78,7 @@ def runner():
     planning_time_list = []  # List of (n_nodes_resulting, elapsed_time)
 
     date = datetime.now().strftime("%d-%b-%Y-%H-%M-%S")
-    folder_name =  Path('results', date)
+    folder_name =  Path('results', 'grid_map', date)
     if folder_name.is_dir() is False:
         folder_name.mkdir(parents=True)
 
