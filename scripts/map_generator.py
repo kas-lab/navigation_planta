@@ -14,14 +14,15 @@ import re
 
 import math
 
+
 class MapGenerator:
     def __init__(
-     self, 
-     num_nodes = 30, 
-     nodes_skip = 0.1, 
-     unconnected_amount = 0.15, 
-     unsafe_amount = 0.25, 
-     dark_amount = 0.25):
+            self,
+            num_nodes=30,
+            nodes_skip=0.1,
+            unconnected_amount=0.15,
+            unsafe_amount=0.25,
+            dark_amount=0.25):
         self.graph = nx.Graph()
         self.num_nodes = num_nodes
         self.nodes_skip = nodes_skip
@@ -38,25 +39,22 @@ class MapGenerator:
         edges = set()
         for simplex in tri.simplices:
             for i in range(3):
-                edges.add(tuple(sorted([simplex[i], simplex[(i+1)%3]])))
+                edges.add(tuple(sorted([simplex[i], simplex[(i + 1) % 3]])))
 
         # Construct graph with weighted edges
         for i, pos in enumerate(positions):
             self.graph.add_node(i, pos=pos)
 
         for u, v in edges:
-            weight = np.linalg.norm(positions[u] - positions[v])  # Euclidean distance
+            weight = np.linalg.norm(
+                positions[u] - positions[v])  # Euclidean distance
             self.graph.add_edge(u, v, weight=weight, dark=False, unsafe=False)
-
-        # Retain cycles by keeping extra edges from Delaunay
-        # extra_edges = list(edges)
-        # np.random.shuffle(extra_edges)
-        # self.graph.add_edges_from(extra_edges[:len(extra_edges) // 3])  # Adding back some cycles
 
     def generate_grid_graph(self):
         # Define grid dimensions with some flexibility
         rows = int(np.ceil(np.sqrt(self.num_nodes)))  # Calculate rows
-        cols = int(np.ceil(self.num_nodes / rows))  # Adjust columns based on rows
+        # Adjust columns based on rows
+        cols = int(np.ceil(self.num_nodes / rows))
 
         # Generate grid-like positions with increasing distance between nodes
         positions = []
@@ -64,15 +62,17 @@ class MapGenerator:
             for j in range(cols):
                 if len(positions) < self.num_nodes:
                     # Node positions are spaced evenly
-                    positions.append([j * 10, i * 10])  # Adjust '10' for larger distances
+                    # Adjust '10' for larger distances
+                    positions.append([j * 10, i * 10])
 
         positions = np.array(positions)
 
         # Randomly remove 10% of the nodes (skip 10% of the vertices)
         num_nodes_to_skip = int(self.num_nodes * self.nodes_skip)
         nodes_to_skip = random.sample(range(self.num_nodes), num_nodes_to_skip)
-        positions = [pos for idx, pos in enumerate(positions) if idx not in nodes_to_skip]
-        
+        positions = [pos for idx, pos in enumerate(
+            positions) if idx not in nodes_to_skip]
+
         # Adjust the number of nodes after skipping
         self.num_node_resulting = self.num_nodes - num_nodes_to_skip
 
@@ -87,13 +87,14 @@ class MapGenerator:
             for j in range(i + 1, self.num_node_resulting):
                 pos_i = positions[i]
                 pos_j = positions[j]
-                
+
                 # Check if nodes are adjacent horizontally or vertically
                 if (pos_i[0] == pos_j[0] and abs(pos_i[1] - pos_j[1]) == 10) or \
-                (pos_i[1] == pos_j[1] and abs(pos_i[0] - pos_j[0]) == 10):
+                        (pos_i[1] == pos_j[1] and abs(pos_i[0] - pos_j[0]) == 10):
                     # Calculate Euclidean distance as edge weight
                     weight = np.linalg.norm(pos_i - pos_j)
-                    graph_.add_edge(i, j, weight=weight, dark=False, unsafe=False)
+                    graph_.add_edge(
+                        i, j, weight=weight, dark=False, unsafe=False)
                     edges.append((i, j))
 
         # Remove 10% of the edges
@@ -105,11 +106,12 @@ class MapGenerator:
         edges_to_remove = edges[:num_edges_to_remove]
         for u, v in edges_to_remove:
             graph_.remove_edge(u, v)
-        
+
         return graph_
 
     def assign_dark_unsafe_corridors(self, graph):
-        # Randomly assign "unsafe" and "dark" labels to 10% of the remaining edges
+        # Randomly assign "unsafe" and "dark" labels to 10% of the remaining
+        # edges
         remaining_edges = list(graph.edges)
         num_unsafe_edges = int(self.unsafe_amount * len(remaining_edges))
         num_dark_edges = int(self.dark_amount * len(remaining_edges))
@@ -123,7 +125,7 @@ class MapGenerator:
         dark_edges = random.sample(remaining_edges, num_dark_edges)
         for u, v in dark_edges:
             graph[u][v]['dark'] = True
-        
+
         return graph
 
     def generate_connected_grid_map(self):
@@ -133,31 +135,70 @@ class MapGenerator:
             graph = self.generate_grid_graph()
         self.graph = self.assign_dark_unsafe_corridors(graph)
 
-
     def find_shortest_path(self, from_node=0, to_node=0):
         # Find shortest path using Dijkstra (example: node 0 to node 10)
-        return nx.shortest_path(self.graph, source=from_node, target=to_node, weight='weight')
+        return nx.shortest_path(
+            self.graph,
+            source=from_node,
+            target=to_node,
+            weight='weight')
 
     def plot_graph(self, show_plot=False, save_file=False, filename="map.png"):
         fig, ax = plt.subplots(figsize=(8, 8))  # Create a figure and axis
         pos_ = {n: pos['pos'] for n, pos in self.graph.nodes().items()}
         nx.draw(self.graph, pos=pos_, with_labels=True, node_size=100, ax=ax)
 
-        dark_corridors = [(u, v) for u, v in self.graph.edges if self.graph[u][v]['dark'] and not self.graph[u][v]['unsafe']]
-        unsafe_corridors = [(u, v) for u, v in self.graph.edges if not self.graph[u][v]['dark'] and self.graph[u][v]['unsafe']]
-        unsafe_dark_corridors = [(u, v) for u, v in self.graph.edges if self.graph[u][v]['dark'] and self.graph[u][v]['unsafe']]
+        dark_corridors = [(u, v) for u, v in self.graph.edges if self.graph[u]
+                          [v]['dark'] and not self.graph[u][v]['unsafe']]
+        unsafe_corridors = [
+            (u,
+             v) for u,
+            v in self.graph.edges if not self.graph[u][v]['dark'] and self.graph[u][v]['unsafe']]
+        unsafe_dark_corridors = [
+            (u,
+             v) for u,
+            v in self.graph.edges if self.graph[u][v]['dark'] and self.graph[u][v]['unsafe']]
 
-        nx.draw_networkx_edges(self.graph, pos=pos_, edgelist=dark_corridors, edge_color='y', width=2, ax=ax)
-        nx.draw_networkx_edges(self.graph, pos=pos_, edgelist=unsafe_corridors, edge_color='b', width=2, ax=ax)
-        nx.draw_networkx_edges(self.graph, pos=pos_, edgelist=unsafe_dark_corridors, edge_color='r', width=2, ax=ax)
+        nx.draw_networkx_edges(
+            self.graph,
+            pos=pos_,
+            edgelist=dark_corridors,
+            edge_color='y',
+            width=2,
+            ax=ax)
+        nx.draw_networkx_edges(
+            self.graph,
+            pos=pos_,
+            edgelist=unsafe_corridors,
+            edge_color='b',
+            width=2,
+            ax=ax)
+        nx.draw_networkx_edges(
+            self.graph,
+            pos=pos_,
+            edgelist=unsafe_dark_corridors,
+            edge_color='r',
+            width=2,
+            ax=ax)
 
         # Create custom legend handles
         dark_handle = Line2D([0], [0], color='y', lw=2, label='Dark Corridors')
-        unsafe_handle = Line2D([0], [0], color='b', lw=2, label='Unsafe Corridors')
-        unsafe_dark_handle = Line2D([0], [0], color='r', lw=2, label='Unsafe and Dark Corridors')
+        unsafe_handle = Line2D(
+            [0],
+            [0],
+            color='b',
+            lw=2,
+            label='Unsafe Corridors')
+        unsafe_dark_handle = Line2D(
+            [0], [0], color='r', lw=2, label='Unsafe and Dark Corridors')
 
         # Add legend to the plot
-        ax.legend(handles=[dark_handle, unsafe_handle, unsafe_dark_handle], loc='best')
+        ax.legend(
+            handles=[
+                dark_handle,
+                unsafe_handle,
+                unsafe_dark_handle],
+            loc='best')
 
         if save_file:
             plt.savefig(filename, format='png', dpi=300, bbox_inches='tight')
@@ -168,10 +209,15 @@ class MapGenerator:
         else:
             plt.close(fig)  # Ensure the figure is always closed if not shown
 
-
-    def generate_domain_problem_files(self, save_domain=False, domain_filename='domain.pddl', save_problem=True, problem_filename='problem.pddl', init_goal=None):
+    def generate_domain_problem_files(
+            self,
+            save_domain=False,
+            domain_filename='domain.pddl',
+            save_problem=True,
+            problem_filename='problem.pddl',
+            init_goal=None):
         self.generate_domain()
-        self.generate_problem(init_goal==None)
+        self.generate_problem(init_goal is None)
         if init_goal is not None:
             self.define_init_goal_waypoints(init_goal)
         writer = PDDLWriter(self.problem)
@@ -186,12 +232,13 @@ class MapGenerator:
 
             # Replace all occurrences
             updated_content = re.sub(r"o_0_0_decimal", "0.0_decimal", content)
-            updated_content = re.sub(r"o_0_8_decimal", "0.8_decimal", updated_content)
-            updated_content = re.sub(r"o_1_0_decimal", "1.0_decimal", updated_content)
+            updated_content = re.sub(
+                r"o_0_8_decimal", "0.8_decimal", updated_content)
+            updated_content = re.sub(
+                r"o_1_0_decimal", "1.0_decimal", updated_content)
 
         with open(problem_filename, "w") as file:
             file.write(updated_content)
-        
 
     def generate_domain(self):
         self.waypoint_type = UserType('waypoint')
@@ -205,65 +252,97 @@ class MapGenerator:
         self.unsafe_corridor = unified_planning.model.Fluent(
             'unsafe_corridor', BoolType(), wp1=self.waypoint_type, wp2=self.waypoint_type)
         self.light_requirement = unified_planning.model.Fluent(
-            'light_requirement', BoolType(), wp1=self.waypoint_type, wp2=self.waypoint_type, v=self.numerical_object_type)
+            'light_requirement',
+            BoolType(),
+            wp1=self.waypoint_type,
+            wp2=self.waypoint_type,
+            v=self.numerical_object_type)
         self.safety_requirement = unified_planning.model.Fluent(
-            'safety_requirement', BoolType(), wp1=self.waypoint_type, wp2=self.waypoint_type, v=self.numerical_object_type)
+            'safety_requirement',
+            BoolType(),
+            wp1=self.waypoint_type,
+            wp2=self.waypoint_type,
+            v=self.numerical_object_type)
 
         # self.distance = unified_planning.model.Fluent(
         #     'distance', BoolType(), wp1=self.waypoint_type, wp2=self.waypoint_type, d=self.numerical_object_type)
-        
-        self.move = InstantaneousAction('move', wp1=self.waypoint_type, wp2=self.waypoint_type)
+
+        self.move = InstantaneousAction(
+            'move', wp1=self.waypoint_type, wp2=self.waypoint_type)
         wp1 = self.move.parameter('wp1')
         wp2 = self.move.parameter('wp2')
         self.move.add_precondition(self.corridor(wp1, wp2))
         self.move.add_precondition(self.robot_at(wp1))
-        self.move.add_effect(self.robot_at(wp1), False) 
+        self.move.add_effect(self.robot_at(wp1), False)
         self.move.add_effect(self.robot_at(wp2), True)
 
-    def generate_problem(self, add_init_goal = True):
-        self.problem = Problem(name = 'navigation')
+    def generate_problem(self, add_init_goal=True):
+        self.problem = Problem(name='navigation')
         self.problem.add_fluent(self.robot_at, default_initial_value=False)
         self.problem.add_fluent(self.corridor, default_initial_value=False)
         self.problem.add_action(self.move)
 
-        waypoints = {node_id: Object('wp%s' % node_id, self.waypoint_type) for node_id in self.graph.nodes}
+        waypoints = {
+            node_id: Object(
+                'wp%s' %
+                node_id,
+                self.waypoint_type) for node_id in self.graph.nodes}
         self.problem.add_objects(waypoints.values())
         zero_decimal = Object("0.0_decimal", self.numerical_object_type)
         zero_eight_decimal = Object("0.8_decimal", self.numerical_object_type)
         one_decimal = Object("1.0_decimal", self.numerical_object_type)
-        # self.problem.add_object(zero_decimal)
-        # self.problem.add_object(zero_eight_decimal)
-        # self.problem.add_object(one_decimal)
         for u, v in self.graph.edges:
-            self.problem.set_initial_value(self.corridor(waypoints[u], waypoints[v]), True)
-            self.problem.set_initial_value(self.corridor(waypoints[v], waypoints[u]), True)
-            if 'dark' in self.graph.edges[u, v] and self.graph.edges[u, v]['dark'] == True:
-                # self.problem.set_initial_value(self.dark_corridor(waypoints[u], waypoints[v]), True)
-                # self.problem.set_initial_value(self.dark_corridor(waypoints[v], waypoints[u]), True)
-                self.problem.set_initial_value(self.light_requirement(waypoints[u], waypoints[v], one_decimal), True)
-                self.problem.set_initial_value(self.light_requirement(waypoints[v], waypoints[u], one_decimal), True)
+            self.problem.set_initial_value(
+                self.corridor(waypoints[u], waypoints[v]), True)
+            self.problem.set_initial_value(
+                self.corridor(waypoints[v], waypoints[u]), True)
+            if 'dark' in self.graph.edges[u,
+                                          v] and self.graph.edges[u,
+                                                                  v]['dark']:
+                self.problem.set_initial_value(self.light_requirement(
+                    waypoints[u], waypoints[v], one_decimal), True)
+                self.problem.set_initial_value(self.light_requirement(
+                    waypoints[v], waypoints[u], one_decimal), True)
             else:
-                self.problem.set_initial_value(self.light_requirement(waypoints[u], waypoints[v], zero_decimal), True)
-                self.problem.set_initial_value(self.light_requirement(waypoints[v], waypoints[u], zero_decimal), True)
-            if 'unsafe' in self.graph.edges[u, v] and self.graph.edges[u, v]['unsafe'] == True:
-                # self.problem.set_initial_value(self.unsafe_corridor(waypoints[u], waypoints[v]), True)
-                # self.problem.set_initial_value(self.unsafe_corridor(waypoints[v], waypoints[u]), True)
-                self.problem.set_initial_value(self.safety_requirement(waypoints[u], waypoints[v], zero_eight_decimal), True)
-                self.problem.set_initial_value(self.safety_requirement(waypoints[v], waypoints[u], zero_eight_decimal), True)
+                self.problem.set_initial_value(self.light_requirement(
+                    waypoints[u], waypoints[v], zero_decimal), True)
+                self.problem.set_initial_value(self.light_requirement(
+                    waypoints[v], waypoints[u], zero_decimal), True)
+            if 'unsafe' in self.graph.edges[u,
+                                            v] and self.graph.edges[u,
+                                                                    v]['unsafe']:
+                self.problem.set_initial_value(self.safety_requirement(
+                    waypoints[u], waypoints[v], zero_eight_decimal), True)
+                self.problem.set_initial_value(self.safety_requirement(
+                    waypoints[v], waypoints[u], zero_eight_decimal), True)
             else:
-                self.problem.set_initial_value(self.safety_requirement(waypoints[u], waypoints[v], zero_decimal), True)
-                self.problem.set_initial_value(self.safety_requirement(waypoints[v], waypoints[u], zero_decimal), True)
+                self.problem.set_initial_value(self.safety_requirement(
+                    waypoints[u], waypoints[v], zero_decimal), True)
+                self.problem.set_initial_value(self.safety_requirement(
+                    waypoints[v], waypoints[u], zero_decimal), True)
 
         if add_init_goal is True:
             sorted_waypoints = sorted(waypoints.keys())
-            init_wp_key= sorted_waypoints[0]
-            goal_wp_key= sorted_waypoints[-1]
-            self.problem.set_initial_value(self.robot_at(waypoints[init_wp_key]), True)
+            init_wp_key = sorted_waypoints[0]
+            goal_wp_key = sorted_waypoints[-1]
+            self.problem.set_initial_value(
+                self.robot_at(waypoints[init_wp_key]), True)
             self.problem.add_goal(self.robot_at(waypoints[goal_wp_key]))
 
     def define_init_goal_waypoints(self, init_goal):
-        self.problem.set_initial_value(self.robot_at(Object('wp%i' % init_goal[0], self.waypoint_type)), True)
-        self.problem.add_goal(self.robot_at(Object('wp%i' % init_goal[1], self.waypoint_type)))
+        self.problem.set_initial_value(
+            self.robot_at(
+                Object(
+                    'wp%i' %
+                    init_goal[0],
+                    self.waypoint_type)),
+            True)
+        self.problem.add_goal(
+            self.robot_at(
+                Object(
+                    'wp%i' %
+                    init_goal[1],
+                    self.waypoint_type)))
 
     def solve_plan(self):
         planner = OneshotPlanner(name="fast-downward")
@@ -272,7 +351,7 @@ class MapGenerator:
             print(f'Found a plan.\nThe plan is: {result.plan}')
         else:
             print("No plan found.")
-    
+
     def load_json(self, file_path):
         with open(file_path, "r") as file:
             data = json.load(file)
@@ -287,22 +366,27 @@ class MapGenerator:
             x, y = node["coords"]["x"], node["coords"]["y"]
             positions[node_id] = (x, y)
             self.graph.add_node(node_id, pos=(x, y))
-        
+
         # Extract edges from the "map" section
         for node in data["map"]:
             node_id = int(node["node-id"][1:])
             for neighbor in node["connected-to"]:
-                weight = math.dist(positions[node_id], positions[int(neighbor[1:])])
-                self.graph.add_edge(node_id, int(neighbor[1:]), weight=weight, dark=False, unsafe=False)
-        
+                weight = math.dist(
+                    positions[node_id], positions[int(neighbor[1:])])
+                self.graph.add_edge(node_id,
+                                    int(neighbor[1:]),
+                                    weight=weight,
+                                    dark=False,
+                                    unsafe=False)
+
         for hitrate in data["hitrate"]:
             to_node = int(hitrate["to"][1:])
             from_node = int(hitrate["from"][1:])
             if self.graph.has_edge(from_node, to_node):
                 self.graph[from_node][to_node]["hitrate"] = hitrate
-            if self.graph.has_edge(to_node, from_node):  
+            if self.graph.has_edge(to_node, from_node):
                 self.graph[to_node][from_node]["hitrate"] = hitrate
-        
+
         # l15 to l14 - unsafe
         self.graph[15][14]['unsafe'] = True
         # l18 to l19 - dark
@@ -320,19 +404,23 @@ class MapGenerator:
     def load_and_discretize_json(self, file_path):
         self.load_json(file_path)
         self.discretize_graph()
-    
+
     def discretize_graph(self):
         """Discretizes the graph so that all edges have the same maximum possible length."""
         edge_lengths = [
-            np.linalg.norm(np.array(self.graph.nodes[u]['pos']) - np.array(self.graph.nodes[v]['pos']))
-            for u, v in self.graph.edges
-        ]
+            np.linalg.norm(
+                np.array(
+                    self.graph.nodes[u]['pos']) -
+                np.array(
+                    self.graph.nodes[v]['pos'])) for u,
+            v in self.graph.edges]
 
         max_length = min(edge_lengths)  # Use the smallest edge length
 
         new_edges = []
         new_nodes = {}
-        max_node_id = max(self.graph.nodes)  # Start new node IDs from the highest existing ID
+        # Start new node IDs from the highest existing ID
+        max_node_id = max(self.graph.nodes)
 
         for u, v in list(self.graph.edges):  # Iterate over original edges
             pos_u = np.array(self.graph.nodes[u]['pos'])
@@ -340,7 +428,8 @@ class MapGenerator:
             dist = np.linalg.norm(pos_v - pos_u)
 
             if dist > max_length:
-                num_segments = int(np.ceil(dist / max_length))  # Number of segments needed
+                # Number of segments needed
+                num_segments = int(np.ceil(dist / max_length))
                 prev_node = u
 
                 for i in range(1, num_segments):
@@ -348,16 +437,19 @@ class MapGenerator:
                     new_pos = pos_u + (pos_v - pos_u) * (i / num_segments)
                     max_node_id += 1  # Increment node ID
                     new_nodes[max_node_id] = tuple(new_pos)
-                    new_edges.append((prev_node, max_node_id))  # Connect to previous node
+                    # Connect to previous node
+                    new_edges.append((prev_node, max_node_id))
                     prev_node = max_node_id
 
-                new_edges.append((prev_node, v))  # Connect last new node to original end node
+                # Connect last new node to original end node
+                new_edges.append((prev_node, v))
                 self.graph.remove_edge(u, v)  # Remove the original long edge
 
         # Add new nodes and edges
         for node_id, pos in new_nodes.items():
             self.graph.add_node(node_id, pos=pos)
         self.graph.add_edges_from(new_edges, dark=False, unsafe=False)
+
 
 if __name__ == '__main__':
     mp = MapGenerator()
