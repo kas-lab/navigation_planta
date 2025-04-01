@@ -103,7 +103,13 @@ class PrismModelgenerator(MapGenerator):
         l:[0..{len(nav_path)-1}] init INITIAL_LOCATION;
         c:[0..{len(self.configurations)-1}] init INITIAL_CONFIGURATION;
 
+        interrupted: bool init false;
+        goal: bool init false;
+
         rd: bool init false; collided: bool init false;
+
+        [interrupt] true -> (interrupted'=true);
+        [finish] (target_location) & (!goal) -> (goal'=true);
         ''')
 
         reconfig_actions = "\n"
@@ -116,14 +122,14 @@ class PrismModelgenerator(MapGenerator):
                 move_action = ""
                 if custom_lookup(self.graph[nav_path[i]][nav_path[i+1]]['dark'], conf.dark):
                     move_action = f"[l{nav_path[i]}_l{nav_path[i+1]}] (l=l{nav_path[i]}) & (!stop) & (c={conf.name}) ->"
-                    move_action += f"\n\tp_col_{conf.name}_l{nav_path[i]}_l{nav_path[i+1]}: (l'=l{nav_path[i+1]}) & (b'=b_upd_l{nav_path[i]}_l{nav_path[i+1]}) & (collided'=true)"
-                    move_action += f"\n\t+ 1-(p_col_{conf.name}_l{nav_path[i]}_l{nav_path[i+1]}): (l'=l{nav_path[i+1]}) & (b'=b_upd_l{nav_path[i]}_l{nav_path[i+1]}) & (collided'=false);\n"
+                    move_action += f"\n\tp_col_{conf.name}_l{nav_path[i]}_l{nav_path[i+1]}: (l'=l{nav_path[i+1]}) & (b'=b_upd_l{nav_path[i]}_l{nav_path[i+1]}) & (collided'=true) & (rd'=false)"
+                    move_action += f"\n\t+ 1-(p_col_{conf.name}_l{nav_path[i]}_l{nav_path[i+1]}): (l'=l{nav_path[i+1]}) & (b'=b_upd_l{nav_path[i]}_l{nav_path[i+1]}) & (collided'=false) & (rd'=false);\n"
                 move_actions += move_action
             move_actions += "\n"
 
         energy_reward = textwrap.dedent(f'''
             rewards "energy"
-                stop : b;
+                [finish] true : b;
             endrewards
             ''')
 
@@ -133,8 +139,8 @@ class PrismModelgenerator(MapGenerator):
             # file.write(formula_distances)
             file.write(formula_bat_update)
             file.write(formula_p_collide)
-            file.write("\nformula goal = l=TARGET_LOCATION;\n")
-            file.write("formula stop = goal | b<MIN_BATTERY;\n")
+            file.write("\nformula target_location = l=TARGET_LOCATION;\n")
+            file.write("formula stop = goal | b<MIN_BATTERY | interrupted;\n")
             file.write(robot_module)
             file.write(reconfig_actions)
             file.write(move_actions)

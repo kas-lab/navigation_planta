@@ -25,7 +25,7 @@ def run(folder_name, run, init, goal):
     command = [
         "prism", 
         prism_filename, 
-        "-pf", 'R{"energy"}min=? [ F stop ]', 
+        "-pf", 'R{"energy"}max=? [ F stop ]', 
         "-exportstrat", "stdout", 
         "-const", f"INITIAL_BATTERY=32560,INITIAL_LOCATION=0,TARGET_LOCATION={len(nav_path)-1},INITIAL_CONFIGURATION=1"
     ]
