@@ -11,7 +11,7 @@ docker build -t pddl_tomasys .
 
 Run:
 ```bash
-docker run --rm -it -v $HOME/navigation_pddl_tomasys_ws/src/navigation_pddl_tomasys/results:/navigation_pddl_tomasys/results pddl_tomasys:latest python scripts/runner.py
+docker run --rm -it -v $HOME/navigation_pddl_tomasys_ws/src/navigation_pddl_tomasys/results:/navigation_pddl_tomasys/results -v /etc/localtime:/etc/localtime:ro pddl_tomasys:latest python scripts/runner.py
 ```
 
 ## Install
