@@ -152,6 +152,12 @@ docker run --rm -it -v $HOME/navigation_pddl_tomasys_ws/src/navigation_pddl_toma
 docker run --rm -it -v $HOME/navigation_pddl_tomasys_ws/src/navigation_pddl_tomasys/results:/navigation_pddl_tomasys/results  ghcr.io/rezenders/navigation_pddl_tomasys:main python scripts/run_camara_prism_scenario.py
 ```
 
-## Map example
+## Run grid map evaluation
 
-![alt text](image.png)
+```bash
+docker run --rm -it -v $HOME/navigation_pddl_tomasys_ws/src/navigation_pddl_tomasys/results:/navigation_pddl_tomasys/results  ghcr.io/rezenders/navigation_pddl_tomasys:main python scripts/run_grid_map_scenario.py
+```
+
+Map example:
+
+![map example](image.png)
