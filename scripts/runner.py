@@ -311,7 +311,7 @@ class CamaraMapPDDLRunner(CamaraMapRunner):
         problem_output = map_folder / 'problem_created.pddl'
         owl_to_pddl_command = [
             "OWLToPDDL.sh",
-            "--owl=owl/navigation.owl",
+            "--owl=owl/navigation_with_imports.owl",
             "--tBox",
             "--inDomain=pddl/domain_sas.pddl",
             f"--outDomain={domain_output}",

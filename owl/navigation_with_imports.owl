@@ -1,0 +1,818 @@
+@prefix : <http://www.metacontrol.org/navigation_with_imports#> .
+@prefix owl: <http://www.w3.org/2002/07/owl#> .
+@prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix xml: <http://www.w3.org/XML/1998/namespace> .
+@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+@base <http://www.metacontrol.org/navigation_with_imports> .
+
+<http://www.metacontrol.org/navigation_with_imports> rdf:type owl:Ontology .
+
+#################################################################
+#    Annotation properties
+#################################################################
+
+###  http://swrl.stanford.edu/ontologies/3.3/swrla.owl#isRuleEnabled
+<http://swrl.stanford.edu/ontologies/3.3/swrla.owl#isRuleEnabled> rdf:type owl:AnnotationProperty .
+
+
+#################################################################
+#    Object Properties
+#################################################################
+
+###  http://www.metacontrol.org/pddl#hasPddlType
+<http://www.metacontrol.org/pddl#hasPddlType> rdf:type owl:ObjectProperty ;
+                                              rdfs:range <http://www.metacontrol.org/pddl#PddlType> .
+
+
+###  http://www.metacontrol.org/tomasys#fdBetterUtility
+<http://www.metacontrol.org/tomasys#fdBetterUtility> rdf:type owl:ObjectProperty ;
+                                                     rdfs:domain <http://www.metacontrol.org/tomasys#FunctionDesign> ;
+                                                     rdfs:range <http://www.metacontrol.org/tomasys#FunctionDesign> .
+
+
+###  http://www.metacontrol.org/tomasys#functionGrounding
+<http://www.metacontrol.org/tomasys#functionGrounding> rdf:type owl:ObjectProperty ;
+                                                       rdfs:domain <http://www.metacontrol.org/tomasys#Function> ;
+                                                       rdfs:range <http://www.metacontrol.org/tomasys#FunctionDesign> .
+
+
+###  http://www.metacontrol.org/tomasys#hasQAestimation
+<http://www.metacontrol.org/tomasys#hasQAestimation> rdf:type owl:ObjectProperty ;
+                                                     rdfs:domain <http://www.metacontrol.org/tomasys#FunctionDesign> ;
+                                                     rdfs:range <http://www.metacontrol.org/tomasys#QAvalue> .
+
+
+###  http://www.metacontrol.org/tomasys#isQAtype
+<http://www.metacontrol.org/tomasys#isQAtype> rdf:type owl:ObjectProperty ,
+                                                       owl:FunctionalProperty ;
+                                              rdfs:domain <http://www.metacontrol.org/tomasys#QAvalue> ;
+                                              rdfs:range <http://www.metacontrol.org/tomasys#QualityAttributeType> .
+
+
+###  http://www.metacontrol.org/tomasys#requiresC
+<http://www.metacontrol.org/tomasys#requiresC> rdf:type owl:ObjectProperty ;
+                                               rdfs:domain <http://www.metacontrol.org/tomasys#FunctionDesign> ;
+                                               rdfs:range <http://www.metacontrol.org/tomasys#Component> .
+
+
+###  http://www.metacontrol.org/tomasys#requiresF
+<http://www.metacontrol.org/tomasys#requiresF> rdf:type owl:ObjectProperty ;
+                                               rdfs:domain <http://www.metacontrol.org/tomasys#Action> ;
+                                               rdfs:range <http://www.metacontrol.org/tomasys#Function> .
+
+
+###  http://www.metacontrol.org/tomasys#solvesF
+<http://www.metacontrol.org/tomasys#solvesF> rdf:type owl:ObjectProperty ,
+                                                      owl:FunctionalProperty ;
+                                             rdfs:domain <http://www.metacontrol.org/tomasys#FunctionDesign> ;
+                                             rdfs:range <http://www.metacontrol.org/tomasys#Function> ;
+                                             rdfs:comment "a FunctionDesign solves a Function" .
+
+
+#################################################################
+#    Data properties
+#################################################################
+
+###  http://www.metacontrol.org/pddl#pddlName
+<http://www.metacontrol.org/pddl#pddlName> rdf:type owl:DatatypeProperty ;
+                                           rdfs:domain <http://www.metacontrol.org/pddl#PddlType> .
+
+
+###  http://www.metacontrol.org/tomasys#c_status
+<http://www.metacontrol.org/tomasys#c_status> rdf:type owl:DatatypeProperty ,
+                                                       owl:FunctionalProperty ;
+                                              rdfs:domain <http://www.metacontrol.org/tomasys#Component> ;
+                                              rdfs:range [ rdf:type rdfs:Datatype ;
+                                                           owl:oneOf [ rdf:type rdf:List ;
+                                                                       rdf:first "ERROR" ;
+                                                                       rdf:rest [ rdf:type rdf:List ;
+                                                                                  rdf:first "OK" ;
+                                                                                  rdf:rest rdf:nil
+                                                                                ]
+                                                                     ]
+                                                         ] ;
+                                              rdfs:comment "operational status of a component. For the moment \"false\"=\"ERROR\", later we can expand the status to an enumeration" .
+
+
+###  http://www.metacontrol.org/tomasys#f_active
+<http://www.metacontrol.org/tomasys#f_active> rdf:type owl:DatatypeProperty ,
+                                                       owl:FunctionalProperty ;
+                                              rdfs:domain <http://www.metacontrol.org/tomasys#Function> ;
+                                              rdfs:range xsd:boolean .
+
+
+###  http://www.metacontrol.org/tomasys#fd_realisability
+<http://www.metacontrol.org/tomasys#fd_realisability> rdf:type owl:DatatypeProperty ,
+                                                               owl:FunctionalProperty ;
+                                                      rdfs:domain <http://www.metacontrol.org/tomasys#FunctionDesign> ;
+                                                      rdfs:range xsd:boolean .
+
+
+###  http://www.metacontrol.org/tomasys#fd_utility
+<http://www.metacontrol.org/tomasys#fd_utility> rdf:type owl:DatatypeProperty ,
+                                                         owl:FunctionalProperty ;
+                                                rdfs:domain <http://www.metacontrol.org/tomasys#FunctionDesign> ;
+                                                rdfs:range xsd:decimal .
+
+
+###  http://www.metacontrol.org/tomasys#qa_has_value
+<http://www.metacontrol.org/tomasys#qa_has_value> rdf:type owl:DatatypeProperty ,
+                                                           owl:FunctionalProperty ;
+                                                  rdfs:domain <http://www.metacontrol.org/tomasys#QAvalue> ;
+                                                  rdfs:range xsd:decimal .
+
+
+#################################################################
+#    Classes
+#################################################################
+
+###  http://www.metacontrol.org/pddl#PddlType
+<http://www.metacontrol.org/pddl#PddlType> rdf:type owl:Class .
+
+
+###  http://www.metacontrol.org/tomasys#Action
+<http://www.metacontrol.org/tomasys#Action> rdf:type owl:Class .
+
+
+###  http://www.metacontrol.org/tomasys#Component
+<http://www.metacontrol.org/tomasys#Component> rdf:type owl:Class .
+
+
+###  http://www.metacontrol.org/tomasys#Function
+<http://www.metacontrol.org/tomasys#Function> rdf:type owl:Class .
+
+
+###  http://www.metacontrol.org/tomasys#FunctionDesign
+<http://www.metacontrol.org/tomasys#FunctionDesign> rdf:type owl:Class .
+
+
+###  http://www.metacontrol.org/tomasys#QAvalue
+<http://www.metacontrol.org/tomasys#QAvalue> rdf:type owl:Class .
+
+
+###  http://www.metacontrol.org/tomasys#QualityAttributeType
+<http://www.metacontrol.org/tomasys#QualityAttributeType> rdf:type owl:Class .
+
+
+#################################################################
+#    Individuals
+#################################################################
+
+###  http://www.metacontrol.org/navigation#a_move
+<http://www.metacontrol.org/navigation#a_move> rdf:type owl:NamedIndividual ,
+                                                        <http://www.metacontrol.org/tomasys#Action> ;
+                                               <http://www.metacontrol.org/pddl#hasPddlType> <http://www.metacontrol.org/pddl#type_action> ;
+                                               <http://www.metacontrol.org/tomasys#requiresF> <http://www.metacontrol.org/navigation#f_localization> .
+
+
+###  http://www.metacontrol.org/navigation#c_camera
+<http://www.metacontrol.org/navigation#c_camera> rdf:type owl:NamedIndividual ,
+                                                          <http://www.metacontrol.org/tomasys#Component> ;
+                                                 <http://www.metacontrol.org/pddl#hasPddlType> <http://www.metacontrol.org/pddl#type_component> .
+
+
+###  http://www.metacontrol.org/navigation#c_headlamp
+<http://www.metacontrol.org/navigation#c_headlamp> rdf:type owl:NamedIndividual ,
+                                                            <http://www.metacontrol.org/tomasys#Component> ;
+                                                   <http://www.metacontrol.org/pddl#hasPddlType> <http://www.metacontrol.org/pddl#type_component> .
+
+
+###  http://www.metacontrol.org/navigation#c_kinect
+<http://www.metacontrol.org/navigation#c_kinect> rdf:type owl:NamedIndividual ,
+                                                          <http://www.metacontrol.org/tomasys#Component> ;
+                                                 <http://www.metacontrol.org/pddl#hasPddlType> <http://www.metacontrol.org/pddl#type_component> .
+
+
+###  http://www.metacontrol.org/navigation#c_lidar
+<http://www.metacontrol.org/navigation#c_lidar> rdf:type owl:NamedIndividual ,
+                                                         <http://www.metacontrol.org/tomasys#Component> ;
+                                                <http://www.metacontrol.org/pddl#hasPddlType> <http://www.metacontrol.org/pddl#type_component> .
+
+
+###  http://www.metacontrol.org/navigation#f_localization
+<http://www.metacontrol.org/navigation#f_localization> rdf:type owl:NamedIndividual ,
+                                                                <http://www.metacontrol.org/tomasys#Function> ;
+                                                       <http://www.metacontrol.org/pddl#hasPddlType> <http://www.metacontrol.org/pddl#type_function> .
+
+
+###  http://www.metacontrol.org/navigation#fd_amcl_kinect
+<http://www.metacontrol.org/navigation#fd_amcl_kinect> rdf:type owl:NamedIndividual ,
+                                                                <http://www.metacontrol.org/tomasys#FunctionDesign> ;
+                                                       <http://www.metacontrol.org/pddl#hasPddlType> <http://www.metacontrol.org/pddl#type_function_design> ;
+                                                       <http://www.metacontrol.org/tomasys#hasQAestimation> <http://www.metacontrol.org/navigation#qa_v_accuracy_excellent> ,
+                                                                                                            <http://www.metacontrol.org/navigation#qa_v_energy_cost_really_good> ,
+                                                                                                            <http://www.metacontrol.org/navigation#qa_v_environment_light_low> ;
+                                                       <http://www.metacontrol.org/tomasys#requiresC> <http://www.metacontrol.org/navigation#c_kinect> ;
+                                                       <http://www.metacontrol.org/tomasys#solvesF> <http://www.metacontrol.org/navigation#f_localization> .
+
+
+###  http://www.metacontrol.org/navigation#fd_amcl_lidar
+<http://www.metacontrol.org/navigation#fd_amcl_lidar> rdf:type owl:NamedIndividual ,
+                                                               <http://www.metacontrol.org/tomasys#FunctionDesign> ;
+                                                      <http://www.metacontrol.org/pddl#hasPddlType> <http://www.metacontrol.org/pddl#type_function_design> ;
+                                                      <http://www.metacontrol.org/tomasys#hasQAestimation> <http://www.metacontrol.org/navigation#qa_v_accuracy_medium> ,
+                                                                                                           <http://www.metacontrol.org/navigation#qa_v_energy_cost_medium> ,
+                                                                                                           <http://www.metacontrol.org/navigation#qa_v_environment_light_low> ;
+                                                      <http://www.metacontrol.org/tomasys#requiresC> <http://www.metacontrol.org/navigation#c_lidar> ;
+                                                      <http://www.metacontrol.org/tomasys#solvesF> <http://www.metacontrol.org/navigation#f_localization> .
+
+
+###  http://www.metacontrol.org/navigation#fd_aruco
+<http://www.metacontrol.org/navigation#fd_aruco> rdf:type owl:NamedIndividual ,
+                                                          <http://www.metacontrol.org/tomasys#FunctionDesign> ;
+                                                 <http://www.metacontrol.org/pddl#hasPddlType> <http://www.metacontrol.org/pddl#type_function_design> ;
+                                                 <http://www.metacontrol.org/tomasys#hasQAestimation> <http://www.metacontrol.org/navigation#qa_v_accuracy_good> ,
+                                                                                                      <http://www.metacontrol.org/navigation#qa_v_energy_cost_excellent> ,
+                                                                                                      <http://www.metacontrol.org/navigation#qa_v_environment_light_low> ;
+                                                 <http://www.metacontrol.org/tomasys#requiresC> <http://www.metacontrol.org/navigation#c_camera> ;
+                                                 <http://www.metacontrol.org/tomasys#solvesF> <http://www.metacontrol.org/navigation#f_localization> .
+
+
+###  http://www.metacontrol.org/navigation#fd_aruco_headlamp
+<http://www.metacontrol.org/navigation#fd_aruco_headlamp> rdf:type owl:NamedIndividual ,
+                                                                   <http://www.metacontrol.org/tomasys#FunctionDesign> ;
+                                                          <http://www.metacontrol.org/pddl#hasPddlType> <http://www.metacontrol.org/pddl#type_function_design> ;
+                                                          <http://www.metacontrol.org/tomasys#hasQAestimation> <http://www.metacontrol.org/navigation#qa_v_accuracy_good> ,
+                                                                                                               <http://www.metacontrol.org/navigation#qa_v_energy_cost_really_bad> ,
+                                                                                                               <http://www.metacontrol.org/navigation#qa_v_environment_light_bright> ;
+                                                          <http://www.metacontrol.org/tomasys#requiresC> <http://www.metacontrol.org/navigation#c_camera> ,
+                                                                                                         <http://www.metacontrol.org/navigation#c_headlamp> ;
+                                                          <http://www.metacontrol.org/tomasys#solvesF> <http://www.metacontrol.org/navigation#f_localization> .
+
+
+###  http://www.metacontrol.org/navigation#fd_mrpt_kinect
+<http://www.metacontrol.org/navigation#fd_mrpt_kinect> rdf:type owl:NamedIndividual ,
+                                                                <http://www.metacontrol.org/tomasys#FunctionDesign> ;
+                                                       <http://www.metacontrol.org/pddl#hasPddlType> <http://www.metacontrol.org/pddl#type_function_design> ;
+                                                       <http://www.metacontrol.org/tomasys#hasQAestimation> <http://www.metacontrol.org/navigation#qa_v_accuracy_really_good> ,
+                                                                                                            <http://www.metacontrol.org/navigation#qa_v_energy_cost_good> ,
+                                                                                                            <http://www.metacontrol.org/navigation#qa_v_environment_light_low> ;
+                                                       <http://www.metacontrol.org/tomasys#requiresC> <http://www.metacontrol.org/navigation#c_kinect> ;
+                                                       <http://www.metacontrol.org/tomasys#solvesF> <http://www.metacontrol.org/navigation#f_localization> .
+
+
+###  http://www.metacontrol.org/navigation#fd_mrpt_lidar
+<http://www.metacontrol.org/navigation#fd_mrpt_lidar> rdf:type owl:NamedIndividual ,
+                                                               <http://www.metacontrol.org/tomasys#FunctionDesign> ;
+                                                      <http://www.metacontrol.org/pddl#hasPddlType> <http://www.metacontrol.org/pddl#type_function_design> ;
+                                                      <http://www.metacontrol.org/tomasys#hasQAestimation> <http://www.metacontrol.org/navigation#qa_v_accuracy_bad> ,
+                                                                                                           <http://www.metacontrol.org/navigation#qa_v_energy_cost_bad> ,
+                                                                                                           <http://www.metacontrol.org/navigation#qa_v_environment_light_low> ;
+                                                      <http://www.metacontrol.org/tomasys#requiresC> <http://www.metacontrol.org/navigation#c_lidar> ;
+                                                      <http://www.metacontrol.org/tomasys#solvesF> <http://www.metacontrol.org/navigation#f_localization> .
+
+
+###  http://www.metacontrol.org/navigation#obs_environment_light
+<http://www.metacontrol.org/navigation#obs_environment_light> rdf:type owl:NamedIndividual ,
+                                                                       <http://www.metacontrol.org/tomasys#QualityAttributeType> ;
+                                                              <http://www.metacontrol.org/pddl#hasPddlType> <http://www.metacontrol.org/pddl#type_quality_attribute_type> .
+
+
+###  http://www.metacontrol.org/navigation#qa_accuracy
+<http://www.metacontrol.org/navigation#qa_accuracy> rdf:type owl:NamedIndividual ,
+                                                             <http://www.metacontrol.org/tomasys#QualityAttributeType> ;
+                                                    <http://www.metacontrol.org/pddl#hasPddlType> <http://www.metacontrol.org/pddl#type_quality_attribute_type> .
+
+
+###  http://www.metacontrol.org/navigation#qa_energy_cost
+<http://www.metacontrol.org/navigation#qa_energy_cost> rdf:type owl:NamedIndividual ,
+                                                                <http://www.metacontrol.org/tomasys#QualityAttributeType> ;
+                                                       <http://www.metacontrol.org/pddl#hasPddlType> <http://www.metacontrol.org/pddl#type_quality_attribute_type> .
+
+
+###  http://www.metacontrol.org/navigation#qa_environment_light
+<http://www.metacontrol.org/navigation#qa_environment_light> rdf:type owl:NamedIndividual ,
+                                                                      <http://www.metacontrol.org/tomasys#QualityAttributeType> ;
+                                                             <http://www.metacontrol.org/pddl#hasPddlType> <http://www.metacontrol.org/pddl#type_quality_attribute_type> .
+
+
+###  http://www.metacontrol.org/navigation#qa_v_accuracy_bad
+<http://www.metacontrol.org/navigation#qa_v_accuracy_bad> rdf:type owl:NamedIndividual ,
+                                                                   <http://www.metacontrol.org/tomasys#QAvalue> ;
+                                                          <http://www.metacontrol.org/pddl#hasPddlType> <http://www.metacontrol.org/pddl#type_qa_value> ;
+                                                          <http://www.metacontrol.org/tomasys#isQAtype> <http://www.metacontrol.org/navigation#qa_accuracy> ;
+                                                          <http://www.metacontrol.org/tomasys#qa_has_value> 0.6 .
+
+
+###  http://www.metacontrol.org/navigation#qa_v_accuracy_excellent
+<http://www.metacontrol.org/navigation#qa_v_accuracy_excellent> rdf:type owl:NamedIndividual ,
+                                                                         <http://www.metacontrol.org/tomasys#QAvalue> ;
+                                                                <http://www.metacontrol.org/pddl#hasPddlType> <http://www.metacontrol.org/pddl#type_qa_value> ;
+                                                                <http://www.metacontrol.org/tomasys#isQAtype> <http://www.metacontrol.org/navigation#qa_accuracy> ;
+                                                                <http://www.metacontrol.org/tomasys#qa_has_value> 1.0 .
+
+
+###  http://www.metacontrol.org/navigation#qa_v_accuracy_good
+<http://www.metacontrol.org/navigation#qa_v_accuracy_good> rdf:type owl:NamedIndividual ,
+                                                                    <http://www.metacontrol.org/tomasys#QAvalue> ;
+                                                           <http://www.metacontrol.org/pddl#hasPddlType> <http://www.metacontrol.org/pddl#type_qa_value> ;
+                                                           <http://www.metacontrol.org/tomasys#isQAtype> <http://www.metacontrol.org/navigation#qa_accuracy> ;
+                                                           <http://www.metacontrol.org/tomasys#qa_has_value> 0.8 .
+
+
+###  http://www.metacontrol.org/navigation#qa_v_accuracy_medium
+<http://www.metacontrol.org/navigation#qa_v_accuracy_medium> rdf:type owl:NamedIndividual ,
+                                                                      <http://www.metacontrol.org/tomasys#QAvalue> ;
+                                                             <http://www.metacontrol.org/pddl#hasPddlType> <http://www.metacontrol.org/pddl#type_qa_value> ;
+                                                             <http://www.metacontrol.org/tomasys#isQAtype> <http://www.metacontrol.org/navigation#qa_accuracy> ;
+                                                             <http://www.metacontrol.org/tomasys#qa_has_value> 0.7 .
+
+
+###  http://www.metacontrol.org/navigation#qa_v_accuracy_really_good
+<http://www.metacontrol.org/navigation#qa_v_accuracy_really_good> rdf:type owl:NamedIndividual ,
+                                                                           <http://www.metacontrol.org/tomasys#QAvalue> ;
+                                                                  <http://www.metacontrol.org/pddl#hasPddlType> <http://www.metacontrol.org/pddl#type_qa_value> ;
+                                                                  <http://www.metacontrol.org/tomasys#isQAtype> <http://www.metacontrol.org/navigation#qa_accuracy> ;
+                                                                  <http://www.metacontrol.org/tomasys#qa_has_value> 0.9 .
+
+
+###  http://www.metacontrol.org/navigation#qa_v_energy_cost_bad
+<http://www.metacontrol.org/navigation#qa_v_energy_cost_bad> rdf:type owl:NamedIndividual ,
+                                                                      <http://www.metacontrol.org/tomasys#QAvalue> ;
+                                                             <http://www.metacontrol.org/pddl#hasPddlType> <http://www.metacontrol.org/pddl#type_qa_value> ;
+                                                             <http://www.metacontrol.org/tomasys#isQAtype> <http://www.metacontrol.org/navigation#qa_energy_cost> ;
+                                                             <http://www.metacontrol.org/tomasys#qa_has_value> 20942.0 .
+
+
+###  http://www.metacontrol.org/navigation#qa_v_energy_cost_excellent
+<http://www.metacontrol.org/navigation#qa_v_energy_cost_excellent> rdf:type owl:NamedIndividual ,
+                                                                            <http://www.metacontrol.org/tomasys#QAvalue> ;
+                                                                   <http://www.metacontrol.org/pddl#hasPddlType> <http://www.metacontrol.org/pddl#type_qa_value> ;
+                                                                   <http://www.metacontrol.org/tomasys#isQAtype> <http://www.metacontrol.org/navigation#qa_energy_cost> ;
+                                                                   <http://www.metacontrol.org/tomasys#qa_has_value> 16963.0 .
+
+
+###  http://www.metacontrol.org/navigation#qa_v_energy_cost_good
+<http://www.metacontrol.org/navigation#qa_v_energy_cost_good> rdf:type owl:NamedIndividual ,
+                                                                       <http://www.metacontrol.org/tomasys#QAvalue> ;
+                                                              <http://www.metacontrol.org/pddl#hasPddlType> <http://www.metacontrol.org/pddl#type_qa_value> ;
+                                                              <http://www.metacontrol.org/tomasys#isQAtype> <http://www.metacontrol.org/navigation#qa_energy_cost> ;
+                                                              <http://www.metacontrol.org/tomasys#qa_has_value> 18942.0 .
+
+
+###  http://www.metacontrol.org/navigation#qa_v_energy_cost_medium
+<http://www.metacontrol.org/navigation#qa_v_energy_cost_medium> rdf:type owl:NamedIndividual ,
+                                                                         <http://www.metacontrol.org/tomasys#QAvalue> ;
+                                                                <http://www.metacontrol.org/pddl#hasPddlType> <http://www.metacontrol.org/pddl#type_qa_value> ;
+                                                                <http://www.metacontrol.org/tomasys#isQAtype> <http://www.metacontrol.org/navigation#qa_energy_cost> ;
+                                                                <http://www.metacontrol.org/tomasys#qa_has_value> 19790.0 .
+
+
+###  http://www.metacontrol.org/navigation#qa_v_energy_cost_really_bad
+<http://www.metacontrol.org/navigation#qa_v_energy_cost_really_bad> rdf:type owl:NamedIndividual ,
+                                                                             <http://www.metacontrol.org/tomasys#QAvalue> ;
+                                                                    <http://www.metacontrol.org/pddl#hasPddlType> <http://www.metacontrol.org/pddl#type_qa_value> ;
+                                                                    <http://www.metacontrol.org/tomasys#isQAtype> <http://www.metacontrol.org/navigation#qa_energy_cost> ;
+                                                                    <http://www.metacontrol.org/tomasys#qa_has_value> 26963.0 .
+
+
+###  http://www.metacontrol.org/navigation#qa_v_energy_cost_really_good
+<http://www.metacontrol.org/navigation#qa_v_energy_cost_really_good> rdf:type owl:NamedIndividual ,
+                                                                              <http://www.metacontrol.org/tomasys#QAvalue> ;
+                                                                     <http://www.metacontrol.org/pddl#hasPddlType> <http://www.metacontrol.org/pddl#type_qa_value> ;
+                                                                     <http://www.metacontrol.org/tomasys#isQAtype> <http://www.metacontrol.org/navigation#qa_energy_cost> ;
+                                                                     <http://www.metacontrol.org/tomasys#qa_has_value> 17790.0 .
+
+
+###  http://www.metacontrol.org/navigation#qa_v_environment_light_bright
+<http://www.metacontrol.org/navigation#qa_v_environment_light_bright> rdf:type owl:NamedIndividual ,
+                                                                               <http://www.metacontrol.org/tomasys#QAvalue> ;
+                                                                      <http://www.metacontrol.org/pddl#hasPddlType> <http://www.metacontrol.org/pddl#type_qa_value> ;
+                                                                      <http://www.metacontrol.org/tomasys#isQAtype> <http://www.metacontrol.org/navigation#qa_environment_light> ;
+                                                                      <http://www.metacontrol.org/tomasys#qa_has_value> 1.0 .
+
+
+###  http://www.metacontrol.org/navigation#qa_v_environment_light_low
+<http://www.metacontrol.org/navigation#qa_v_environment_light_low> rdf:type owl:NamedIndividual ,
+                                                                            <http://www.metacontrol.org/tomasys#QAvalue> ;
+                                                                   <http://www.metacontrol.org/pddl#hasPddlType> <http://www.metacontrol.org/pddl#type_qa_value> ;
+                                                                   <http://www.metacontrol.org/tomasys#isQAtype> <http://www.metacontrol.org/navigation#qa_environment_light> ;
+                                                                   <http://www.metacontrol.org/tomasys#qa_has_value> 0.0 .
+
+
+###  http://www.metacontrol.org/pddl#type_action
+<http://www.metacontrol.org/pddl#type_action> rdf:type owl:NamedIndividual ,
+                                                       <http://www.metacontrol.org/pddl#PddlType> ;
+                                              <http://www.metacontrol.org/pddl#pddlName> "action"^^xsd:string .
+
+
+###  http://www.metacontrol.org/pddl#type_component
+<http://www.metacontrol.org/pddl#type_component> rdf:type owl:NamedIndividual ,
+                                                          <http://www.metacontrol.org/pddl#PddlType> ;
+                                                 <http://www.metacontrol.org/pddl#pddlName> "component"^^xsd:string .
+
+
+###  http://www.metacontrol.org/pddl#type_function
+<http://www.metacontrol.org/pddl#type_function> rdf:type owl:NamedIndividual ,
+                                                         <http://www.metacontrol.org/pddl#PddlType> ;
+                                                <http://www.metacontrol.org/pddl#pddlName> "function"^^xsd:string .
+
+
+###  http://www.metacontrol.org/pddl#type_function_design
+<http://www.metacontrol.org/pddl#type_function_design> rdf:type owl:NamedIndividual ,
+                                                                <http://www.metacontrol.org/pddl#PddlType> ;
+                                                       <http://www.metacontrol.org/pddl#pddlName> "function-design"^^xsd:string .
+
+
+###  http://www.metacontrol.org/pddl#type_qa_value
+<http://www.metacontrol.org/pddl#type_qa_value> rdf:type owl:NamedIndividual ,
+                                                         <http://www.metacontrol.org/pddl#PddlType> ;
+                                                <http://www.metacontrol.org/pddl#pddlName> "qa-value"^^xsd:string .
+
+
+###  http://www.metacontrol.org/pddl#type_quality_attribute_type
+<http://www.metacontrol.org/pddl#type_quality_attribute_type> rdf:type owl:NamedIndividual ,
+                                                                       <http://www.metacontrol.org/pddl#PddlType> ;
+                                                              <http://www.metacontrol.org/pddl#pddlName> "quality-attribute-type"^^xsd:string .
+
+
+###  http://www.metacontrol.org/tomasys#fd_unground
+<http://www.metacontrol.org/tomasys#fd_unground> rdf:type owl:NamedIndividual ,
+                                                          <http://www.metacontrol.org/tomasys#FunctionDesign> ;
+                                                 <http://www.metacontrol.org/pddl#hasPddlType> <http://www.metacontrol.org/pddl#type_function_design> ;
+                                                 <http://www.metacontrol.org/tomasys#hasQAestimation> <http://www.metacontrol.org/tomasys#qa_performance_zero> .
+
+
+###  http://www.metacontrol.org/tomasys#performance
+<http://www.metacontrol.org/tomasys#performance> rdf:type owl:NamedIndividual ,
+                                                          <http://www.metacontrol.org/tomasys#QualityAttributeType> ;
+                                                 <http://www.metacontrol.org/pddl#hasPddlType> <http://www.metacontrol.org/pddl#type_quality_attribute_type> .
+
+
+###  http://www.metacontrol.org/tomasys#qa_performance_zero
+<http://www.metacontrol.org/tomasys#qa_performance_zero> rdf:type owl:NamedIndividual ,
+                                                                  <http://www.metacontrol.org/tomasys#QAvalue> ;
+                                                         <http://www.metacontrol.org/pddl#hasPddlType> <http://www.metacontrol.org/pddl#type_qa_value> ;
+                                                         <http://www.metacontrol.org/tomasys#isQAtype> <http://www.metacontrol.org/tomasys#performance> ;
+                                                         <http://www.metacontrol.org/tomasys#qa_has_value> 0.0 .
+
+
+[ <http://swrl.stanford.edu/ontologies/3.3/swrla.owl#isRuleEnabled> "true"^^xsd:boolean
+] .
+
+[ <http://swrl.stanford.edu/ontologies/3.3/swrla.owl#isRuleEnabled> "true"^^xsd:boolean
+ ] .
+
+[ <http://swrl.stanford.edu/ontologies/3.3/swrla.owl#isRuleEnabled> "true"^^xsd:boolean
+ ] .
+
+[ <http://swrl.stanford.edu/ontologies/3.3/swrla.owl#isRuleEnabled> "true"^^xsd:boolean
+ ] .
+
+[ <http://swrl.stanford.edu/ontologies/3.3/swrla.owl#isRuleEnabled> "true"^^xsd:boolean
+ ] .
+
+[ <http://swrl.stanford.edu/ontologies/3.3/swrla.owl#isRuleEnabled> "true"^^xsd:boolean
+ ] .
+
+[ <http://swrl.stanford.edu/ontologies/3.3/swrla.owl#isRuleEnabled> "true"^^xsd:boolean
+ ] .
+
+[ <http://swrl.stanford.edu/ontologies/3.3/swrla.owl#isRuleEnabled> "true"^^xsd:boolean
+ ] .
+
+[ <http://swrl.stanford.edu/ontologies/3.3/swrla.owl#isRuleEnabled> "true"^^xsd:boolean
+ ] .
+
+[ <http://swrl.stanford.edu/ontologies/3.3/swrla.owl#isRuleEnabled> "true"^^xsd:boolean
+ ] .
+
+[ <http://swrl.stanford.edu/ontologies/3.3/swrla.owl#isRuleEnabled> "true"^^xsd:boolean
+ ] .
+
+[ <http://swrl.stanford.edu/ontologies/3.3/swrla.owl#isRuleEnabled> "true"^^xsd:boolean
+ ] .
+
+[ <http://swrl.stanford.edu/ontologies/3.3/swrla.owl#isRuleEnabled> "true"^^xsd:boolean
+ ] .
+
+#################################################################
+#    Rules
+#################################################################
+
+<http://www.metacontro.org/tomasys#fd> rdf:type <http://www.w3.org/2003/11/swrl#Variable> .
+
+<http://www.metacontro.org/tomasys#c> rdf:type <http://www.w3.org/2003/11/swrl#Variable> .
+
+<http://www.metacontro.org/tomasys#fd_better> rdf:type <http://www.w3.org/2003/11/swrl#Variable> .
+
+<http://www.metacontro.org/tomasys#x_better> rdf:type <http://www.w3.org/2003/11/swrl#Variable> .
+
+<http://www.metacontro.org/tomasys#f> rdf:type <http://www.w3.org/2003/11/swrl#Variable> .
+
+<http://www.metacontro.org/tomasys#x> rdf:type <http://www.w3.org/2003/11/swrl#Variable> .
+
+<http://www.metacontrol.org/fd> rdf:type <http://www.w3.org/2003/11/swrl#Variable> .
+
+<http://www.metacontrol.org/f> rdf:type <http://www.w3.org/2003/11/swrl#Variable> .
+
+<http://www.metacontrol.org/qa> rdf:type <http://www.w3.org/2003/11/swrl#Variable> .
+
+<http://www.metacontrol.org/qav> rdf:type <http://www.w3.org/2003/11/swrl#Variable> .
+
+<http://www.metacontrol.org/navigation#fd1> rdf:type <http://www.w3.org/2003/11/swrl#Variable> .
+
+<http://www.metacontrol.org/navigation#mqa> rdf:type <http://www.w3.org/2003/11/swrl#Variable> .
+
+<http://www.metacontrol.org/navigation#mqav> rdf:type <http://www.w3.org/2003/11/swrl#Variable> .
+
+[ <http://swrl.stanford.edu/ontologies/3.3/swrla.owl#isRuleEnabled> "true"^^xsd:boolean ;
+   rdfs:comment "if component required for FD not working, FD not available"^^xsd:string ;
+   rdfs:label "c_error"^^xsd:string ;
+   rdf:type <http://www.w3.org/2003/11/swrl#Imp> ;
+   <http://www.w3.org/2003/11/swrl#body> [ rdf:type <http://www.w3.org/2003/11/swrl#AtomList> ;
+                                           rdf:first [ rdf:type <http://www.w3.org/2003/11/swrl#IndividualPropertyAtom> ;
+                                                       <http://www.w3.org/2003/11/swrl#propertyPredicate> <http://www.metacontrol.org/tomasys#requiresC> ;
+                                                       <http://www.w3.org/2003/11/swrl#argument1> <http://www.metacontro.org/tomasys#fd> ;
+                                                       <http://www.w3.org/2003/11/swrl#argument2> <http://www.metacontro.org/tomasys#c>
+                                                     ] ;
+                                           rdf:rest [ rdf:type <http://www.w3.org/2003/11/swrl#AtomList> ;
+                                                      rdf:first [ rdf:type <http://www.w3.org/2003/11/swrl#ClassAtom> ;
+                                                                  <http://www.w3.org/2003/11/swrl#classPredicate> <http://www.metacontrol.org/tomasys#Component> ;
+                                                                  <http://www.w3.org/2003/11/swrl#argument1> <http://www.metacontro.org/tomasys#c>
+                                                                ] ;
+                                                      rdf:rest [ rdf:type <http://www.w3.org/2003/11/swrl#AtomList> ;
+                                                                 rdf:first [ rdf:type <http://www.w3.org/2003/11/swrl#DatavaluedPropertyAtom> ;
+                                                                             <http://www.w3.org/2003/11/swrl#propertyPredicate> <http://www.metacontrol.org/tomasys#c_status> ;
+                                                                             <http://www.w3.org/2003/11/swrl#argument1> <http://www.metacontro.org/tomasys#c> ;
+                                                                             <http://www.w3.org/2003/11/swrl#argument2> "ERROR"^^xsd:string
+                                                                           ] ;
+                                                                 rdf:rest rdf:nil
+                                                               ]
+                                                    ]
+                                         ] ;
+   <http://www.w3.org/2003/11/swrl#head> [ rdf:type <http://www.w3.org/2003/11/swrl#AtomList> ;
+                                           rdf:first [ rdf:type <http://www.w3.org/2003/11/swrl#DatavaluedPropertyAtom> ;
+                                                       <http://www.w3.org/2003/11/swrl#propertyPredicate> <http://www.metacontrol.org/tomasys#fd_realisability> ;
+                                                       <http://www.w3.org/2003/11/swrl#argument1> <http://www.metacontro.org/tomasys#fd> ;
+                                                       <http://www.w3.org/2003/11/swrl#argument2> "false"^^xsd:boolean
+                                                     ] ;
+                                           rdf:rest rdf:nil
+                                         ]
+ ] .
+
+[ <http://swrl.stanford.edu/ontologies/3.3/swrla.owl#isRuleEnabled> "true"^^xsd:boolean ;
+   rdfs:comment ""^^xsd:string ;
+   rdfs:label "fdBetterUtility"^^xsd:string ;
+   rdf:type <http://www.w3.org/2003/11/swrl#Imp> ;
+   <http://www.w3.org/2003/11/swrl#body> [ rdf:type <http://www.w3.org/2003/11/swrl#AtomList> ;
+                                           rdf:first [ rdf:type <http://www.w3.org/2003/11/swrl#DatavaluedPropertyAtom> ;
+                                                       <http://www.w3.org/2003/11/swrl#propertyPredicate> <http://www.metacontrol.org/tomasys#fd_utility> ;
+                                                       <http://www.w3.org/2003/11/swrl#argument1> <http://www.metacontro.org/tomasys#fd_better> ;
+                                                       <http://www.w3.org/2003/11/swrl#argument2> <http://www.metacontro.org/tomasys#x_better>
+                                                     ] ;
+                                           rdf:rest [ rdf:type <http://www.w3.org/2003/11/swrl#AtomList> ;
+                                                      rdf:first [ rdf:type <http://www.w3.org/2003/11/swrl#ClassAtom> ;
+                                                                  <http://www.w3.org/2003/11/swrl#classPredicate> <http://www.metacontrol.org/tomasys#Function> ;
+                                                                  <http://www.w3.org/2003/11/swrl#argument1> <http://www.metacontro.org/tomasys#f>
+                                                                ] ;
+                                                      rdf:rest [ rdf:type <http://www.w3.org/2003/11/swrl#AtomList> ;
+                                                                 rdf:first [ rdf:type <http://www.w3.org/2003/11/swrl#ClassAtom> ;
+                                                                             <http://www.w3.org/2003/11/swrl#classPredicate> <http://www.metacontrol.org/tomasys#FunctionDesign> ;
+                                                                             <http://www.w3.org/2003/11/swrl#argument1> <http://www.metacontro.org/tomasys#fd>
+                                                                           ] ;
+                                                                 rdf:rest [ rdf:type <http://www.w3.org/2003/11/swrl#AtomList> ;
+                                                                            rdf:first [ rdf:type <http://www.w3.org/2003/11/swrl#ClassAtom> ;
+                                                                                        <http://www.w3.org/2003/11/swrl#classPredicate> <http://www.metacontrol.org/tomasys#FunctionDesign> ;
+                                                                                        <http://www.w3.org/2003/11/swrl#argument1> <http://www.metacontro.org/tomasys#fd_better>
+                                                                                      ] ;
+                                                                            rdf:rest [ rdf:type <http://www.w3.org/2003/11/swrl#AtomList> ;
+                                                                                       rdf:first [ rdf:type <http://www.w3.org/2003/11/swrl#BuiltinAtom> ;
+                                                                                                   <http://www.w3.org/2003/11/swrl#builtin> <http://www.w3.org/2003/11/swrlb#lessThan> ;
+                                                                                                   <http://www.w3.org/2003/11/swrl#arguments> ( <http://www.metacontro.org/tomasys#x>
+                                                                                                                                                <http://www.metacontro.org/tomasys#x_better>
+                                                                                                                                              )
+                                                                                                 ] ;
+                                                                                       rdf:rest [ rdf:type <http://www.w3.org/2003/11/swrl#AtomList> ;
+                                                                                                  rdf:first [ rdf:type <http://www.w3.org/2003/11/swrl#IndividualPropertyAtom> ;
+                                                                                                              <http://www.w3.org/2003/11/swrl#propertyPredicate> <http://www.metacontrol.org/tomasys#solvesF> ;
+                                                                                                              <http://www.w3.org/2003/11/swrl#argument1> <http://www.metacontro.org/tomasys#fd> ;
+                                                                                                              <http://www.w3.org/2003/11/swrl#argument2> <http://www.metacontro.org/tomasys#f>
+                                                                                                            ] ;
+                                                                                                  rdf:rest [ rdf:type <http://www.w3.org/2003/11/swrl#AtomList> ;
+                                                                                                             rdf:first [ rdf:type <http://www.w3.org/2003/11/swrl#DatavaluedPropertyAtom> ;
+                                                                                                                         <http://www.w3.org/2003/11/swrl#propertyPredicate> <http://www.metacontrol.org/tomasys#fd_utility> ;
+                                                                                                                         <http://www.w3.org/2003/11/swrl#argument1> <http://www.metacontro.org/tomasys#fd> ;
+                                                                                                                         <http://www.w3.org/2003/11/swrl#argument2> <http://www.metacontro.org/tomasys#x>
+                                                                                                                       ] ;
+                                                                                                             rdf:rest [ rdf:type <http://www.w3.org/2003/11/swrl#AtomList> ;
+                                                                                                                        rdf:first [ rdf:type <http://www.w3.org/2003/11/swrl#IndividualPropertyAtom> ;
+                                                                                                                                    <http://www.w3.org/2003/11/swrl#propertyPredicate> <http://www.metacontrol.org/tomasys#solvesF> ;
+                                                                                                                                    <http://www.w3.org/2003/11/swrl#argument1> <http://www.metacontro.org/tomasys#fd_better> ;
+                                                                                                                                    <http://www.w3.org/2003/11/swrl#argument2> <http://www.metacontro.org/tomasys#f>
+                                                                                                                                  ] ;
+                                                                                                                        rdf:rest rdf:nil
+                                                                                                                      ]
+                                                                                                           ]
+                                                                                                ]
+                                                                                     ]
+                                                                          ]
+                                                               ]
+                                                    ]
+                                         ] ;
+   <http://www.w3.org/2003/11/swrl#head> [ rdf:type <http://www.w3.org/2003/11/swrl#AtomList> ;
+                                           rdf:first [ rdf:type <http://www.w3.org/2003/11/swrl#IndividualPropertyAtom> ;
+                                                       <http://www.w3.org/2003/11/swrl#propertyPredicate> <http://www.metacontrol.org/tomasys#fdBetterUtility> ;
+                                                       <http://www.w3.org/2003/11/swrl#argument1> <http://www.metacontro.org/tomasys#fd_better> ;
+                                                       <http://www.w3.org/2003/11/swrl#argument2> <http://www.metacontro.org/tomasys#fd>
+                                                     ] ;
+                                           rdf:rest rdf:nil
+                                         ]
+ ] .
+
+[ <http://swrl.stanford.edu/ontologies/3.3/swrla.owl#isRuleEnabled> "true"^^xsd:boolean ;
+   rdfs:comment ""^^xsd:string ;
+   rdfs:label "f_active"^^xsd:string ;
+   rdf:type <http://www.w3.org/2003/11/swrl#Imp> ;
+   <http://www.w3.org/2003/11/swrl#body> [ rdf:type <http://www.w3.org/2003/11/swrl#AtomList> ;
+                                           rdf:first [ rdf:type <http://www.w3.org/2003/11/swrl#ClassAtom> ;
+                                                       <http://www.w3.org/2003/11/swrl#classPredicate> <http://www.metacontrol.org/tomasys#Function> ;
+                                                       <http://www.w3.org/2003/11/swrl#argument1> <http://www.metacontro.org/tomasys#f>
+                                                     ] ;
+                                           rdf:rest [ rdf:type <http://www.w3.org/2003/11/swrl#AtomList> ;
+                                                      rdf:first [ rdf:type <http://www.w3.org/2003/11/swrl#ClassAtom> ;
+                                                                  <http://www.w3.org/2003/11/swrl#classPredicate> <http://www.metacontrol.org/tomasys#FunctionDesign> ;
+                                                                  <http://www.w3.org/2003/11/swrl#argument1> <http://www.metacontro.org/tomasys#fd>
+                                                                ] ;
+                                                      rdf:rest [ rdf:type <http://www.w3.org/2003/11/swrl#AtomList> ;
+                                                                 rdf:first [ rdf:type <http://www.w3.org/2003/11/swrl#DifferentIndividualsAtom> ;
+                                                                             <http://www.w3.org/2003/11/swrl#argument1> <http://www.metacontro.org/tomasys#fd> ;
+                                                                             <http://www.w3.org/2003/11/swrl#argument2> <http://www.metacontrol.org/tomasys#fd_unground>
+                                                                           ] ;
+                                                                 rdf:rest [ rdf:type <http://www.w3.org/2003/11/swrl#AtomList> ;
+                                                                            rdf:first [ rdf:type <http://www.w3.org/2003/11/swrl#IndividualPropertyAtom> ;
+                                                                                        <http://www.w3.org/2003/11/swrl#propertyPredicate> <http://www.metacontrol.org/tomasys#solvesF> ;
+                                                                                        <http://www.w3.org/2003/11/swrl#argument1> <http://www.metacontro.org/tomasys#fd> ;
+                                                                                        <http://www.w3.org/2003/11/swrl#argument2> <http://www.metacontro.org/tomasys#f>
+                                                                                      ] ;
+                                                                            rdf:rest [ rdf:type <http://www.w3.org/2003/11/swrl#AtomList> ;
+                                                                                       rdf:first [ rdf:type <http://www.w3.org/2003/11/swrl#IndividualPropertyAtom> ;
+                                                                                                   <http://www.w3.org/2003/11/swrl#propertyPredicate> <http://www.metacontrol.org/tomasys#functionGrounding> ;
+                                                                                                   <http://www.w3.org/2003/11/swrl#argument1> <http://www.metacontro.org/tomasys#f> ;
+                                                                                                   <http://www.w3.org/2003/11/swrl#argument2> <http://www.metacontro.org/tomasys#fd>
+                                                                                                 ] ;
+                                                                                       rdf:rest rdf:nil
+                                                                                     ]
+                                                                          ]
+                                                               ]
+                                                    ]
+                                         ] ;
+   <http://www.w3.org/2003/11/swrl#head> [ rdf:type <http://www.w3.org/2003/11/swrl#AtomList> ;
+                                           rdf:first [ rdf:type <http://www.w3.org/2003/11/swrl#DatavaluedPropertyAtom> ;
+                                                       <http://www.w3.org/2003/11/swrl#propertyPredicate> <http://www.metacontrol.org/tomasys#f_active> ;
+                                                       <http://www.w3.org/2003/11/swrl#argument1> <http://www.metacontro.org/tomasys#f> ;
+                                                       <http://www.w3.org/2003/11/swrl#argument2> "true"^^xsd:boolean
+                                                     ] ;
+                                           rdf:rest rdf:nil
+                                         ]
+ ] .
+
+[ <http://swrl.stanford.edu/ontologies/3.3/swrla.owl#isRuleEnabled> "true"^^xsd:boolean ;
+   rdfs:comment ""^^xsd:string ;
+   rdfs:label "fd_unground"^^xsd:string ;
+   rdf:type <http://www.w3.org/2003/11/swrl#Imp> ;
+   <http://www.w3.org/2003/11/swrl#body> [ rdf:type <http://www.w3.org/2003/11/swrl#AtomList> ;
+                                           rdf:first [ rdf:type <http://www.w3.org/2003/11/swrl#ClassAtom> ;
+                                                       <http://www.w3.org/2003/11/swrl#classPredicate> <http://www.metacontrol.org/tomasys#Function> ;
+                                                       <http://www.w3.org/2003/11/swrl#argument1> <http://www.metacontro.org/tomasys#f>
+                                                     ] ;
+                                           rdf:rest [ rdf:type <http://www.w3.org/2003/11/swrl#AtomList> ;
+                                                      rdf:first [ rdf:type <http://www.w3.org/2003/11/swrl#ClassAtom> ;
+                                                                  <http://www.w3.org/2003/11/swrl#classPredicate> <http://www.metacontrol.org/tomasys#FunctionDesign> ;
+                                                                  <http://www.w3.org/2003/11/swrl#argument1> <http://www.metacontrol.org/tomasys#fd_unground>
+                                                                ] ;
+                                                      rdf:rest rdf:nil
+                                                    ]
+                                         ] ;
+   <http://www.w3.org/2003/11/swrl#head> [ rdf:type <http://www.w3.org/2003/11/swrl#AtomList> ;
+                                           rdf:first [ rdf:type <http://www.w3.org/2003/11/swrl#IndividualPropertyAtom> ;
+                                                       <http://www.w3.org/2003/11/swrl#propertyPredicate> <http://www.metacontrol.org/tomasys#solvesF> ;
+                                                       <http://www.w3.org/2003/11/swrl#argument1> <http://www.metacontrol.org/tomasys#fd_unground> ;
+                                                       <http://www.w3.org/2003/11/swrl#argument2> <http://www.metacontro.org/tomasys#f>
+                                                     ] ;
+                                           rdf:rest rdf:nil
+                                         ]
+ ] .
+
+[ <http://swrl.stanford.edu/ontologies/3.3/swrla.owl#isRuleEnabled> "true"^^xsd:boolean ;
+   rdfs:comment ""^^xsd:string ;
+   rdfs:label "f_localization utility"^^xsd:string ;
+   rdf:type <http://www.w3.org/2003/11/swrl#Imp> ;
+   <http://www.w3.org/2003/11/swrl#body> [ rdf:type <http://www.w3.org/2003/11/swrl#AtomList> ;
+                                           rdf:first [ rdf:type <http://www.w3.org/2003/11/swrl#ClassAtom> ;
+                                                       <http://www.w3.org/2003/11/swrl#classPredicate> <http://www.metacontrol.org/tomasys#Function> ;
+                                                       <http://www.w3.org/2003/11/swrl#argument1> <http://www.metacontrol.org/navigation#f_localization>
+                                                     ] ;
+                                           rdf:rest [ rdf:type <http://www.w3.org/2003/11/swrl#AtomList> ;
+                                                      rdf:first [ rdf:type <http://www.w3.org/2003/11/swrl#ClassAtom> ;
+                                                                  <http://www.w3.org/2003/11/swrl#classPredicate> <http://www.metacontrol.org/tomasys#FunctionDesign> ;
+                                                                  <http://www.w3.org/2003/11/swrl#argument1> <http://www.metacontrol.org/fd>
+                                                                ] ;
+                                                      rdf:rest [ rdf:type <http://www.w3.org/2003/11/swrl#AtomList> ;
+                                                                 rdf:first [ rdf:type <http://www.w3.org/2003/11/swrl#IndividualPropertyAtom> ;
+                                                                             <http://www.w3.org/2003/11/swrl#propertyPredicate> <http://www.metacontrol.org/tomasys#solvesF> ;
+                                                                             <http://www.w3.org/2003/11/swrl#argument1> <http://www.metacontrol.org/fd> ;
+                                                                             <http://www.w3.org/2003/11/swrl#argument2> <http://www.metacontrol.org/f>
+                                                                           ] ;
+                                                                 rdf:rest [ rdf:type <http://www.w3.org/2003/11/swrl#AtomList> ;
+                                                                            rdf:first [ rdf:type <http://www.w3.org/2003/11/swrl#IndividualPropertyAtom> ;
+                                                                                        <http://www.w3.org/2003/11/swrl#propertyPredicate> <http://www.metacontrol.org/tomasys#hasQAestimation> ;
+                                                                                        <http://www.w3.org/2003/11/swrl#argument1> <http://www.metacontrol.org/fd> ;
+                                                                                        <http://www.w3.org/2003/11/swrl#argument2> <http://www.metacontrol.org/qa>
+                                                                                      ] ;
+                                                                            rdf:rest [ rdf:type <http://www.w3.org/2003/11/swrl#AtomList> ;
+                                                                                       rdf:first [ rdf:type <http://www.w3.org/2003/11/swrl#IndividualPropertyAtom> ;
+                                                                                                   <http://www.w3.org/2003/11/swrl#propertyPredicate> <http://www.metacontrol.org/tomasys#isQAtype> ;
+                                                                                                   <http://www.w3.org/2003/11/swrl#argument1> <http://www.metacontrol.org/qa> ;
+                                                                                                   <http://www.w3.org/2003/11/swrl#argument2> <http://www.metacontrol.org/navigation#qa_accuracy>
+                                                                                                 ] ;
+                                                                                       rdf:rest [ rdf:type <http://www.w3.org/2003/11/swrl#AtomList> ;
+                                                                                                  rdf:first [ rdf:type <http://www.w3.org/2003/11/swrl#DatavaluedPropertyAtom> ;
+                                                                                                              <http://www.w3.org/2003/11/swrl#propertyPredicate> <http://www.metacontrol.org/tomasys#qa_has_value> ;
+                                                                                                              <http://www.w3.org/2003/11/swrl#argument1> <http://www.metacontrol.org/qa> ;
+                                                                                                              <http://www.w3.org/2003/11/swrl#argument2> <http://www.metacontrol.org/qav>
+                                                                                                            ] ;
+                                                                                                  rdf:rest rdf:nil
+                                                                                                ]
+                                                                                     ]
+                                                                          ]
+                                                               ]
+                                                    ]
+                                         ] ;
+   <http://www.w3.org/2003/11/swrl#head> [ rdf:type <http://www.w3.org/2003/11/swrl#AtomList> ;
+                                           rdf:first [ rdf:type <http://www.w3.org/2003/11/swrl#DatavaluedPropertyAtom> ;
+                                                       <http://www.w3.org/2003/11/swrl#propertyPredicate> <http://www.metacontrol.org/tomasys#fd_utility> ;
+                                                       <http://www.w3.org/2003/11/swrl#argument1> <http://www.metacontrol.org/fd> ;
+                                                       <http://www.w3.org/2003/11/swrl#argument2> <http://www.metacontrol.org/qav>
+                                                     ] ;
+                                           rdf:rest rdf:nil
+                                         ]
+ ] .
+
+[ <http://swrl.stanford.edu/ontologies/3.3/swrla.owl#isRuleEnabled> "true"^^xsd:boolean ;
+   rdfs:comment ""^^xsd:string ;
+   rdfs:label "fd_aruco environment_light constraint"^^xsd:string ;
+   rdf:type <http://www.w3.org/2003/11/swrl#Imp> ;
+   <http://www.w3.org/2003/11/swrl#body> [ rdf:type <http://www.w3.org/2003/11/swrl#AtomList> ;
+                                           rdf:first [ rdf:type <http://www.w3.org/2003/11/swrl#ClassAtom> ;
+                                                       <http://www.w3.org/2003/11/swrl#classPredicate> <http://www.metacontrol.org/tomasys#FunctionDesign> ;
+                                                       <http://www.w3.org/2003/11/swrl#argument1> <http://www.metacontrol.org/navigation#fd1>
+                                                     ] ;
+                                           rdf:rest [ rdf:type <http://www.w3.org/2003/11/swrl#AtomList> ;
+                                                      rdf:first [ rdf:type <http://www.w3.org/2003/11/swrl#SameIndividualAtom> ;
+                                                                  <http://www.w3.org/2003/11/swrl#argument1> <http://www.metacontrol.org/navigation#fd1> ;
+                                                                  <http://www.w3.org/2003/11/swrl#argument2> <http://www.metacontrol.org/navigation#fd_aruco>
+                                                                ] ;
+                                                      rdf:rest [ rdf:type <http://www.w3.org/2003/11/swrl#AtomList> ;
+                                                                 rdf:first [ rdf:type <http://www.w3.org/2003/11/swrl#ClassAtom> ;
+                                                                             <http://www.w3.org/2003/11/swrl#classPredicate> <http://www.metacontrol.org/tomasys#QAvalue> ;
+                                                                             <http://www.w3.org/2003/11/swrl#argument1> <http://www.metacontrol.org/navigation#mqa>
+                                                                           ] ;
+                                                                 rdf:rest [ rdf:type <http://www.w3.org/2003/11/swrl#AtomList> ;
+                                                                            rdf:first [ rdf:type <http://www.w3.org/2003/11/swrl#SameIndividualAtom> ;
+                                                                                        <http://www.w3.org/2003/11/swrl#argument1> <http://www.metacontrol.org/navigation#mqa> ;
+                                                                                        <http://www.w3.org/2003/11/swrl#argument2> <http://www.metacontrol.org/navigation#obs_environment_light>
+                                                                                      ] ;
+                                                                            rdf:rest [ rdf:type <http://www.w3.org/2003/11/swrl#AtomList> ;
+                                                                                       rdf:first [ rdf:type <http://www.w3.org/2003/11/swrl#DatavaluedPropertyAtom> ;
+                                                                                                   <http://www.w3.org/2003/11/swrl#propertyPredicate> <http://www.metacontrol.org/tomasys#qa_has_value> ;
+                                                                                                   <http://www.w3.org/2003/11/swrl#argument1> <http://www.metacontrol.org/navigation#mqa> ;
+                                                                                                   <http://www.w3.org/2003/11/swrl#argument2> <http://www.metacontrol.org/navigation#mqav>
+                                                                                                 ] ;
+                                                                                       rdf:rest [ rdf:type <http://www.w3.org/2003/11/swrl#AtomList> ;
+                                                                                                  rdf:first [ rdf:type <http://www.w3.org/2003/11/swrl#IndividualPropertyAtom> ;
+                                                                                                              <http://www.w3.org/2003/11/swrl#propertyPredicate> <http://www.metacontrol.org/tomasys#isQAtype> ;
+                                                                                                              <http://www.w3.org/2003/11/swrl#argument1> <http://www.metacontrol.org/navigation#mqa> ;
+                                                                                                              <http://www.w3.org/2003/11/swrl#argument2> <http://www.metacontrol.org/navigation#qa_environment_light>
+                                                                                                            ] ;
+                                                                                                  rdf:rest [ rdf:type <http://www.w3.org/2003/11/swrl#AtomList> ;
+                                                                                                             rdf:first [ rdf:type <http://www.w3.org/2003/11/swrl#BuiltinAtom> ;
+                                                                                                                         <http://www.w3.org/2003/11/swrl#builtin> <http://www.w3.org/2003/11/swrlb#lessThan> ;
+                                                                                                                         <http://www.w3.org/2003/11/swrl#arguments> [ rdf:type rdf:List ;
+                                                                                                                                                                      rdf:first <http://www.metacontrol.org/navigation#mqav> ;
+                                                                                                                                                                      rdf:rest [ rdf:type rdf:List ;
+                                                                                                                                                                                 rdf:first 0.9 ;
+                                                                                                                                                                                 rdf:rest rdf:nil
+                                                                                                                                                                               ]
+                                                                                                                                                                    ]
+                                                                                                                       ] ;
+                                                                                                             rdf:rest rdf:nil
+                                                                                                           ]
+                                                                                                ]
+                                                                                     ]
+                                                                          ]
+                                                               ]
+                                                    ]
+                                         ] ;
+   <http://www.w3.org/2003/11/swrl#head> [ rdf:type <http://www.w3.org/2003/11/swrl#AtomList> ;
+                                           rdf:first [ rdf:type <http://www.w3.org/2003/11/swrl#DatavaluedPropertyAtom> ;
+                                                       <http://www.w3.org/2003/11/swrl#propertyPredicate> <http://www.metacontrol.org/tomasys#fd_realisability> ;
+                                                       <http://www.w3.org/2003/11/swrl#argument1> <http://www.metacontrol.org/navigation#fd1> ;
+                                                       <http://www.w3.org/2003/11/swrl#argument2> "false"^^xsd:boolean
+                                                     ] ;
+                                           rdf:rest rdf:nil
+                                         ]
+ ] .
+
+###  Generated by the OWL API (version 4.5.9.2019-02-01T07:24:44Z) https://github.com/owlcs/owlapi
