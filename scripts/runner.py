@@ -9,6 +9,14 @@ from typing import Tuple
 from map_generator import MapGenerator
 from prism_model_generator import PrismModelgenerator
 
+def retry_on_failure(func):
+    def wrapper(*args, **kwargs):
+        try:
+            return func(*args, **kwargs)
+        except subprocess.CalledProcessError:
+            return func(*args, **kwargs)
+    return wrapper
+
 class Runner:
     def __init__(self, map_generator_class=MapGenerator, result_folder="results"):
         self.map_generator = map_generator_class()
@@ -46,6 +54,20 @@ class Runner:
             result_file.write('mean, standard deviation\n')
             result_file.write(f'{mean}, {std_dev}')
         print(f'Mean {mean} and Std dev: {std_dev}')
+    
+    def generate_owl_to_pddl_command(self, domain_output, problem_input, problem_output, owl_path='owl/navigation_with_imports.owl'):
+        return [
+            "OWLToPDDL.sh",
+            f"--owl={owl_path}",
+            "--tBox",
+            "--inDomain=pddl/domain_sas.pddl",
+            f"--outDomain={domain_output}",
+            "--aBox",
+            f"--inProblem={problem_input}",
+            f"--outProblem={problem_output}",
+            "--replace-output",
+            "--add-num-comparisons"
+        ]
 
     def _run_subprocess(self, command: list[str]) -> subprocess.CompletedProcess:
         try:
@@ -78,21 +100,13 @@ class GridMapRunner(Runner):
         self.experiment_header = 'nodes'
     
     def run_all_cases(self, folder_name, n_runs):
-        
-        execution_times = []
-
-        for n_nodes in range(
-            self.min_nodes,
-            self.max_nodes +
-            self.nodes_interval,
-            self.nodes_interval):
-            for n in range(n_runs):
-                n_nodes_resulting, elapsed_time = self.execute_case(
-                    folder_name, n, n_nodes)
-                print(f"Nodes: {n_nodes_resulting} Execution Time: {elapsed_time:.6f} seconds")
-                execution_times.append((n_nodes_resulting, elapsed_time))
-        return execution_times
+        return [
+            self.execute_case(folder_name, n, n_nodes)
+            for n_nodes in range(self.min_nodes, self.max_nodes + self.nodes_interval, self.nodes_interval)
+            for n in range(n_runs)
+        ]
     
+    @retry_on_failure
     def execute_case(self, 
         folder_name,
         run_n,
@@ -126,27 +140,13 @@ class GridMapRunner(Runner):
         problem_input = map_folder / 'problem.pddl'
         problem_output = map_folder / 'problem_created.pddl'
 
-        owl_to_pddl_command = [
-            "OWLToPDDL.sh",
-            "--owl=owl/navigation.owl",
-            "--tBox",
-            "--inDomain=pddl/domain_sas.pddl",
-            f"--outDomain={domain_output}",
-            "--aBox",
-            f"--inProblem={problem_input}",
-            f"--outProblem={problem_output}",
-            "--replace-output",
-            "--add-num-comparisons"
-        ]
+        owl_to_pddl_command = self.generate_owl_to_pddl_command(
+            domain_output, 
+            problem_input, 
+            problem_output, 
+            'owl/navigation_with_imports.owl')
 
-        try:
-            self._run_subprocess(owl_to_pddl_command)
-        except subprocess.CalledProcessError as e:
-            return self.execute_case(
-                map_folder,
-                folder_name,
-                run_n,
-                n_nodes)
+        self._run_subprocess(owl_to_pddl_command)
         
         command = [
             "fast-downward.py",
@@ -161,7 +161,9 @@ class GridMapRunner(Runner):
         self._run_subprocess(command)
         
         # Compute and print execution time
-        return (n_nodes_resulting ,time.perf_counter() - start_time)
+        elapsed_time = time.perf_counter() - start_time
+        print(f"Nodes: {n_nodes_resulting} Execution Time: {elapsed_time:.6f} seconds")
+        return (n_nodes_resulting , elapsed_time)
     
     def generate_save_plot(self, show=False):
         planning_time_array = np.array(
@@ -273,6 +275,7 @@ class CamaraMapPrismRunner(CamaraMapRunner):
         super().__init__(PrismModelgenerator, result_folder)
         self.map_generator.load_json(map_path)
 
+    @retry_on_failure
     def execute_case(self, map_folder, init, goal):
         prism_filename = map_folder / f'l{init}_l{goal}.prism'
         nav_path = self.map_generator.find_shortest_path(from_node=init, to_node=goal)
@@ -301,6 +304,7 @@ class CamaraMapPDDLRunner(CamaraMapRunner):
         super().__init__(PrismModelgenerator, result_folder)
         self.map_generator.load_and_discretize_json(map_path)
 
+    @retry_on_failure
     def execute_case(self, map_folder, init, goal):
         problem_filename = map_folder / 'problem.pddl'
         self.map_generator.generate_domain_problem_files(save_problem=True, problem_filename=problem_filename, init_goal=(init, goal))
@@ -309,18 +313,11 @@ class CamaraMapPDDLRunner(CamaraMapRunner):
         domain_output = map_folder / 'domain_created.pddl'
         problem_input = map_folder / 'problem.pddl'
         problem_output = map_folder / 'problem_created.pddl'
-        owl_to_pddl_command = [
-            "OWLToPDDL.sh",
-            "--owl=owl/navigation_with_imports.owl",
-            "--tBox",
-            "--inDomain=pddl/domain_sas.pddl",
-            f"--outDomain={domain_output}",
-            "--aBox",
-            f"--inProblem={problem_input}",
-            f"--outProblem={problem_output}",
-            "--replace-output",
-            "--add-num-comparisons"
-        ]
+        owl_to_pddl_command = self.generate_owl_to_pddl_command(
+            domain_output, 
+            problem_input, 
+            problem_output, 
+            'owl/navigation_with_imports.owl')
         
         try:
             self._run_subprocess(owl_to_pddl_command)
@@ -378,28 +375,30 @@ def box_plot(y1, y2, folder, labels=("Method A", "Method B"), title="Comparison 
         plt.show()
 
 if __name__ == '__main__':
+    n_runs = 10
+    
     date = datetime.now().strftime("%d-%b-%Y-%H-%M-%S")
     result_folder = Path("results/grid_map/", date) 
     grid_map_experiment = GridMapRunner(
         result_folder=result_folder,
         min_nodes = 10,
-        max_nodes = 1000,
+        max_nodes = 30,
         nodes_interval = 10,
         nodes_skip = 0.1,
         unconnected_amount = 0.15, 
         unsafe_amount = 0.25,
         dark_amount = 0.25)
-    grid_map_experiment.run_experiment(n_runs=10)
+    grid_map_experiment.run_experiment(n_runs=n_runs)
     grid_map_experiment.generate_save_plot(show=False)
 
     date = datetime.now().strftime("%d-%b-%Y-%H-%M-%S")
     result_folder = Path("results/map_camara_2020_paper/", date) 
     
     experiment = CamaraMapPrismRunner(result_folder=result_folder / 'prism')  # You can modify n_runs if needed
-    experiment.run_experiment(n_runs=10)
+    experiment.run_experiment(n_runs=n_runs)
 
     experiment_pddl = CamaraMapPDDLRunner(result_folder=result_folder / 'pddl')  # You can modify n_runs if needed
-    experiment_pddl.run_experiment(n_runs=10)
+    experiment_pddl.run_experiment(n_runs=n_runs)
 
     box_plot(
         experiment.get_execution_times(), 
