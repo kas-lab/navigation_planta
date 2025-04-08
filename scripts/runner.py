@@ -451,7 +451,7 @@ if __name__ == '__main__':
     grid_map_experiment = GridMapRunner(
         result_folder=result_folder,
         min_nodes=10,
-        max_nodes=30,
+        max_nodes=1000,
         nodes_interval=10,
         nodes_skip=0.1,
         unconnected_amount=0.15,
