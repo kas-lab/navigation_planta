@@ -258,6 +258,7 @@ class GridMapRunner(Runner):
         # Labels and title
         ax.set_xlabel("Number of Nodes")
         ax.set_ylabel("Mean Elapsed Time (seconds)")
+        ax.set_ylim(bottom=0)
         ax.set_title("Average Planning Execution Time with Std Dev")
         ax.legend()
         ax.grid(True)
