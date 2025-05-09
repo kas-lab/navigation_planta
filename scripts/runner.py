@@ -2,8 +2,11 @@ from pathlib import Path
 from datetime import datetime
 import time
 import subprocess
+import psutil
 import numpy as np
 import matplotlib.pyplot as plt
+from matplotlib.patches import Patch
+from matplotlib.lines import Line2D
 from typing import Tuple
 
 from map_generator import MapGenerator
@@ -40,7 +43,7 @@ class Runner:
 
     def run_all_cases(self, n_runs) -> list[Tuple[str, str]]:
         print('You need to overwrite the run_all_cases method!!!!')
-        return [('', '')]
+        return [('', '', '')]
 
     def run_experiment(self, n_runs=1):
         """Runs the full set of experiments and saves results."""
@@ -52,21 +55,22 @@ class Runner:
         planning_time_csv = folder_name / 'planning_times.csv'
         planning_time_array = np.array(
             self.execution_times, dtype=[
-                (self.experiment_header, "U15"), ("time", "f8")])
+                (self.experiment_header, "U15"), ("time", "f8"), ("peak_memory", "f8")])
         np.savetxt(
             planning_time_csv,
             planning_time_array,
             delimiter=",",
-            header=f"{self.experiment_header},time",
+            header=f"{self.experiment_header},time, peak_memory",
             comments="",
-            fmt="%s,%.18e")
+            fmt="%s,%.18e,%f")
 
         mean = np.mean(planning_time_array["time"])
         std_dev = np.std(planning_time_array["time"])
+        max_peak_memory = np.max(planning_time_array["peak_memory"])
         with open(folder_name / 'results', 'w') as result_file:
-            result_file.write('mean, standard deviation\n')
-            result_file.write(f'{mean}, {std_dev}')
-        print(f'Mean {mean} and Std dev: {std_dev}')
+            result_file.write('mean, standard deviation, max_peak_memory\n')
+            result_file.write(f'{mean}, {std_dev}, {max_peak_memory}')
+        print(f'Mean {mean}, Std dev: {std_dev}, and Max Peak memory: {max_peak_memory}')
 
     def generate_owl_to_pddl_command(
             self,
@@ -102,6 +106,39 @@ class Runner:
             print(f"[ERROR] Command failed: {e.cmd}")
             print(e.stderr)
             raise
+
+    def _run_subprocess_with_memory(self, command: list[str]) -> int:
+        """
+        Runs the given command as a subprocess and monitors its peak RSS memory usage (in bytes).
+        
+        Returns:
+            - maximum resident set size (RSS) in bytes
+        """
+        process = subprocess.Popen(
+            command,
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+            text=True
+        )
+
+        try:
+            proc = psutil.Process(process.pid)
+        except psutil.NoSuchProcess:
+            raise RuntimeError("Failed to monitor process; it exited too quickly.")
+
+        max_rss = 0
+        while process.poll() is None:
+            try:
+                mem_info = proc.memory_info()
+                max_rss = max(max_rss, mem_info.rss)
+            except psutil.NoSuchProcess:
+                break
+            time.sleep(0.05)  # Sampling interval
+
+        if process.returncode != 0:
+            print(f"[ERROR] Command failed: {' '.join(command)}")
+
+        return max_rss / (1024 * 1024)  # Convert bytes to MB
 
 
 class GridMapRunner(Runner):
@@ -189,18 +226,19 @@ class GridMapRunner(Runner):
         # Start high-precision timer
         start_time = time.perf_counter()
 
-        self._run_subprocess(command)
+        # self._run_subprocess(command)
+        peak_memory = self._run_subprocess_with_memory(command)
 
         # Compute and print execution time
         elapsed_time = time.perf_counter() - start_time
         print(
-            f"Nodes: {n_nodes_resulting} Execution Time: {elapsed_time:.6f} seconds")
-        return (n_nodes_resulting, elapsed_time)
+            f"Nodes: {n_nodes_resulting} Execution Time: {elapsed_time:.6f} seconds Peak memory (MB): {peak_memory}")
+        return (n_nodes_resulting, elapsed_time, peak_memory)
 
     def generate_save_plot(self, show=False):
         planning_time_array = np.array(
             self.execution_times, dtype=[
-                ("nodes", "i4"), ("time", "f8")])
+                ("nodes", "i4"), ("time", "f8"), ("peak_memory", "f8")])
         unique_nodes, indices = np.unique(
             planning_time_array["nodes"], return_inverse=True)
         mean_times = np.bincount(
@@ -293,9 +331,10 @@ class CamaraMapRunner(Runner):
         map_folder = folder_name / map_folder_name
         map_folder.mkdir(parents=True, exist_ok=True)
 
-        elapsed_time = self.execute_case(map_folder, init, goal)
+        elapsed_time, peak_memory = self.execute_case(map_folder, init, goal)
         print(f"Execution Time: {elapsed_time:.6f} seconds")
-        return (f'wp{init}_wp{goal}', elapsed_time)
+        print(f"Peak memory (MB): {peak_memory}")
+        return (f'wp{init}_wp{goal}', elapsed_time, peak_memory)
 
     def run_all_cases(self, folder_name, n_runs):
         execution_times = []
@@ -303,13 +342,16 @@ class CamaraMapRunner(Runner):
             for goal in range(1, 59):
                 if init != goal and init not in self.unreachable_nodes and goal not in self.unreachable_nodes:
                     for n in range(n_runs):
-                        init_goal, elapsed_time = self.run_case_wrapper(
+                        init_goal, elapsed_time, peak_memory = self.run_case_wrapper(
                             folder_name, n, init, goal)
-                        execution_times.append((init_goal, elapsed_time))
+                        execution_times.append((init_goal, elapsed_time, peak_memory))
         return execution_times
 
     def get_execution_times(self):
         return [time[1] for time in self.execution_times]
+    
+    def get_peak_memories(self):
+        return [t[2] for t in self.execution_times]
 
 
 class CamaraMapPrismRunner(CamaraMapRunner):
@@ -332,9 +374,9 @@ class CamaraMapPrismRunner(CamaraMapRunner):
             "prism",
             str(prism_filename),
             "-javamaxmem",
-            "16g",
+            "32g",
             "-cuddmaxmem",
-            "16g",
+            "32g",
             "-pf",
             'R{"energy"}max=? [ F stop ]',
             "-exportstrat",
@@ -344,9 +386,10 @@ class CamaraMapPrismRunner(CamaraMapRunner):
 
         # Measure execution time
         start_time = time.perf_counter()
-        self._run_subprocess(command)
+        # self._run_subprocess(command)
+        peak_memory = self._run_subprocess_with_memory(command)
 
-        return time.perf_counter() - start_time
+        return time.perf_counter() - start_time, peak_memory
 
 
 class CamaraMapPDDLRunner(CamaraMapRunner):
@@ -389,10 +432,11 @@ class CamaraMapPDDLRunner(CamaraMapRunner):
         # Start high-precision timer
         start_time = time.perf_counter()
 
-        self._run_subprocess(command)
+        # self._run_subprocess(command)
+        peak_memory = self._run_subprocess_with_memory(command)
 
         # Compute and print execution time
-        return time.perf_counter() - start_time
+        return time.perf_counter() - start_time, peak_memory
 
 
 def box_plot(
@@ -402,39 +446,44 @@ def box_plot(
         labels=(
             "Method A",
             "Method B"),
-    title="Comparison of Execution Times",
+        file_name="box_plot.png",
+        title="Comparison of Execution Times",
+        ylabel="Execution Time (s)",
         show=True):
     data = [y1, y2]
-    means = [np.mean(d) for d in data]
-    stds = [np.std(d) for d in data]
 
     fig, ax = plt.subplots(figsize=(8, 5))
 
     # Create box plot
-    box = ax.boxplot(data, patch_artist=True, showmeans=True, labels=labels)
-
-    # Optional: overlay mean ± std deviation markers
-    x_positions = np.arange(1, len(data) + 1)
-    ax.errorbar(
-        x_positions,
-        means,
-        yerr=stds,
-        fmt='o',
-        color='red',
-        label='Mean ± Std Dev'
+    ax.boxplot(data, 
+        patch_artist=True, 
+        showmeans=True, 
+        labels=labels,
+        meanprops=dict(marker='o', markerfacecolor='red', markeredgecolor='black'),
+        boxprops=dict(facecolor='lightblue', color='black'),
+        medianprops=dict(color='orange'),
+        whiskerprops=dict(color='black')
     )
 
+    legend_elements = [
+        Line2D([0], [0], color='black', lw=1, label='Whiskers (±1.5 IQR)'),
+        Patch(facecolor='lightblue', edgecolor='black', label='Interquartile Range (Q1–Q3)'),
+        Line2D([0], [0], color='orange', lw=2, label='Median'),
+        Line2D([0], [0], marker='o', color='w', label='Mean',
+            markerfacecolor='red', markeredgecolor='black', markersize=8)
+    ]
+    ax.legend(handles=legend_elements, loc='upper right')
+
     # Axis labels and title
-    ax.set_ylabel("Execution Time (s)")
+    ax.set_ylabel(ylabel)
     ax.set_title(title)
     ax.set_ylim(bottom=0)  # Start Y-axis at 0
-    ax.legend()
     ax.grid(True)
 
     plt.savefig(
         Path(
             folder,
-            'box_plot.png'),
+            file_name),
         format='png',
         dpi=300,
         bbox_inches='tight')
@@ -467,17 +516,27 @@ if __name__ == '__main__':
     experiment = CamaraMapPrismRunner(
         result_folder=result_folder /
         'prism')  # You can modify n_runs if needed
-    experiment.run_experiment(n_runs=n_runs)
+    experiment.run_experiment(n_runs=1)
 
     experiment_pddl = CamaraMapPDDLRunner(
         result_folder=result_folder /
         'pddl')  # You can modify n_runs if needed
-    experiment_pddl.run_experiment(n_runs=n_runs)
+    experiment_pddl.run_experiment(n_runs=1)
 
     box_plot(
         experiment.get_execution_times(),
         experiment_pddl.get_execution_times(),
         labels=("Cámara et al. (2020)", "PDDL-SAS"),
         title="Comparison of Execution Times",
+        show=False,
+        folder=result_folder)
+    
+    box_plot(
+        experiment.get_peak_memories(),
+        experiment_pddl.get_peak_memories(),
+        labels=("Cámara et al. (2020)", "PDDL-SAS"),
+        file_name="box_plot_memory.png",
+        title="Comparison of Peak Memory",
+        ylabel="Peak Memory (MB)",
         show=False,
         folder=result_folder)
