@@ -15,7 +15,7 @@ RUN apt update && apt install -y --no-install-recommends \
   unzip \
   && rm -rf /var/lib/apt/lists/*
 
-RUN pip install networkx numpy==1.26.4 matplotlib scipy unified-planning unified-planning[fast-downward]
+RUN pip install psutils networkx numpy==1.26.4 matplotlib scipy unified-planning unified-planning[fast-downward]
 
 ENV JAVA_HOME=/usr/lib/jvm/java-17-openjdk-amd64
 
