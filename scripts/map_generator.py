@@ -143,10 +143,52 @@ class MapGenerator:
             target=to_node,
             weight='weight')
 
-    def plot_graph(self, show_plot=False, save_file=False, filename="map.png"):
+    def plot_graph(self, show_plot=False, save_file=False, filename="map.png", legend=True, node_labels=True):
         fig, ax = plt.subplots(figsize=(8, 8))  # Create a figure and axis
+        ax.axis("off") # Turn off the axis
         pos_ = {n: pos['pos'] for n, pos in self.graph.nodes().items()}
-        nx.draw(self.graph, pos=pos_, with_labels=True, node_size=100, ax=ax)
+        # nx.draw(self.graph, pos=pos_, with_labels=node_labels, node_size=100, ax=ax)
+
+        nodes = list(self.graph.nodes)
+        first_node = nodes[0]
+        last_node = nodes[-1]
+
+        # Draw normal nodes
+        normal_nodes = [n for n in self.graph.nodes if n != first_node and n != last_node]
+        nx.draw_networkx_nodes(
+            self.graph, 
+            pos=pos_, 
+            nodelist=normal_nodes, 
+            node_color='lightgray', 
+            node_size=100, 
+            ax=ax)
+
+        # Draw first node
+        nx.draw_networkx_nodes(
+            self.graph, 
+            pos=pos_, 
+            nodelist=[first_node], 
+            node_color='#377eb8', 
+            node_size=150, 
+            ax=ax, 
+            label="Initial location")
+
+        # Draw last node
+        nx.draw_networkx_nodes(
+            self.graph, 
+            pos=pos_, 
+            nodelist=[last_node], 
+            node_color='#e41a1c', 
+            node_size=150, 
+            ax=ax, 
+            label="Goal location")
+
+        nx.draw_networkx_labels(
+            self.graph, 
+            pos=pos_, 
+            labels={ first_node: "I", last_node: "G" }, 
+            font_size=10, 
+            ax=ax)
 
         dark_corridors = [(u, v) for u, v in self.graph.edges if self.graph[u]
                           [v]['dark'] and not self.graph[u][v]['unsafe']]
@@ -158,6 +200,19 @@ class MapGenerator:
             (u,
              v) for u,
             v in self.graph.edges if self.graph[u][v]['dark'] and self.graph[u][v]['unsafe']]
+        
+        normal_corridors = [
+            (u,
+             v) for u,
+            v in self.graph.edges if not self.graph[u][v]['dark'] and not self.graph[u][v]['unsafe']]
+
+        nx.draw_networkx_edges(
+            self.graph,
+            pos=pos_,
+            edgelist=normal_corridors,
+            edge_color='black',
+            width=1,
+            ax=ax)
 
         nx.draw_networkx_edges(
             self.graph,
@@ -192,16 +247,17 @@ class MapGenerator:
         unsafe_dark_handle = Line2D(
             [0], [0], color='r', lw=2, label='Unsafe and Dark Corridors')
 
-        # Add legend to the plot
-        ax.legend(
-            handles=[
-                dark_handle,
-                unsafe_handle,
-                unsafe_dark_handle],
-            loc='best')
+        if legend:
+            # Add legend to the plot
+            ax.legend(
+                handles=[
+                    dark_handle,
+                    unsafe_handle,
+                    unsafe_dark_handle],
+                loc='best')
 
         if save_file:
-            plt.savefig(filename, format='png', dpi=300, bbox_inches='tight')
+            plt.savefig(filename, format='png', dpi=300, bbox_inches='tight', pad_inches=0)
 
         if show_plot:
             plt.show(block=True)  # Block only this figure
