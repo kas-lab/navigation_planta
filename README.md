@@ -1,6 +1,6 @@
-# navigation_pddl_tomasys
+# Navigation PLANTA
 
-PDDL-TOMASys ontology for a navigation scenario
+This repository applies PLANTA to a robot self-adaptation scenario based on the paper ["Software architecture and task plan co-adaptation for mobile service robots"](https://dl-acm-org.tudelft.idm.oclc.org/doi/abs/10.1145/3387939.3391591), and compares it with the solution proposed in that paper.
 
 ## Docker
 
