@@ -1,5 +1,9 @@
 # Navigation PLANTA
 
+[![GitHub release (latest by date)](https://img.shields.io/github/v/release/kas-lab/navigation_planta)](https://github.com/kas-lab/navigation_planta/releases)
+[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.15855793.svg)](https://doi.org/10.5281/zenodo.15855793)
+
+
 This repository applies PLANTA to a robot self-adaptation scenario based on the paper ["Software architecture and task plan co-adaptation for mobile service robots"](https://dl-acm-org.tudelft.idm.oclc.org/doi/abs/10.1145/3387939.3391591), and compares it with the solution proposed in that paper.
 
 This repo contains the experimental setup used in the paper "Plan your Self-Adaptation! – Efficient Task and Architecture Co-adaptation Planning for Robots".
