@@ -2,19 +2,37 @@
 
 This repository applies PLANTA to a robot self-adaptation scenario based on the paper ["Software architecture and task plan co-adaptation for mobile service robots"](https://dl-acm-org.tudelft.idm.oclc.org/doi/abs/10.1145/3387939.3391591), and compares it with the solution proposed in that paper.
 
+This repo contains the experimental setup used in the paper "Plan your Self-Adaptation! – Efficient Task and Architecture Co-adaptation Planning for Robots".
+
+The remainder of this README explains how to reproduce the experiments.
+
 ## Docker
 
-Build:
-```bash
-docker build -t pddl_tomasys .
+The first step is to get the docker image used for the experiments.
+
+You can either build it locally:
+```Bash
+docker build -t navigation_planta .
 ```
 
-Run:
-```bash
-docker run --rm -it -v $HOME/navigation_pddl_tomasys_ws/src/navigation_pddl_tomasys/results:/navigation_pddl_tomasys/results -v /etc/localtime:/etc/localtime:ro pddl_tomasys:latest python scripts/runner.py
+Or you can download it with:
+```Bash
+docker pull ghcr.io/kas-lab/navigation_planta:main
 ```
 
-## Install
+Run with locally built image:
+```bash
+docker run --rm -it -v $HOME/navigation_planta_ws/src/navigation_planta/results:/navigation_pddl_tomasys/results -v /etc/localtime:/etc/localtime:ro navigation_planta:latest python scripts/runner.py
+```
+
+Run with github image:
+```bash
+docker run --rm -it -v $HOME/navigation_planta_ws/src/navigation_planta/results:/navigation_pddl_tomasys/results -v /etc/localtime:/etc/localtime:ro ghcr.io/kas-lab/navigation_planta:main python scripts/runner.py
+```
+
+**Note:** If you want to change the directory where the results are going to be saved in the host machine, replace `HOME/navigation_planta_ws/src/navigation_planta/results` with the path of the directory where you want the results to be saved.
+
+## Manual installation
 
 Install deps:
 ```
@@ -35,7 +53,7 @@ Install fast-downward unified planning engine:
 pip install unified-planning[fast-downward]
 ```
 
-## Build
+Build:
 
 ```bash
 colcon build --symlink-install --packages-skip plansys2_downward_planner
@@ -58,7 +76,7 @@ export PATH=$HOME/navigation_pddl_tomasys_ws/src/owl_to_pddl:$PATH
 ```
 
 ```bash
-OWLToPDDL.sh --owl=owl/navigation.owl --tBox --inDomain=pddl/domain_sas.pddl --outDomain=pddl/domain_sas_created.pddl --aBox --inProblem=pddl/problem.pddl --outProblem=pddl/problem_created.pddl --replace-output --add-num-comparisons
+OWLToPDDL.sh --owl=owl/navigation.owl --tBox --inDomain=pddl/domain_sas.pddl --outDomain=pddl/domain_sas_created.pddl --aBox --inProblem=pddl/problem.pddl --outProblem=pddl/problem_created.pddl --replace-output --add-num-comparisons -Xmxn16g
 ```
 
 ROS version:
@@ -137,6 +155,10 @@ time prism navigate_map_one_path.prism -pf 'R{"time"}min=? [ F stop ]' -exportst
 
 ```
 time prism test.prism -pf 'R{"energy"}min=? [ F stop ]' -exportstrat stdout -const INITIAL_BATTERY=32560,INITIAL_LOCATION=0,TARGET_LOCATION=7,INITIAL_CONFIGURATION=1
+```
+
+```
+time prism l52_l24.prism -javamaxmem 16g -cuddmaxmem 16g -pf 'R{"energy"}max=? [ F stop ]' -exportstrat stdout -const INITIAL_BATTERY=32560,INITIAL_LOCATION=0,TARGET_LOCATION=16,INITIAL_CONFIGURATION=1
 ```
 
 ```Bash
