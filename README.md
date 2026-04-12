@@ -24,12 +24,27 @@ Or you can download it with:
 docker pull ghcr.io/kas-lab/navigation_planta:main
 ```
 
-Run with locally built image:
+Run the full experiment suite with the locally built image:
 ```bash
 docker run --rm -it -v $HOME/navigation_planta_ws/src/navigation_planta/results:/navigation_pddl_tomasys/results -v /etc/localtime:/etc/localtime:ro navigation_planta:latest python scripts/runner.py
 ```
 
-Run with github image:
+Run only the grid-map scalability experiment:
+```bash
+docker run --rm -it -v $HOME/navigation_planta_ws/src/navigation_planta/results:/navigation_pddl_tomasys/results -v /etc/localtime:/etc/localtime:ro navigation_planta:latest python scripts/run_grid_map_scenario.py
+```
+
+Open a shell inside the container image:
+```bash
+docker run --rm -it -v /etc/localtime:/etc/localtime:ro navigation_planta:latest bash
+```
+
+Open a shell with the local repository mounted inside the container:
+```bash
+docker run --rm -it --name navigation_planta -v $PWD/src/navigation_planta:/navigation_pddl_tomasys/ -v /etc/localtime:/etc/localtime:ro navigation_planta:latest bash
+```
+
+Run the full experiment suite with the GitHub image:
 ```bash
 docker run --rm -it -v $HOME/navigation_planta_ws/src/navigation_planta/results:/navigation_pddl_tomasys/results -v /etc/localtime:/etc/localtime:ro ghcr.io/kas-lab/navigation_planta:main python scripts/runner.py
 ```
@@ -38,8 +53,11 @@ docker run --rm -it -v $HOME/navigation_planta_ws/src/navigation_planta/results:
 
 ## Manual installation
 
-Install deps:
+Docker is the recommended path for full reproducibility. The manual setup below covers the Python package dependencies, but the full experiment suite also needs Java 17, PRISM, Fast Downward, and the OWL-to-PDDL toolchain.
+
+Install Python dependencies:
 ```
+pip install psutil
 pip install networkx
 pip install numpy==1.26.4
 pip install matplotlib
@@ -63,12 +81,30 @@ Build:
 colcon build --symlink-install --packages-skip plansys2_downward_planner
 ```
 
-## Generate random maps and test with fast-downard
+## Run a standalone map example
 
-In the main folder
+In the repository root:
 ```bash
 python scripts/map_generator.py
-ros2 run downward_ros fast-downward.py --alias lama-first pddl/domain.pddl pddl/problem.pddl
+```
+
+This standalone script:
+
+- generates a connected grid map
+- writes `problem.pddl` in the current working directory
+- solves one example internally through Unified Planning
+- shows the generated plot
+
+To reproduce the grid-map experiment from the paper, use:
+
+```bash
+python scripts/run_grid_map_scenario.py
+```
+
+To run the full experiment suite, including the Cámara-style PRISM and PDDL comparisons, use:
+
+```bash
+python scripts/runner.py
 ```
 
 ## Convert OWL ontology to PDDL
@@ -79,14 +115,17 @@ Normal version:
 export PATH=$HOME/navigation_pddl_tomasys_ws/src/owl_to_pddl:$PATH
 ```
 
+Example matching the full runner path:
 ```bash
-OWLToPDDL.sh --owl=owl/navigation.owl --tBox --inDomain=pddl/domain_sas.pddl --outDomain=pddl/domain_sas_created.pddl --aBox --inProblem=pddl/problem.pddl --outProblem=pddl/problem_created.pddl --replace-output --add-num-comparisons -Xmxn16g
+OWLToPDDL.sh --owl=owl/navigation_with_imports.owl --tBox --inDomain=pddl/domain_sas.pddl --outDomain=pddl/domain_sas_created.pddl --aBox --inProblem=problem.pddl --outProblem=problem_created.pddl --replace-output --add-num-comparisons
 ```
 
 ROS version:
 ```bash
 ros2 run owl_to_pddl owl_to_pddl.py --ros-args -p owl_file:=owl/navigation.owl -p in_domain_file:=pddl/domain_sas.pddl -p out_domain_file:=pddl/domain_sas_created.pddl -p in_problem_file:=pddl/problem.pddl -p out_problem_file:=pddl/problem_created.pddl
 ```
+
+The repository contains both `owl/navigation.owl` and `owl/navigation_with_imports.owl`. The full runner currently uses `navigation_with_imports.owl`, while `scripts/run_grid_map_scenario.py` still uses `navigation.owl`.
 
 ## Run fast-downward solver
 
@@ -103,6 +142,8 @@ ros2 run downward_ros fast-downward.py --alias lama-first pddl/domain_sas_create
 ```
 
 ## Example of results
+
+The exact values depend on the sampled map and the execution environment. The examples below are illustrative.
 
 Parameters:
 
@@ -175,14 +216,20 @@ docker run --rm -it -v $HOME/navigation_pddl_tomasys_ws/src/navigation_pddl_toma
 ```
 
 ```bash
-docker run --rm -it -v $HOME/navigation_pddl_tomasys_ws/src/navigation_pddl_tomasys/results:/navigation_pddl_tomasys/results  ghcr.io/rezenders/navigation_pddl_tomasys:main python scripts/run_camara_prism_scenario.py
+docker run --rm -it -v $HOME/navigation_planta_ws/src/navigation_planta/results:/navigation_pddl_tomasys/results navigation_planta:latest python scripts/run_camara_prism_scenario.py
+```
+
+```bash
+docker run --rm -it -v $HOME/navigation_planta_ws/src/navigation_planta/results:/navigation_pddl_tomasys/results ghcr.io/kas-lab/navigation_planta:main python scripts/run_camara_prism_scenario.py
 ```
 
 ## Run grid map evaluation
 
 ```bash
-docker run --rm -it -v $HOME/navigation_pddl_tomasys_ws/src/navigation_pddl_tomasys/results:/navigation_pddl_tomasys/results  ghcr.io/rezenders/navigation_pddl_tomasys:main python scripts/run_grid_map_scenario.py
+docker run --rm -it -v $HOME/navigation_planta_ws/src/navigation_planta/results:/navigation_pddl_tomasys/results ghcr.io/kas-lab/navigation_planta:main python scripts/run_grid_map_scenario.py
 ```
+
+`scripts/run_grid_map_scenario.py` reports planning time around the `fast-downward.py` call only. The total wall-clock runtime per case is larger because map generation, problem-file generation, plotting, and `OWLToPDDL.sh` happen before the timer starts.
 
 Map example:
 
