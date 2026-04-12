@@ -8,6 +8,7 @@ from scipy.spatial import Delaunay
 
 from unified_planning.shortcuts import *
 from unified_planning.io import PDDLWriter
+from unified_planning.io.pddl_writer import ConverterToPDDLString
 from unified_planning.engines import PlanGenerationResultStatus
 
 import re
@@ -51,60 +52,69 @@ class MapGenerator:
             self.graph.add_edge(u, v, weight=weight, dark=False, unsafe=False)
 
     def generate_grid_graph(self):
-        # Define grid dimensions with some flexibility
-        rows = int(np.ceil(np.sqrt(self.num_nodes)))  # Calculate rows
-        # Adjust columns based on rows
+        rows = int(np.ceil(np.sqrt(self.num_nodes)))
         cols = int(np.ceil(self.num_nodes / rows))
 
-        # Generate grid-like positions with increasing distance between nodes
-        positions = []
-        for i in range(rows):
-            for j in range(cols):
-                if len(positions) < self.num_nodes:
-                    # Node positions are spaced evenly
-                    # Adjust '10' for larger distances
-                    positions.append([j * 10, i * 10])
+        cells = []
+        for row in range(rows):
+            for col in range(cols):
+                if len(cells) < self.num_nodes:
+                    cells.append((row, col))
 
-        positions = np.array(positions)
+        target_nodes = max(1, self.num_nodes - int(self.num_nodes * self.nodes_skip))
+        self.num_node_resulting = target_nodes
+        valid_cells = set(cells)
 
-        # Randomly remove 10% of the nodes (skip 10% of the vertices)
-        num_nodes_to_skip = int(self.num_nodes * self.nodes_skip)
-        nodes_to_skip = random.sample(range(self.num_nodes), num_nodes_to_skip)
-        positions = [pos for idx, pos in enumerate(
-            positions) if idx not in nodes_to_skip]
+        def neighbors(cell):
+            row, col = cell
+            candidate_neighbors = (
+                (row - 1, col),
+                (row + 1, col),
+                (row, col - 1),
+                (row, col + 1),
+            )
+            return [neighbor for neighbor in candidate_neighbors if neighbor in valid_cells]
 
-        # Adjust the number of nodes after skipping
-        self.num_node_resulting = self.num_nodes - num_nodes_to_skip
+        start_cell = random.choice(cells)
+        kept_cells = {start_cell}
+        frontier = set(neighbors(start_cell))
 
-        # Construct graph with weighted edges
+        while len(kept_cells) < target_nodes:
+            next_cell = random.choice(tuple(frontier))
+            frontier.remove(next_cell)
+            kept_cells.add(next_cell)
+            for neighbor in neighbors(next_cell):
+                if neighbor not in kept_cells:
+                    frontier.add(neighbor)
+
+        ordered_cells = sorted(kept_cells)
+        cell_to_node_id = {cell: node_id for node_id, cell in enumerate(ordered_cells)}
+
         graph_ = nx.Graph()
-        for i, pos in enumerate(positions):
-            graph_.add_node(i, pos=pos)
+        for node_id, (row, col) in enumerate(ordered_cells):
+            graph_.add_node(node_id, pos=np.array([col * 10, row * 10]))
 
-        # Add edges between adjacent nodes (either horizontal or vertical)
-        edges = []
-        for i in range(self.num_node_resulting):
-            for j in range(i + 1, self.num_node_resulting):
-                pos_i = positions[i]
-                pos_j = positions[j]
-
-                # Check if nodes are adjacent horizontally or vertically
-                if (pos_i[0] == pos_j[0] and abs(pos_i[1] - pos_j[1]) == 10) or \
-                        (pos_i[1] == pos_j[1] and abs(pos_i[0] - pos_j[0]) == 10):
-                    # Calculate Euclidean distance as edge weight
-                    weight = np.linalg.norm(pos_i - pos_j)
+        for cell in ordered_cells:
+            for neighbor in neighbors(cell):
+                if neighbor in kept_cells and cell < neighbor:
                     graph_.add_edge(
-                        i, j, weight=weight, dark=False, unsafe=False)
-                    edges.append((i, j))
+                        cell_to_node_id[cell],
+                        cell_to_node_id[neighbor],
+                        weight=10.0,
+                        dark=False,
+                        unsafe=False)
 
-        # Remove 10% of the edges
-        total_edges = len(edges)
-        num_edges_to_remove = int(self.unconnected_amount * total_edges)
-        random.shuffle(edges)
+        spanning_tree = nx.dfs_tree(
+            graph_,
+            source=random.choice(list(graph_.nodes))).to_undirected()
+        removable_edges = [
+            edge for edge in graph_.edges if not spanning_tree.has_edge(*edge)]
+        num_edges_to_remove = min(
+            int(self.unconnected_amount * graph_.number_of_edges()),
+            len(removable_edges))
+        random.shuffle(removable_edges)
 
-        # Remove edges
-        edges_to_remove = edges[:num_edges_to_remove]
-        for u, v in edges_to_remove:
+        for u, v in removable_edges[:num_edges_to_remove]:
             graph_.remove_edge(u, v)
 
         return graph_
@@ -129,11 +139,7 @@ class MapGenerator:
         return graph
 
     def generate_connected_grid_map(self):
-        graph = self.generate_grid_graph()
-        # If not connected, generate a new graph
-        while not nx.is_connected(graph):
-            graph = self.generate_grid_graph()
-        self.graph = self.assign_dark_unsafe_corridors(graph)
+        self.graph = self.assign_dark_unsafe_corridors(self.generate_grid_graph())
 
     def find_shortest_path(self, from_node=0, to_node=0):
         # Find shortest path using Dijkstra (example: node 0 to node 10)
@@ -280,7 +286,7 @@ class MapGenerator:
         if save_domain is True:
             writer.write_domain(domain_filename)
         if save_problem is True:
-            writer.write_problem(problem_filename)
+            self.write_problem_fast(problem_filename)
 
         # problem file parsing fix
         with open(problem_filename, "r") as file:
@@ -295,6 +301,51 @@ class MapGenerator:
 
         with open(problem_filename, "w") as file:
             file.write(updated_content)
+
+    def write_problem_fast(self, problem_filename):
+        writer = PDDLWriter(self.problem)
+        converter = ConverterToPDDLString(
+            self.problem.environment,
+            writer._get_mangled_name)
+        problem_name = self.problem.name or "pddl"
+
+        with open(problem_filename, "w") as out:
+            out.write(f"(define (problem {problem_name}-problem)\n")
+            out.write(f" (:domain {problem_name}-domain)\n")
+            if len(self.problem.user_types) > 0:
+                out.write(" (:objects")
+                for user_type in self.problem.user_types:
+                    objects = [
+                        obj for obj in self.problem.all_objects
+                        if obj.type == user_type]
+                    if len(objects) > 0:
+                        out.write(
+                            f'\n   {" ".join(writer._get_mangled_name(obj) for obj in objects)} - {writer._get_mangled_name(user_type)}')
+                out.write("\n )\n")
+
+            out.write(" (:init")
+            explicit_initial_values = sorted(
+                self.problem.explicit_initial_values.items(),
+                key=lambda item: converter.convert(item[0]))
+            for fluent, value in explicit_initial_values:
+                if value.is_true():
+                    out.write("\n              ")
+                    out.write(f" {converter.convert(fluent)}")
+                elif not value.is_false():
+                    out.write("\n              ")
+                    out.write(
+                        f" (= {converter.convert(fluent)} {converter.convert(value)})")
+            out.write("\n )\n")
+
+            goals_str = []
+            for goal in (condition.simplify() for condition in self.problem.goals):
+                if goal.is_and():
+                    goals_str.extend(map(converter.convert, goal.args))
+                else:
+                    goals_str.append(converter.convert(goal))
+            goals_string = "\n           ".join(goals_str)
+            out.write(f" (:goal (and \n           {goals_string}\n        )\n )\n")
+            out.write(")\n")
 
     def generate_domain(self):
         self.waypoint_type = UserType('waypoint')
