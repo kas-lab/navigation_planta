@@ -10,7 +10,7 @@ def run(folder_name, run, init, goal):
     map_generator = MapGenerator()
     base_folder = Path("map_camara_2020_paper")
     map_generator.load_and_discretize_json(base_folder / "map-p2cp3.json")
-    
+
     map_folder_name = f'wp{init}_wp{goal}_{run}'
     map_folder = folder_name / map_folder_name
     if map_folder.is_dir() is False:
@@ -43,7 +43,7 @@ def run(folder_name, run, init, goal):
         "fast-downward.py",
         domain_output,
         problem_output,
-        "--search", "astar(blind())"
+        "--search", "astar(ff())"
     ], check=True)
 
     # Stop timer
@@ -71,7 +71,7 @@ def runner():
                 for n in range(n_runs):
                     init_goal, elapsed_time = run(folder_name, n, init, goal)
                     planning_time_list.append((init_goal, elapsed_time))
-    
+
     planning_time_csv = folder_name / 'planning_times.csv'
     planning_time_array = np.array(planning_time_list, dtype=[("init_goal", "U15"), ("time", "f8")])
     np.savetxt(planning_time_csv, planning_time_array, delimiter=",", header="init_goal,time", comments="", fmt="%s,%.18e")

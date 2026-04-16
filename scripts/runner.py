@@ -110,7 +110,7 @@ class Runner:
     def _run_subprocess_with_memory(self, command: list[str]) -> int:
         """
         Runs the given command as a subprocess and monitors its peak RSS memory usage (in bytes).
-        
+
         Returns:
             - maximum resident set size (RSS) in bytes
         """
@@ -220,7 +220,7 @@ class GridMapRunner(Runner):
             "fast-downward.py",
             domain_output,
             problem_output,
-            "--search", "astar(blind())"
+            "--search", "astar(ff())"
         ]
 
         # Start high-precision timer
@@ -349,7 +349,7 @@ class CamaraMapRunner(Runner):
 
     def get_execution_times(self):
         return [time[1] for time in self.execution_times]
-    
+
     def get_peak_memories(self):
         return [t[2] for t in self.execution_times]
 
@@ -426,7 +426,7 @@ class CamaraMapPDDLRunner(CamaraMapRunner):
             "fast-downward.py",
             domain_output,
             problem_output,
-            "--search", "astar(blind())"
+            "--search", "astar(ff())"
         ]
 
         # Start high-precision timer
@@ -455,9 +455,9 @@ def box_plot(
     fig, ax = plt.subplots(figsize=(8, 5))
 
     # Create box plot
-    ax.boxplot(data, 
-        patch_artist=True, 
-        showmeans=True, 
+    ax.boxplot(data,
+        patch_artist=True,
+        showmeans=True,
         labels=labels,
         meanprops=dict(marker='o', markerfacecolor='red', markeredgecolor='black'),
         boxprops=dict(facecolor='lightblue', color='black'),
@@ -530,7 +530,7 @@ if __name__ == '__main__':
         title="Comparison of Execution Times",
         show=False,
         folder=result_folder)
-    
+
     box_plot(
         experiment.get_peak_memories(),
         experiment_pddl.get_peak_memories(),

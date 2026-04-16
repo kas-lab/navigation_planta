@@ -15,8 +15,9 @@ This file is the repository policy. Stable repo facts that are useful across tas
 
 ## Repository Layout
 
-- `scripts/runner.py`: main experiment entrypoint; runs grid, PRISM, and PDDL comparison experiments
-- `scripts/run_grid_map_scenario.py`: grid-only experiment entrypoint
+- `scripts/runner.py`: **base class only** — not an entrypoint
+- `scripts/run_camara_scenario.py`: Camara map experiment entrypoint
+- `scripts/run_grid_map_scenario.py`: grid scalability experiment entrypoint
 - `scripts/map_generator.py`: random/grid map generation, plotting, and UP/PDDL problem generation
 - `scripts/prism_model_generator.py`: PRISM model generation for the Cámara-style comparison
 - `pddl/`: base domain files used by OWL-to-PDDL

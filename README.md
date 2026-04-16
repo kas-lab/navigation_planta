@@ -57,11 +57,7 @@ Docker is the recommended path for full reproducibility. The manual setup below 
 
 Install Python dependencies:
 ```
-pip install psutil
-pip install networkx
-pip install numpy==1.26.4
-pip install matplotlib
-pip install scipy
+pip install psutil networkx numpy==1.26.4 matplotlib scipy
 ```
 
 Install [Unified Planning](https://unified-planning.readthedocs.io/en/latest/getting_started/installation.html):
@@ -234,3 +230,11 @@ docker run --rm -it -v $HOME/navigation_planta_ws/src/navigation_planta/results:
 Map example:
 
 ![map example](image.png)
+
+## Fast-Downward heuristics
+
+--search 'astar(blind())'
+
+--search 'astar(ff())'
+
+--search 'astar(lmcount(lm_merged([lm_rhw(),lm_hm(m=1)])))'

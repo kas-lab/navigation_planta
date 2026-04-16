@@ -49,7 +49,7 @@ def run(folder_name, run, init, goal):
         "fast-downward.py",
         domain_output,
         problem_output,
-        "--search", "astar(blind())"
+        "--search", "astar(ff())"
     ], check=True)
 
     # Stop timer
