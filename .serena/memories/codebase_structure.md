@@ -1,0 +1,21 @@
+# Codebase structure
+
+- `scripts/map_generator.py`: core map-generation and PDDL serialization logic. Contains `MapGenerator` with graph creation, connected grid generation, plotting, Unified Planning model generation, and `write_problem_fast()`.
+- `scripts/runner.py`: reusable runner base classes and scenario-specific runner subclasses for grid and Cámara flows.
+- `scripts/run_grid_map_scenario.py`: main grid scalability entrypoint with adaptive vs no-adaptation modes and CLI flags.
+- `scripts/run_camara_scenario.py`: Cámara-style PDDL comparison entrypoint.
+- `scripts/run_camara_prism_scenario.py`: PRISM baseline entrypoint.
+- `scripts/run_all_experiments.py`: convenience orchestrator that runs the experiment scripts sequentially.
+- Additional scaling entrypoints in `scripts/`:
+  - `run_fd_scale_scenario.py`
+  - `run_corridor_type_scale_scenario.py`
+  - `run_mission_action_scale_scenario.py`
+  - `run_combined_scenario.py`
+  - `benchmark_search_strategies.py`
+- `pddl/`: hand-authored base domains and experiment inputs used by OWLToPDDL.
+- `owl/`: ontology inputs, including cumulative FD-scaling ontology variants.
+- `map_camara_2020_paper/`: map JSON and assets for the Cámara scenario.
+- `prism/`: PRISM-related artifacts.
+- `results/`: generated CSVs, plots, and experiment outputs.
+- `Dockerfile`: reproducible environment installing Python deps, PRISM, Fast Downward, and `dlToPlanning`.
+- `package.xml`, `CMakeLists.txt`, `src/`, `include/`: ROS2/C++ package skeleton metadata with minimal node code, not the main experiment implementation.
