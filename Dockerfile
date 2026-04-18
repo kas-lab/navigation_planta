@@ -31,7 +31,7 @@ RUN cd prism/prism && make && make test
 RUN ln -s /prism/prism/bin/prism /usr/local/bin/prism
 
 WORKDIR /
-RUN git clone https://github.com/aibasel/downward.git
+RUN git clone https://github.com/aibasel/downward.git -b release-24.06.1
 WORKDIR /downward
 RUN ./build.py
 ENV PATH=/downward:$PATH
