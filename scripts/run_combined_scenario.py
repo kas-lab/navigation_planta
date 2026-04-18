@@ -1,52 +1,39 @@
 #!/usr/bin/env python3
 
-# Copyright 2025 Gustavo Rezende Silva
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#     http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
-
-"""Experiment D — Combined stress test.
-
-Fixes domain at maximum complexity (N=15 FDs, K=4 corridor types, M=5 mission
-action types) and varies map size from 10 to 1000 nodes in steps of 10 — the
-same range as the baseline grid experiment.  Measures Fast Downward planning
-time (reported in paper) and OWLToPDDL wall-clock time (saved to CSV, not
-reported).
-
-Usage:
-    python scripts/run_combined_scenario.py [--runs N_RUNS]
-"""
+"""Experiment D — Combined stress test with optional no-adaptation mode."""
 
 import argparse
 import random
+import subprocess
 import sys
 import time
-import subprocess
 from datetime import datetime
 from pathlib import Path
 
-import numpy as np
 import matplotlib.pyplot as plt
+import numpy as np
 import unified_planning
-from unified_planning.shortcuts import Object, BoolType
+from unified_planning.shortcuts import BoolType, Object
 
 SCRIPT_DIR = Path(__file__).parent
 REPO_ROOT = SCRIPT_DIR.parent
 
 sys.path.insert(0, str(SCRIPT_DIR))
-from map_generator import MapGenerator  # noqa: E402
+from map_generator import MapGenerator
+from no_adaptation import MissionNoAdaptationMapGenerator
 
 OWL_FILE = REPO_ROOT / 'owl' / 'experiment_combined_scalability' / 'navigation_combined.owl'
-DOMAIN_FILE = REPO_ROOT / 'pddl' / 'experiment_combined_scalability' / 'domain_sas_combined.pddl'
+ADAPTIVE_DOMAIN_FILE = (
+    REPO_ROOT / 'pddl' / 'experiment_combined_scalability' / 'domain_sas_combined.pddl'
+)
+BASELINE_DOMAIN_FILE = (
+    REPO_ROOT / 'pddl' / 'experiment_combined_scalability' / 'domain_no_sas_combined.pddl'
+)
+
+MODE_LABELS = {
+    'adaptive': 'Adaptive',
+    'no-adaptation': 'No adaptation',
+}
 
 MIN_NODES = 10
 MAX_NODES = 100
@@ -60,23 +47,10 @@ DUSTY_AMOUNT = 0.20
 
 
 class CombinedMapGenerator(MapGenerator):
-    """MapGenerator at maximum complexity: K=4 corridor types + M=5 mission actions.
+    """MapGenerator at maximum adaptive complexity: K=4 and M=5."""
 
-    Outdoor and dusty corridor fractions are assigned independently using the
-    same random-sampling mechanism as ExtendedMapGenerator (Experiment B).
-    Four secondary action types (inspection, delivery, recharge, report) each
-    get a designated waypoint evenly spaced between start and goal, following
-    MissionMapGenerator (Experiment C).
-
-    This is a direct subclass of MapGenerator (not a multi-inheritance chain)
-    to avoid MRO complexity from inheriting two classes that both override
-    generate_domain and generate_problem.
-    """
-
-    # Predicate name stems matching the PDDL domain predicates exactly:
-    # inspection_waypoint / inspection_done, delivery_waypoint / delivery_done, etc.
     ACTION_NAMES = ['inspection', 'delivery', 'recharge', 'report']
-    M = 5  # total action types including a_move
+    M = 5
 
     def __init__(self, num_nodes, nodes_skip, unconnected_amount,
                  unsafe_amount, dark_amount,
@@ -87,7 +61,6 @@ class CombinedMapGenerator(MapGenerator):
         self.dusty_amount = dusty_amount
 
     def assign_dark_unsafe_corridors(self, graph):
-        # Initialise new attributes before calling parent so all edges have them
         for u, v in graph.edges:
             graph[u][v]['outdoor'] = False
             graph[u][v]['dusty'] = False
@@ -108,7 +81,6 @@ class CombinedMapGenerator(MapGenerator):
 
     def generate_domain(self):
         super().generate_domain()
-        # CT=4: outdoor and dusty corridor requirement fluents
         self.outdoor_requirement = unified_planning.model.Fluent(
             'outdoor_requirement', BoolType(),
             wp1=self.waypoint_type, wp2=self.waypoint_type,
@@ -117,27 +89,27 @@ class CombinedMapGenerator(MapGenerator):
             'dust_requirement', BoolType(),
             wp1=self.waypoint_type, wp2=self.waypoint_type,
             v=self.numerical_object_type)
-        # MA=5: task waypoint and completion fluents for each secondary action
         for action_name in self.ACTION_NAMES:
-            setattr(self, f'{action_name}_waypoint_fluent',
-                    unified_planning.model.Fluent(
-                        f'{action_name}_waypoint', BoolType(),
-                        wp=self.waypoint_type))
-            setattr(self, f'{action_name}_done_fluent',
-                    unified_planning.model.Fluent(
-                        f'{action_name}_done', BoolType()))
+            setattr(
+                self,
+                f'{action_name}_waypoint_fluent',
+                unified_planning.model.Fluent(
+                    f'{action_name}_waypoint', BoolType(), wp=self.waypoint_type))
+            setattr(
+                self,
+                f'{action_name}_done_fluent',
+                unified_planning.model.Fluent(f'{action_name}_done', BoolType()))
 
     def generate_problem(self, add_init_goal=True):
         super().generate_problem(add_init_goal)
 
         waypoints = {
-            node_id: Object('wp%s' % node_id, self.waypoint_type)
+            node_id: Object(f'wp{node_id}', self.waypoint_type)
             for node_id in self.graph.nodes
         }
         zero_decimal = Object('0.0_decimal', self.numerical_object_type)
         zero_eight_decimal = Object('0.8_decimal', self.numerical_object_type)
 
-        # CT=4: set outdoor and dusty corridor requirements for every edge
         for u, v in self.graph.edges:
             req_out = zero_eight_decimal if self.graph[u][v].get('outdoor') else zero_decimal
             self.problem.set_initial_value(
@@ -151,78 +123,87 @@ class CombinedMapGenerator(MapGenerator):
             self.problem.set_initial_value(
                 self.dust_requirement(waypoints[v], waypoints[u], req_dust), True)
 
-        # MA=5: assign designated waypoints for each secondary action and add goals
         sorted_nodes = sorted(self.graph.nodes)
         n = len(sorted_nodes)
 
         for i, action_name in enumerate(self.ACTION_NAMES):
             wp_fluent = getattr(self, f'{action_name}_waypoint_fluent')
             done_fluent = getattr(self, f'{action_name}_done_fluent')
-
-            # Register the zero-arity done predicate so it can be used as a goal
             self.problem.add_fluent(done_fluent, default_initial_value=False)
 
-            # Evenly space 4 waypoints at 20%, 40%, 60%, 80% of sorted node list
             target_node = sorted_nodes[(i + 1) * n // self.M]
             self.problem.set_initial_value(wp_fluent(waypoints[target_node]), True)
             self.problem.add_goal(done_fluent())
 
 
-def run_single(folder: Path, run_id: int, n_nodes: int):
-    """Run one trial for a given map size.
+def make_generator(mode: str, n_nodes: int) -> MapGenerator:
+    if mode == 'no-adaptation':
+        return MissionNoAdaptationMapGenerator(
+            n_nodes, NODES_SKIP, UNCONNECTED_AMOUNT, UNSAFE_AMOUNT, DARK_AMOUNT, m=5)
+    return CombinedMapGenerator(
+        n_nodes, NODES_SKIP, UNCONNECTED_AMOUNT, UNSAFE_AMOUNT, DARK_AMOUNT)
 
-    Returns (n_nodes_resulting, owltopddl_time, planning_time).
-    OWLToPDDL time is saved to CSV but not reported in the paper.
-    """
+
+def run_adaptive_preprocessor(problem_file, run_folder):
+    domain_out = run_folder / 'domain_created.pddl'
+    problem_out = run_folder / 'problem_created.pddl'
+    subprocess.run(
+        [
+            'OWLToPDDL.sh',
+            f'--owl={OWL_FILE}',
+            '--tBox',
+            f'--inDomain={ADAPTIVE_DOMAIN_FILE}',
+            f'--outDomain={domain_out}',
+            '--aBox',
+            f'--inProblem={problem_file}',
+            f'--outProblem={problem_out}',
+            '--replace-output',
+            '--add-num-comparisons',
+        ],
+        capture_output=True,
+        text=True,
+        check=True,
+    )
+    return domain_out, problem_out
+
+
+def run_single(folder: Path, mode: str, run_id: int, n_nodes: int):
+    """Run one trial for a given map size."""
     n_nodes_resulting = n_nodes - int(n_nodes * NODES_SKIP)
-    run_folder = folder / f'n{n_nodes}_run{run_id}'
+    run_folder = folder / mode / f'n{n_nodes}_run{run_id}'
     run_folder.mkdir(parents=True, exist_ok=True)
 
-    mg = CombinedMapGenerator(n_nodes, NODES_SKIP, UNCONNECTED_AMOUNT,
-                               UNSAFE_AMOUNT, DARK_AMOUNT)
+    mg = make_generator(mode, n_nodes)
     mg.generate_connected_grid_map()
 
-    problem_file = run_folder / 'problem.pddl'
+    problem_file = run_folder / (
+        'problem.pddl' if mode == 'adaptive' else 'problem_no_sas.pddl')
     mg.generate_domain_problem_files(save_problem=True, problem_filename=problem_file)
     mg.plot_graph(show_plot=False, save_file=True, filename=run_folder / 'map.png')
 
-    domain_out = run_folder / 'domain_created.pddl'
-    problem_out = run_folder / 'problem_created.pddl'
+    if mode == 'adaptive':
+        owltopddl_start = time.perf_counter()
+        try:
+            domain_for_planner, problem_for_planner = run_adaptive_preprocessor(
+                problem_file,
+                run_folder,
+            )
+        except subprocess.CalledProcessError as error:
+            print(f'OWLToPDDL failed (mode={mode}, n={n_nodes}, run={run_id}): {error.stderr}')
+            return run_single(folder, mode, run_id, n_nodes)
+        owltopddl_time = time.perf_counter() - owltopddl_start
+    else:
+        domain_for_planner = BASELINE_DOMAIN_FILE
+        problem_for_planner = problem_file
+        owltopddl_time = 0.0
 
-    # --- OWL-to-PDDL (timed for CSV, not reported in paper) ---
-    owltopddl_start = time.perf_counter()
-    try:
-        subprocess.run(
-            [
-                'OWLToPDDL.sh',
-                f'--owl={OWL_FILE}',
-                '--tBox',
-                f'--inDomain={DOMAIN_FILE}',
-                f'--outDomain={domain_out}',
-                '--aBox',
-                f'--inProblem={problem_file}',
-                f'--outProblem={problem_out}',
-                '--replace-output',
-                '--add-num-comparisons',
-            ],
-            capture_output=True,
-            text=True,
-            check=True,
-        )
-    except subprocess.CalledProcessError as e:
-        print(f'OWLToPDDL failed (n={n_nodes}, run={run_id}): {e.stderr}')
-        # Retry once with a fresh map
-        return run_single(folder, run_id, n_nodes)
-    owltopddl_time = time.perf_counter() - owltopddl_start
-
-    # --- Fast Downward (timed, reported in paper) ---
     fd_start = time.perf_counter()
     subprocess.run(
         [
             'fast-downward.py',
-            str(domain_out),
-            str(problem_out),
-            '--search', 'astar(ff())',
+            str(domain_for_planner),
+            str(problem_for_planner),
+            '--search', 'astar(blind())',
         ],
         capture_output=True,
         check=True,
@@ -230,49 +211,73 @@ def run_single(folder: Path, run_id: int, n_nodes: int):
     planning_time = time.perf_counter() - fd_start
 
     print(
-        f'n={n_nodes:4d} (eff={n_nodes_resulting:3d})  run={run_id:2d}  '
-        f'owltopddl={owltopddl_time:.3f}s  planning={planning_time:.6f}s'
+        f'mode={mode:<13} n={n_nodes:4d} (eff={n_nodes_resulting:3d}) run={run_id:2d} '
+        f'owltopddl={owltopddl_time:.3f}s planning={planning_time:.6f}s'
     )
-    return n_nodes_resulting, owltopddl_time, planning_time
+    return mode, n_nodes_resulting, owltopddl_time, planning_time
 
 
-def runner(n_runs: int, min_nodes: int = MIN_NODES, max_nodes: int = MAX_NODES):
-    date = datetime.now().strftime('%d-%b-%Y-%H-%M-%S')
-    folder = REPO_ROOT / 'results' / 'scalability_combined' / date
-    folder.mkdir(parents=True, exist_ok=True)
+def save_results(folder: Path, records):
+    csv_path = folder / 'planning_times.csv'
+    single_mode = len({mode for mode, _, _, _ in records}) == 1
 
-    records = []
-    node_sizes = range(min_nodes, max_nodes + NODES_STEP, NODES_STEP)
+    if single_mode:
+        arr = np.array(
+            [(nodes, owltopddl_time, planning_time)
+             for _, nodes, owltopddl_time, planning_time in records],
+            dtype=[('nodes', 'i4'), ('owltopddl_time', 'f8'), ('planning_time', 'f8')],
+        )
+        np.savetxt(
+            csv_path,
+            arr,
+            delimiter=',',
+            header='nodes,owltopddl_time,planning_time',
+            comments='',
+        )
+        return arr
 
-    for n_nodes in node_sizes:
-        for run_id in range(n_runs):
-            result = run_single(folder, run_id, n_nodes)
-            records.append(result)
-
-    # Save CSV
     arr = np.array(
         records,
-        dtype=[('nodes', 'i4'), ('owltopddl_time', 'f8'), ('planning_time', 'f8')],
+        dtype=[
+            ('mode', 'U20'),
+            ('nodes', 'i4'),
+            ('owltopddl_time', 'f8'),
+            ('planning_time', 'f8'),
+        ],
     )
-    csv_path = folder / 'planning_times.csv'
     np.savetxt(
-        csv_path, arr,
+        csv_path,
+        arr,
         delimiter=',',
-        header='nodes,owltopddl_time,planning_time',
+        header='mode,nodes,owltopddl_time,planning_time',
         comments='',
+        fmt='%s,%d,%.18e,%.18e',
     )
-    print(f'\nResults saved to {csv_path}')
+    return arr
 
-    # Plot: planning time vs effective node count (mean ± std shaded)
-    unique_nodes = np.array(sorted(set(arr['nodes'])))
-    mean_t = np.array([arr['planning_time'][arr['nodes'] == n].mean() for n in unique_nodes])
-    std_t  = np.array([arr['planning_time'][arr['nodes'] == n].std()  for n in unique_nodes])
 
+def plot_results(folder: Path, records, modes):
     fig, ax = plt.subplots(figsize=(10, 5))
-    ax.plot(unique_nodes, mean_t, marker='o', linestyle='-', color='b',
-            markersize=3, label='Combined (N=15, K=4, M=5)')
-    ax.fill_between(unique_nodes, mean_t - std_t, mean_t + std_t,
-                    alpha=0.2, color='b')
+
+    unique_nodes = sorted({nodes for _, nodes, _, _ in records})
+    for mode in modes:
+        mean_t = []
+        std_t = []
+        for node_count in unique_nodes:
+            times = np.array([
+                planning_time
+                for record_mode, record_nodes, _, planning_time in records
+                if record_mode == mode and record_nodes == node_count
+            ])
+            mean_t.append(times.mean())
+            std_t.append(times.std())
+        mean_t = np.array(mean_t)
+        std_t = np.array(std_t)
+
+        ax.plot(unique_nodes, mean_t, marker='o', linestyle='-', markersize=3,
+                label=MODE_LABELS[mode])
+        ax.fill_between(unique_nodes, mean_t - std_t, mean_t + std_t, alpha=0.2)
+
     ax.set_xlabel('Effective Map Size (nodes)')
     ax.set_ylabel('Mean Planning Time (seconds)')
     ax.set_title('Combined Stress Test: Planning Time vs. Map Size')
@@ -284,9 +289,41 @@ def runner(n_runs: int, min_nodes: int = MIN_NODES, max_nodes: int = MAX_NODES):
     print(f'Plot saved to {plot_path}')
 
 
+def runner(n_runs: int, mode: str, min_nodes: int = MIN_NODES, max_nodes: int = MAX_NODES):
+    date = datetime.now().strftime('%d-%b-%Y-%H-%M-%S')
+    folder = REPO_ROOT / 'results' / 'scalability_combined' / date
+    folder.mkdir(parents=True, exist_ok=True)
+
+    modes = ['adaptive', 'no-adaptation'] if mode == 'both' else [mode]
+    records = []
+    node_sizes = range(min_nodes, max_nodes + NODES_STEP, NODES_STEP)
+
+    for current_mode in modes:
+        print(f'\n--- {MODE_LABELS[current_mode]} ---')
+        for n_nodes in node_sizes:
+            for run_id in range(n_runs):
+                records.append(run_single(folder, current_mode, run_id, n_nodes))
+
+    csv_path = folder / 'planning_times.csv'
+    save_results(folder, records)
+    print(f'\nResults saved to {csv_path}')
+    plot_results(folder, records, modes)
+
+
 def main():
     parser = argparse.ArgumentParser(
         description='Experiment D: Combined stress test — maximum complexity, vary map size.')
+    parser.add_argument(
+        '--mode',
+        choices=['adaptive', 'no-adaptation', 'both'],
+        default='adaptive',
+        help=(
+            'Experiment variant to run. '
+            '"adaptive" reproduces the current PLANTA flow, '
+            '"no-adaptation" uses the combined no-adaptation domain directly, '
+            'and "both" runs both variants for comparison.'
+        ),
+    )
     parser.add_argument(
         '--runs', type=int, default=10, metavar='N',
         help='Number of runs per map size (default: 10)')
@@ -302,10 +339,10 @@ def main():
     max_nodes = args.max_nodes
     node_count = len(range(min_nodes, max_nodes + NODES_STEP, NODES_STEP))
     print(
-        f'Combined stress test: {node_count} map sizes '
+        f'Combined stress test: mode={args.mode}, {node_count} map sizes '
         f'({min_nodes}–{max_nodes}, step {NODES_STEP}) × {args.runs} runs'
     )
-    runner(args.runs, min_nodes=min_nodes, max_nodes=max_nodes)
+    runner(args.runs, args.mode, min_nodes=min_nodes, max_nodes=max_nodes)
 
 
 if __name__ == '__main__':
