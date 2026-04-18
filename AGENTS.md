@@ -51,6 +51,24 @@ Run only the grid experiment:
 python scripts/run_grid_map_scenario.py
 ```
 
+Run a no-adaptation baseline for a PDDL experiment:
+
+```bash
+python scripts/run_grid_map_scenario.py --mode no-adaptation
+```
+
+Run both adaptive and no-adaptation variants for comparison:
+
+```bash
+python scripts/run_grid_map_scenario.py --mode both
+```
+
+The standalone PDDL experiment entrypoints follow the same mode convention:
+
+- `--mode adaptive`: current OWL-to-PDDL PLANTA flow
+- `--mode no-adaptation`: direct Fast Downward baseline without OWL preprocessing
+- `--mode both`: run both variants and save a `mode` column in the CSV output
+
 ## Timing Rule
 
 - The grid-scenario wall-clock time is not the same as the reported planning time.
