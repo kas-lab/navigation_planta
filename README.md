@@ -238,3 +238,6 @@ Map example:
 --search 'astar(ff())'
 
 --search 'astar(lmcount(lm_merged([lm_rhw(),lm_hm(m=1)])))'
+
+
+for experiment C, ff was much faster
