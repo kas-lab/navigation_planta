@@ -76,7 +76,8 @@ def run_single_case(
         nodes_skip,
         unconnected_amount,
         unsafe_amount,
-        dark_amount):
+        dark_amount,
+        search='astar(blind())'):
     n_nodes_resulting = n_nodes - int(n_nodes * nodes_skip)
     map_generator = make_map_generator(
         mode,
@@ -119,7 +120,8 @@ def run_single_case(
                 nodes_skip,
                 unconnected_amount,
                 unsafe_amount,
-                dark_amount)
+                dark_amount,
+                search)
     else:
         domain_for_planner = BASELINE_DOMAIN_FILE
         problem_for_planner = problem_filename
@@ -129,7 +131,7 @@ def run_single_case(
         'fast-downward.py',
         str(domain_for_planner),
         str(problem_for_planner),
-        '--search', 'astar(blind())',
+        '--search', search,
     ], check=True)
     elapsed_time = time.perf_counter() - start_time
 
@@ -237,6 +239,10 @@ def parse_args():
         '--show-plot',
         action='store_true',
         help='Display the plot window after saving it.')
+    parser.add_argument(
+        '--search',
+        default='astar(blind())',
+        help='Fast Downward search configuration string.')
     return parser.parse_args()
 
 
@@ -274,7 +280,8 @@ def runner():
                     nodes_skip,
                     unconnected_amount,
                     unsafe_amount,
-                    dark_amount)
+                    dark_amount,
+                    args.search)
                 planning_time_list.append(result)
 
     save_results(folder_name, planning_time_list)

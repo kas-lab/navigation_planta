@@ -167,7 +167,7 @@ def run_adaptive_preprocessor(problem_file, run_folder):
     return domain_out, problem_out
 
 
-def run_single(folder: Path, mode: str, run_id: int, n_nodes: int):
+def run_single(folder: Path, mode: str, run_id: int, n_nodes: int, search: str = 'astar(blind())'):
     """Run one trial for a given map size."""
     n_nodes_resulting = n_nodes - int(n_nodes * NODES_SKIP)
     run_folder = folder / mode / f'n{n_nodes}_run{run_id}'
@@ -190,7 +190,7 @@ def run_single(folder: Path, mode: str, run_id: int, n_nodes: int):
             )
         except subprocess.CalledProcessError as error:
             print(f'OWLToPDDL failed (mode={mode}, n={n_nodes}, run={run_id}): {error.stderr}')
-            return run_single(folder, mode, run_id, n_nodes)
+            return run_single(folder, mode, run_id, n_nodes, search)
         owltopddl_time = time.perf_counter() - owltopddl_start
     else:
         domain_for_planner = BASELINE_DOMAIN_FILE
@@ -203,7 +203,7 @@ def run_single(folder: Path, mode: str, run_id: int, n_nodes: int):
             'fast-downward.py',
             str(domain_for_planner),
             str(problem_for_planner),
-            '--search', 'astar(blind())',
+            '--search', search,
         ],
         capture_output=True,
         check=True,
@@ -289,7 +289,7 @@ def plot_results(folder: Path, records, modes):
     print(f'Plot saved to {plot_path}')
 
 
-def runner(n_runs: int, mode: str, min_nodes: int = MIN_NODES, max_nodes: int = MAX_NODES):
+def runner(n_runs: int, mode: str, min_nodes: int = MIN_NODES, max_nodes: int = MAX_NODES, search: str = 'astar(blind())'):
     date = datetime.now().strftime('%d-%b-%Y-%H-%M-%S')
     folder = REPO_ROOT / 'results' / 'scalability_combined' / date
     folder.mkdir(parents=True, exist_ok=True)
@@ -302,7 +302,7 @@ def runner(n_runs: int, mode: str, min_nodes: int = MIN_NODES, max_nodes: int = 
         print(f'\n--- {MODE_LABELS[current_mode]} ---')
         for n_nodes in node_sizes:
             for run_id in range(n_runs):
-                records.append(run_single(folder, current_mode, run_id, n_nodes))
+                records.append(run_single(folder, current_mode, run_id, n_nodes, search))
 
     csv_path = folder / 'planning_times.csv'
     save_results(folder, records)
@@ -333,6 +333,9 @@ def main():
     parser.add_argument(
         '--max-nodes', type=int, default=MAX_NODES, metavar='N',
         help=f'Maximum map size in nodes (default: {MAX_NODES})')
+    parser.add_argument(
+        '--search', default='astar(blind())',
+        help='Fast Downward search configuration string.')
     args = parser.parse_args()
 
     min_nodes = args.min_nodes
@@ -342,7 +345,7 @@ def main():
         f'Combined stress test: mode={args.mode}, {node_count} map sizes '
         f'({min_nodes}–{max_nodes}, step {NODES_STEP}) × {args.runs} runs'
     )
-    runner(args.runs, args.mode, min_nodes=min_nodes, max_nodes=max_nodes)
+    runner(args.runs, args.mode, min_nodes=min_nodes, max_nodes=max_nodes, search=args.search)
 
 
 if __name__ == '__main__':

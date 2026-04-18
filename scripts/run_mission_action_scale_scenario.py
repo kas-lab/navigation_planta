@@ -143,7 +143,7 @@ def run_adaptive_preprocessor(owl_file, domain_file, problem_file, run_folder):
     return domain_out, problem_out
 
 
-def run_single(folder: Path, mode: str, run_id: int, m: int):
+def run_single(folder: Path, mode: str, run_id: int, m: int, search: str = 'lazy_greedy([ff()], preferred=[ff()])'):
     """Run one experiment trial."""
     run_folder = folder / mode / f'ma{m}_run{run_id}'
     run_folder.mkdir(parents=True, exist_ok=True)
@@ -169,7 +169,7 @@ def run_single(folder: Path, mode: str, run_id: int, m: int):
             )
         except subprocess.CalledProcessError as error:
             print(f'OWLToPDDL failed (mode={mode}, m={m}, run={run_id}): {error.stderr}')
-            return run_single(folder, mode, run_id, m)
+            return run_single(folder, mode, run_id, m, search)
         owltopddl_time = time.perf_counter() - owltopddl_start
     else:
         domain_for_planner = BASELINE_DOMAIN_FILES[m]
@@ -182,7 +182,7 @@ def run_single(folder: Path, mode: str, run_id: int, m: int):
             'fast-downward.py',
             str(domain_for_planner),
             str(problem_for_planner),
-            '--search', 'lazy_greedy([ff()], preferred=[ff()])',
+            '--search', search,
         ],
         capture_output=True,
         check=True,
@@ -267,7 +267,7 @@ def plot_results(folder: Path, records, modes):
     print(f'Plot saved to {plot_path}')
 
 
-def runner(n_runs: int, mode: str):
+def runner(n_runs: int, mode: str, search: str = 'lazy_greedy([ff()], preferred=[ff()])'):
     date = datetime.now().strftime('%d-%b-%Y-%H-%M-%S')
     folder = REPO_ROOT / 'results' / 'scalability_ma' / date
     folder.mkdir(parents=True, exist_ok=True)
@@ -280,7 +280,7 @@ def runner(n_runs: int, mode: str):
         for m in M_VALUES:
             print(f'  M = {m}')
             for run_id in range(n_runs):
-                records.append(run_single(folder, current_mode, run_id, m))
+                records.append(run_single(folder, current_mode, run_id, m, search))
 
     csv_path = folder / 'planning_times.csv'
     save_results(folder, records)
@@ -305,10 +305,13 @@ def main():
     parser.add_argument(
         '--runs', type=int, default=10, metavar='N',
         help='Number of runs per M value (default: 10)')
+    parser.add_argument(
+        '--search', default='lazy_greedy([ff()], preferred=[ff()])',
+        help='Fast Downward search configuration string (default: lazy_greedy with ff)')
     args = parser.parse_args()
 
     print(f'MA scaling experiment: mode={args.mode}, M={M_VALUES}, runs={args.runs}, nodes={N_NODES}')
-    runner(args.runs, args.mode)
+    runner(args.runs, args.mode, args.search)
 
 
 if __name__ == '__main__':

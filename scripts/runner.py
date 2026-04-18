@@ -220,7 +220,7 @@ class GridMapRunner(Runner):
             "fast-downward.py",
             domain_output,
             problem_output,
-            "--search", "astar(ff())"
+            "--search", "lazy_greedy([ff()], preferred=[ff()])"
         ]
 
         # Start high-precision timer
@@ -426,7 +426,7 @@ class CamaraMapPDDLRunner(CamaraMapRunner):
             "fast-downward.py",
             domain_output,
             problem_output,
-            "--search", "astar(ff())"
+            "--search", "lazy_greedy([ff()], preferred=[ff()])"
         ]
 
         # Start high-precision timer

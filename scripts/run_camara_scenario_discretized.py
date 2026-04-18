@@ -55,7 +55,7 @@ def run_adaptive_preprocessor(problem_input, run_folder):
     return domain_output, problem_output
 
 
-def run_single_case(folder_name, mode, run_n, init, goal):
+def run_single_case(folder_name, mode, run_n, init, goal, search='lazy_greedy([ff()], preferred=[ff()])'):
     map_generator = make_map_generator(mode)
 
     map_folder_name = f'wp{init}_wp{goal}_{run_n}'
@@ -78,7 +78,7 @@ def run_single_case(folder_name, mode, run_n, init, goal):
             print(
                 f'OWLToPDDL failed for mode={mode} init={init} goal={goal} '
                 f'run={run_n}: {error.stderr}')
-            return run_single_case(folder_name, mode, run_n, init, goal)
+            return run_single_case(folder_name, mode, run_n, init, goal, search)
     else:
         domain_for_planner = BASELINE_DOMAIN_FILE
         problem_for_planner = problem_filename
@@ -88,7 +88,7 @@ def run_single_case(folder_name, mode, run_n, init, goal):
         'fast-downward.py',
         str(domain_for_planner),
         str(problem_for_planner),
-        '--search', 'lazy_greedy([ff()], preferred=[ff()])',
+        '--search', search,
     ], check=True)
     elapsed_time = time.perf_counter() - start_time
 
@@ -162,6 +162,10 @@ def parse_args():
         type=int,
         default=1,
         help='Number of runs for each init/goal pair and mode.')
+    parser.add_argument(
+        '--search',
+        default='lazy_greedy([ff()], preferred=[ff()])',
+        help='Fast Downward search configuration string.')
     return parser.parse_args()
 
 
@@ -183,7 +187,7 @@ def runner():
                         init not in UNREACHABLE_NODES and
                         goal not in UNREACHABLE_NODES):
                     for run_n in range(args.runs):
-                        result = run_single_case(folder_name, mode, run_n, init, goal)
+                        result = run_single_case(folder_name, mode, run_n, init, goal, args.search)
                         planning_time_list.append(result)
 
     save_results(folder_name, planning_time_list)
