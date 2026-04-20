@@ -3,7 +3,7 @@
 import unified_planning
 from unified_planning.shortcuts import Object, Problem, BoolType
 
-from map_generator import MapGenerator
+from .map_generator import MapGenerator
 
 
 class NoAdaptationMapGenerator(MapGenerator):

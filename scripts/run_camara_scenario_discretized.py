@@ -8,15 +8,17 @@ import time
 from datetime import datetime
 from pathlib import Path
 
+import matplotlib.pyplot as plt
 import numpy as np
 
-from map_generator import MapGenerator
-from no_adaptation import NoAdaptationMapGenerator
+from navigation_planta.map_generator import MapGenerator
+from navigation_planta.no_adaptation import NoAdaptationMapGenerator
+from navigation_planta.utils import count_plan_actions, NO_PLAN
 
 SCRIPT_DIR = Path(__file__).resolve().parent
 REPO_ROOT = SCRIPT_DIR.parent
 
-MAP_FILE = REPO_ROOT / 'map_camara_2020_paper' / 'map-p2cp3.json'
+MAP_FILE = REPO_ROOT / 'data' / 'map_camara_2020_paper' / 'map-p2cp3.json'
 RESULTS_ROOT = REPO_ROOT / 'results' / 'map_camara_2020_paper' / 'discretized'
 OWL_FILE = REPO_ROOT / 'owl' / 'navigation.owl'
 ADAPTIVE_DOMAIN_FILE = REPO_ROOT / 'pddl' / 'domain_sas.pddl'
@@ -83,64 +85,110 @@ def run_single_case(folder_name, mode, run_n, init, goal, search='lazy_greedy([f
         domain_for_planner = BASELINE_DOMAIN_FILE
         problem_for_planner = problem_filename
 
+    plan_file = run_folder / 'plan'
     start_time = time.perf_counter()
     subprocess.run([
         'fast-downward.py',
+        '--plan-file', str(plan_file),
         str(domain_for_planner),
         str(problem_for_planner),
         '--search', search,
     ], check=True)
     elapsed_time = time.perf_counter() - start_time
+    action_count = count_plan_actions(plan_file)
 
     print(
         f'mode={mode:<13} init={init:<2} goal={goal:<2} '
-        f'run={run_n:<2} time={elapsed_time:.6f}s')
-    return mode, f'wp{init}_wp{goal}', elapsed_time
+        f'run={run_n:<2} time={elapsed_time:.6f}s actions={action_count}')
+    return mode, f'wp{init}_wp{goal}', elapsed_time, action_count
 
 
 def save_results(folder_name, planning_time_list):
     planning_time_csv = folder_name / 'planning_times.csv'
-    single_mode = len({mode for mode, _, _ in planning_time_list}) == 1
+    single_mode = len({mode for mode, _, _, _ in planning_time_list}) == 1
 
     if single_mode:
         planning_time_array = np.array(
-            [(init_goal, elapsed_time) for _, init_goal, elapsed_time in planning_time_list],
-            dtype=[('init_goal', 'U15'), ('time', 'f8')])
+            [(init_goal, elapsed_time, action_count)
+             for _, init_goal, elapsed_time, action_count in planning_time_list],
+            dtype=[('init_goal', 'U15'), ('time', 'f8'), ('action_count', 'i4')])
         np.savetxt(
             planning_time_csv,
             planning_time_array,
             delimiter=',',
-            header='init_goal,time',
+            header='init_goal,time,action_count',
             comments='',
-            fmt='%s,%.18e')
+            fmt='%s,%.18e,%d')
         return
 
     planning_time_array = np.array(
-        planning_time_list,
-        dtype=[('mode', 'U20'), ('init_goal', 'U15'), ('time', 'f8')])
+        [(mode, init_goal, elapsed_time, action_count)
+         for mode, init_goal, elapsed_time, action_count in planning_time_list],
+        dtype=[('mode', 'U20'), ('init_goal', 'U15'), ('time', 'f8'), ('action_count', 'i4')])
     np.savetxt(
         planning_time_csv,
         planning_time_array,
         delimiter=',',
-        header='mode,init_goal,time',
+        header='mode,init_goal,time,action_count',
         comments='',
-        fmt='%s,%s,%.18e')
+        fmt='%s,%s,%.18e,%d')
+
+
+def plot_results(folder_name, planning_time_list, modes):
+    fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(12, 5))
+
+    labels = [MODE_LABELS[m] for m in modes]
+    mean_times, std_times, mean_actions, std_actions = [], [], [], []
+
+    for mode in modes:
+        times = np.array([t for m, _, t, _ in planning_time_list if m == mode])
+        counts = np.array(
+            [ac for m, _, _, ac in planning_time_list if m == mode and ac != NO_PLAN],
+            dtype=float)
+        mean_times.append(times.mean())
+        std_times.append(times.std())
+        mean_actions.append(counts.mean() if counts.size else float('nan'))
+        std_actions.append(counts.std() if counts.size else 0.0)
+
+    x = np.arange(len(modes))
+    ax1.bar(x, mean_times, yerr=std_times, capsize=5, color='steelblue', alpha=0.8)
+    ax1.set_xticks(x)
+    ax1.set_xticklabels(labels)
+    ax1.set_ylabel('Mean Planning Time (seconds)')
+    ax1.set_title('Planning Time by Mode')
+    ax1.set_ylim(bottom=0)
+    ax1.grid(True, axis='y')
+
+    ax2.bar(x, mean_actions, yerr=std_actions, capsize=5, color='darkorange', alpha=0.8)
+    ax2.set_xticks(x)
+    ax2.set_xticklabels(labels)
+    ax2.set_ylabel('Mean Plan Length (actions)')
+    ax2.set_title('Plan Length by Mode')
+    ax2.set_ylim(bottom=0)
+    ax2.grid(True, axis='y')
+
+    plot_path = folder_name / 'camara_discretized_summary.png'
+    plt.savefig(plot_path, dpi=300, bbox_inches='tight')
+    plt.close(fig)
+    print(f'Plot saved to {plot_path}')
 
 
 def print_summary(planning_time_list, modes):
     if len(modes) == 1:
-        times = np.array([elapsed_time for _, _, elapsed_time in planning_time_list])
-        print(f'Mean {times.mean()} and Std dev: {times.std()}')
+        times = np.array([elapsed_time for _, _, elapsed_time, _ in planning_time_list])
+        counts = np.array([ac for _, _, _, ac in planning_time_list if ac != NO_PLAN], dtype=float)
+        ac_str = f' mean actions: {counts.mean():.1f}' if counts.size else ''
+        print(f'Mean {times.mean():.4f}s Std dev: {times.std():.4f}s{ac_str}')
         return
 
     for mode in modes:
-        times = np.array([
-            elapsed_time
-            for record_mode, _, elapsed_time in planning_time_list
-            if record_mode == mode
-        ])
+        times = np.array([t for m, _, t, _ in planning_time_list if m == mode])
+        counts = np.array([
+            ac for m, _, _, ac in planning_time_list if m == mode and ac != NO_PLAN
+        ], dtype=float)
+        ac_str = f' mean actions: {counts.mean():.1f}' if counts.size else ''
         print(
-            f'{MODE_LABELS[mode]} mean {times.mean()} and std dev: {times.std()}')
+            f'{MODE_LABELS[mode]} mean {times.mean():.4f}s std dev: {times.std():.4f}s{ac_str}')
 
 
 def parse_args():
@@ -169,30 +217,39 @@ def parse_args():
     return parser.parse_args()
 
 
-def runner():
-    args = parse_args()
+def runner(
+        mode: str = 'adaptive',
+        runs: int = 1,
+        search: str = 'lazy_greedy([ff()], preferred=[ff()])',
+        out_dir: Path | None = None) -> Path:
     planning_time_list = []
-    modes = ['adaptive', 'no-adaptation'] if args.mode == 'both' else [args.mode]
+    modes = ['adaptive', 'no-adaptation'] if mode == 'both' else [mode]
 
     date = datetime.now().strftime('%d-%b-%Y-%H-%M-%S')
-    folder_name = RESULTS_ROOT / date
+    folder_name = out_dir if out_dir is not None else (RESULTS_ROOT / date)
     folder_name.mkdir(parents=True, exist_ok=True)
 
-    for mode in modes:
-        print(f'\n--- {MODE_LABELS[mode]} ---')
+    for current_mode in modes:
+        print(f'\n--- {MODE_LABELS[current_mode]} ---')
         for init in range(1, 5):
             for goal in range(1, 2):
                 if (
                         init != goal and
                         init not in UNREACHABLE_NODES and
                         goal not in UNREACHABLE_NODES):
-                    for run_n in range(args.runs):
-                        result = run_single_case(folder_name, mode, run_n, init, goal, args.search)
+                    for run_n in range(runs):
+                        result = run_single_case(folder_name, current_mode, run_n, init, goal, search)
                         planning_time_list.append(result)
 
-    save_results(folder_name, planning_time_list)
+    folder_mode = folder_name / mode
+    csv_path = folder_name / 'planning_times.csv'
+    save_results(folder_mode, planning_time_list)
+    print(f'\nResults saved to {csv_path}')
+    plot_results(folder_mode, planning_time_list, modes)
     print_summary(planning_time_list, modes)
+    return csv_path
 
 
 if __name__ == '__main__':
-    runner()
+    _args = parse_args()
+    runner(mode=_args.mode, runs=_args.runs, search=_args.search)

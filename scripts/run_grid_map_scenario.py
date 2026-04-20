@@ -18,8 +18,9 @@ from pathlib import Path
 import matplotlib.pyplot as plt
 import numpy as np
 
-from map_generator import MapGenerator
-from no_adaptation import NoAdaptationMapGenerator
+from navigation_planta.map_generator import MapGenerator
+from navigation_planta.no_adaptation import NoAdaptationMapGenerator
+from navigation_planta.utils import count_plan_actions, NO_PLAN
 
 SCRIPT_DIR = Path(__file__).resolve().parent
 REPO_ROOT = SCRIPT_DIR.parent
@@ -126,87 +127,98 @@ def run_single_case(
         domain_for_planner = BASELINE_DOMAIN_FILE
         problem_for_planner = problem_filename
 
+    plan_file = run_folder / 'plan'
     start_time = time.perf_counter()
     subprocess.run([
         'fast-downward.py',
+        '--plan-file', str(plan_file),
         str(domain_for_planner),
         str(problem_for_planner),
         '--search', search,
     ], check=True)
     elapsed_time = time.perf_counter() - start_time
+    action_count = count_plan_actions(plan_file)
 
     print(
         f'mode={mode:<13} nodes={n_nodes_resulting:<4} '
-        f'run={run_n:<2} time={elapsed_time:.6f}s')
-    return mode, n_nodes_resulting, elapsed_time
+        f'run={run_n:<2} time={elapsed_time:.6f}s actions={action_count}')
+    return mode, n_nodes_resulting, elapsed_time, action_count
 
 
 def save_results(folder_name, planning_time_list):
-    single_mode = len({mode for mode, _, _ in planning_time_list}) == 1
+    single_mode = len({mode for mode, _, _, _ in planning_time_list}) == 1
     planning_time_csv = folder_name / 'planning_times.csv'
 
     if single_mode:
         planning_time_array = np.array(
-            [(nodes, elapsed_time) for _, nodes, elapsed_time in planning_time_list],
-            dtype=[('nodes', 'i4'), ('time', 'f8')])
+            [(nodes, elapsed_time, action_count)
+             for _, nodes, elapsed_time, action_count in planning_time_list],
+            dtype=[('nodes', 'i4'), ('time', 'f8'), ('action_count', 'i4')])
         np.savetxt(
             planning_time_csv,
             planning_time_array,
             delimiter=',',
-            header='nodes,time',
-            comments='')
+            header='nodes,time,action_count',
+            comments='',
+            fmt='%d,%.18e,%d')
         return
 
     planning_time_array = np.array(
-        planning_time_list,
-        dtype=[('mode', 'U20'), ('nodes', 'i4'), ('time', 'f8')])
+        [(mode, nodes, elapsed_time, action_count)
+         for mode, nodes, elapsed_time, action_count in planning_time_list],
+        dtype=[('mode', 'U20'), ('nodes', 'i4'), ('time', 'f8'), ('action_count', 'i4')])
     np.savetxt(
         planning_time_csv,
         planning_time_array,
         delimiter=',',
-        header='mode,nodes,time',
+        header='mode,nodes,time,action_count',
         comments='',
-        fmt='%s,%d,%.18e')
+        fmt='%s,%d,%.18e,%d')
 
 
 def plot_results(folder_name, planning_time_list, modes, show_plot):
-    fig, ax = plt.subplots(figsize=(8, 5))
+    fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(14, 5))
 
     for mode in modes:
-        mode_records = [(nodes, elapsed_time)
-                        for record_mode, nodes, elapsed_time in planning_time_list
-                        if record_mode == mode]
-        planning_time_array = np.array(
-            mode_records,
-            dtype=[('nodes', 'i4'), ('time', 'f8')])
+        mode_nodes = np.array(
+            [nodes for m, nodes, _, _ in planning_time_list if m == mode], dtype='i4')
+        mode_times = np.array(
+            [t for m, _, t, _ in planning_time_list if m == mode])
+        mode_counts = np.array(
+            [ac for m, _, _, ac in planning_time_list if m == mode], dtype='i4')
 
-        unique_nodes, indices = np.unique(
-            planning_time_array['nodes'], return_inverse=True)
-        mean_times = np.bincount(
-            indices, weights=planning_time_array['time']) / np.bincount(indices)
-        sum_squared_diffs = np.bincount(
-            indices,
-            weights=(planning_time_array['time'] - mean_times[indices]) ** 2)
-        std_dev_times = np.sqrt(sum_squared_diffs / np.bincount(indices))
+        unique_nodes, indices = np.unique(mode_nodes, return_inverse=True)
+        mean_times = np.bincount(indices, weights=mode_times) / np.bincount(indices)
+        sum_sq = np.bincount(indices, weights=(mode_times - mean_times[indices]) ** 2)
+        std_times = np.sqrt(sum_sq / np.bincount(indices))
 
-        ax.plot(
-            unique_nodes,
-            mean_times,
-            marker='o',
-            linestyle='-',
-            label=MODE_LABELS[mode])
-        ax.fill_between(
-            unique_nodes,
-            mean_times - std_dev_times,
-            mean_times + std_dev_times,
-            alpha=0.2)
+        ax1.plot(unique_nodes, mean_times, marker='o', linestyle='-', label=MODE_LABELS[mode])
+        ax1.fill_between(unique_nodes, mean_times - std_times, mean_times + std_times, alpha=0.2)
 
-    ax.set_xlabel('Number of Nodes')
-    ax.set_ylabel('Mean Elapsed Time (seconds)')
-    ax.set_ylim(bottom=0)
-    ax.set_title('Average Planning Execution Time with Std Dev')
-    ax.legend()
-    ax.grid(True)
+        valid = mode_counts != NO_PLAN
+        if valid.any():
+            v_nodes = mode_nodes[valid]
+            v_counts = mode_counts[valid].astype(float)
+            u_nodes, idx = np.unique(v_nodes, return_inverse=True)
+            mean_ac = np.bincount(idx, weights=v_counts) / np.bincount(idx)
+            sum_sq_ac = np.bincount(idx, weights=(v_counts - mean_ac[idx]) ** 2)
+            std_ac = np.sqrt(sum_sq_ac / np.bincount(idx))
+            ax2.plot(u_nodes, mean_ac, marker='o', linestyle='-', label=MODE_LABELS[mode])
+            ax2.fill_between(u_nodes, mean_ac - std_ac, mean_ac + std_ac, alpha=0.2)
+
+    ax1.set_xlabel('Number of Nodes')
+    ax1.set_ylabel('Mean Elapsed Time (seconds)')
+    ax1.set_ylim(bottom=0)
+    ax1.set_title('Average Planning Execution Time with Std Dev')
+    ax1.legend()
+    ax1.grid(True)
+
+    ax2.set_xlabel('Number of Nodes')
+    ax2.set_ylabel('Mean Plan Length (actions)')
+    ax2.set_ylim(bottom=0)
+    ax2.set_title('Average Plan Length with Std Dev')
+    ax2.legend()
+    ax2.grid(True)
 
     planning_time_png = folder_name / 'planning_time_avg_std.png'
     plt.savefig(planning_time_png, format='png', dpi=300, bbox_inches='tight')
@@ -246,9 +258,12 @@ def parse_args():
     return parser.parse_args()
 
 
-def runner():
-    args = parse_args()
-
+def runner(
+        mode: str = 'adaptive',
+        runs: int = 10,
+        show_plot: bool = False,
+        search: str = 'astar(blind())',
+        out_dir: Path | None = None) -> Path:
     min_nodes = 10
     max_nodes = 1000
     nodes_interval = 10
@@ -258,35 +273,40 @@ def runner():
     unsafe_amount = 0.25
     dark_amount = 0.25
 
-    modes = ['adaptive', 'no-adaptation'] if args.mode == 'both' else [args.mode]
+    modes = ['adaptive', 'no-adaptation'] if mode == 'both' else [mode]
     planning_time_list = []
 
     date = datetime.now().strftime('%d-%b-%Y-%H-%M-%S')
-    folder_name = REPO_ROOT / 'results' / 'grid_map' / date
+    folder_name = out_dir if out_dir is not None else (REPO_ROOT / 'results' / 'grid_map' / date)
     folder_name.mkdir(parents=True, exist_ok=True)
 
-    for mode in modes:
-        print(f'\n--- {MODE_LABELS[mode]} ---')
+    for current_mode in modes:
+        print(f'\n--- {MODE_LABELS[current_mode]} ---')
         for n_nodes in range(
                 min_nodes,
                 max_nodes + nodes_interval,
                 nodes_interval):
-            for run_n in range(args.runs):
+            for run_n in range(runs):
                 result = run_single_case(
                     folder_name,
-                    mode,
+                    current_mode,
                     run_n,
                     n_nodes,
                     nodes_skip,
                     unconnected_amount,
                     unsafe_amount,
                     dark_amount,
-                    args.search)
+                    search)
                 planning_time_list.append(result)
 
-    save_results(folder_name, planning_time_list)
-    plot_results(folder_name, planning_time_list, modes, args.show_plot)
+    folder_mode = folder_name / mode
+    csv_path = folder_name / 'planning_times.csv'
+    save_results(folder_mode, planning_time_list)
+    print(f'\nResults saved to {csv_path}')
+    plot_results(folder_mode, planning_time_list, modes, show_plot)
+    return csv_path
 
 
 if __name__ == '__main__':
-    runner()
+    _args = parse_args()
+    runner(mode=_args.mode, runs=_args.runs, show_plot=_args.show_plot, search=_args.search)

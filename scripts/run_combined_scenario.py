@@ -5,7 +5,6 @@
 import argparse
 import random
 import subprocess
-import sys
 import time
 from datetime import datetime
 from pathlib import Path
@@ -18,9 +17,9 @@ from unified_planning.shortcuts import BoolType, Object
 SCRIPT_DIR = Path(__file__).parent
 REPO_ROOT = SCRIPT_DIR.parent
 
-sys.path.insert(0, str(SCRIPT_DIR))
-from map_generator import MapGenerator
-from no_adaptation import MissionNoAdaptationMapGenerator
+from navigation_planta.map_generator import MapGenerator
+from navigation_planta.no_adaptation import MissionNoAdaptationMapGenerator
+from navigation_planta.utils import count_plan_actions, NO_PLAN
 
 OWL_FILE = REPO_ROOT / 'owl' / 'experiment_combined_scalability' / 'navigation_combined.owl'
 ADAPTIVE_DOMAIN_FILE = (
@@ -197,10 +196,12 @@ def run_single(folder: Path, mode: str, run_id: int, n_nodes: int, search: str =
         problem_for_planner = problem_file
         owltopddl_time = 0.0
 
+    plan_file = run_folder / 'plan'
     fd_start = time.perf_counter()
     subprocess.run(
         [
             'fast-downward.py',
+            '--plan-file', str(plan_file),
             str(domain_for_planner),
             str(problem_for_planner),
             '--search', search,
@@ -209,89 +210,98 @@ def run_single(folder: Path, mode: str, run_id: int, n_nodes: int, search: str =
         check=True,
     )
     planning_time = time.perf_counter() - fd_start
+    action_count = count_plan_actions(plan_file)
 
     print(
         f'mode={mode:<13} n={n_nodes:4d} (eff={n_nodes_resulting:3d}) run={run_id:2d} '
-        f'owltopddl={owltopddl_time:.3f}s planning={planning_time:.6f}s'
+        f'owltopddl={owltopddl_time:.3f}s planning={planning_time:.6f}s actions={action_count}'
     )
-    return mode, n_nodes_resulting, owltopddl_time, planning_time
+    return mode, n_nodes_resulting, owltopddl_time, planning_time, action_count
 
 
 def save_results(folder: Path, records):
     csv_path = folder / 'planning_times.csv'
-    single_mode = len({mode for mode, _, _, _ in records}) == 1
+    single_mode = len({mode for mode, _, _, _, _ in records}) == 1
 
     if single_mode:
         arr = np.array(
-            [(nodes, owltopddl_time, planning_time)
-             for _, nodes, owltopddl_time, planning_time in records],
-            dtype=[('nodes', 'i4'), ('owltopddl_time', 'f8'), ('planning_time', 'f8')],
+            [(nodes, owltopddl_time, planning_time, action_count)
+             for _, nodes, owltopddl_time, planning_time, action_count in records],
+            dtype=[('nodes', 'i4'), ('owltopddl_time', 'f8'),
+                   ('planning_time', 'f8'), ('action_count', 'i4')],
         )
         np.savetxt(
-            csv_path,
-            arr,
-            delimiter=',',
-            header='nodes,owltopddl_time,planning_time',
-            comments='',
+            csv_path, arr, delimiter=',',
+            header='nodes,owltopddl_time,planning_time,action_count',
+            comments='', fmt='%d,%.18e,%.18e,%d',
         )
         return arr
 
     arr = np.array(
-        records,
-        dtype=[
-            ('mode', 'U20'),
-            ('nodes', 'i4'),
-            ('owltopddl_time', 'f8'),
-            ('planning_time', 'f8'),
-        ],
+        [(mode, nodes, owltopddl_time, planning_time, action_count)
+         for mode, nodes, owltopddl_time, planning_time, action_count in records],
+        dtype=[('mode', 'U20'), ('nodes', 'i4'), ('owltopddl_time', 'f8'),
+               ('planning_time', 'f8'), ('action_count', 'i4')],
     )
     np.savetxt(
-        csv_path,
-        arr,
-        delimiter=',',
-        header='mode,nodes,owltopddl_time,planning_time',
-        comments='',
-        fmt='%s,%d,%.18e,%.18e',
+        csv_path, arr, delimiter=',',
+        header='mode,nodes,owltopddl_time,planning_time,action_count',
+        comments='', fmt='%s,%d,%.18e,%.18e,%d',
     )
     return arr
 
 
 def plot_results(folder: Path, records, modes):
-    fig, ax = plt.subplots(figsize=(10, 5))
+    fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(16, 5))
 
-    unique_nodes = sorted({nodes for _, nodes, _, _ in records})
+    unique_nodes = sorted({nodes for _, nodes, _, _, _ in records})
     for mode in modes:
-        mean_t = []
-        std_t = []
+        mean_t, std_t, mean_ac, std_ac = [], [], [], []
         for node_count in unique_nodes:
             times = np.array([
-                planning_time
-                for record_mode, record_nodes, _, planning_time in records
-                if record_mode == mode and record_nodes == node_count
+                pt for m, n, _, pt, _ in records if m == mode and n == node_count
             ])
             mean_t.append(times.mean())
             std_t.append(times.std())
-        mean_t = np.array(mean_t)
-        std_t = np.array(std_t)
+            counts = np.array([
+                ac for m, n, _, _, ac in records
+                if m == mode and n == node_count and ac != NO_PLAN
+            ], dtype=float)
+            mean_ac.append(counts.mean() if counts.size else float('nan'))
+            std_ac.append(counts.std() if counts.size else 0.0)
 
-        ax.plot(unique_nodes, mean_t, marker='o', linestyle='-', markersize=3,
-                label=MODE_LABELS[mode])
-        ax.fill_between(unique_nodes, mean_t - std_t, mean_t + std_t, alpha=0.2)
+        mean_t, std_t = np.array(mean_t), np.array(std_t)
+        mean_ac, std_ac = np.array(mean_ac), np.array(std_ac)
 
-    ax.set_xlabel('Effective Map Size (nodes)')
-    ax.set_ylabel('Mean Planning Time (seconds)')
-    ax.set_title('Combined Stress Test: Planning Time vs. Map Size')
-    ax.legend()
-    ax.grid(True)
+        ax1.plot(unique_nodes, mean_t, marker='o', linestyle='-', markersize=3,
+                 label=MODE_LABELS[mode])
+        ax1.fill_between(unique_nodes, mean_t - std_t, mean_t + std_t, alpha=0.2)
+        ax2.plot(unique_nodes, mean_ac, marker='o', linestyle='-', markersize=3,
+                 label=MODE_LABELS[mode])
+        ax2.fill_between(unique_nodes, mean_ac - std_ac, mean_ac + std_ac, alpha=0.2)
+
+    ax1.set_xlabel('Effective Map Size (nodes)')
+    ax1.set_ylabel('Mean Planning Time (seconds)')
+    ax1.set_title('Combined Stress Test: Planning Time vs. Map Size')
+    ax1.legend()
+    ax1.grid(True)
+
+    ax2.set_xlabel('Effective Map Size (nodes)')
+    ax2.set_ylabel('Mean Plan Length (actions)')
+    ax2.set_ylim(bottom=0)
+    ax2.set_title('Combined Stress Test: Plan Length vs. Map Size')
+    ax2.legend()
+    ax2.grid(True)
+
     plot_path = folder / 'planning_time_combined.png'
     plt.savefig(plot_path, dpi=300, bbox_inches='tight')
     plt.close(fig)
     print(f'Plot saved to {plot_path}')
 
 
-def runner(n_runs: int, mode: str, min_nodes: int = MIN_NODES, max_nodes: int = MAX_NODES, search: str = 'astar(blind())'):
+def runner(n_runs: int, mode: str, min_nodes: int = MIN_NODES, max_nodes: int = MAX_NODES, search: str = 'astar(blind())', out_dir: Path | None = None) -> Path:
     date = datetime.now().strftime('%d-%b-%Y-%H-%M-%S')
-    folder = REPO_ROOT / 'results' / 'scalability_combined' / date
+    folder = out_dir if out_dir is not None else (REPO_ROOT / 'results' / 'scalability_combined' / date)
     folder.mkdir(parents=True, exist_ok=True)
 
     modes = ['adaptive', 'no-adaptation'] if mode == 'both' else [mode]
@@ -304,10 +314,12 @@ def runner(n_runs: int, mode: str, min_nodes: int = MIN_NODES, max_nodes: int = 
             for run_id in range(n_runs):
                 records.append(run_single(folder, current_mode, run_id, n_nodes, search))
 
+    folder_mode = folder / mode
     csv_path = folder / 'planning_times.csv'
-    save_results(folder, records)
+    save_results(folder_mode, records)
     print(f'\nResults saved to {csv_path}')
-    plot_results(folder, records, modes)
+    plot_results(folder_mode, records, modes)
+    return csv_path
 
 
 def main():

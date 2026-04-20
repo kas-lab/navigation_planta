@@ -26,12 +26,12 @@ docker pull ghcr.io/kas-lab/navigation_planta:main
 
 Run the full experiment suite with the locally built image:
 ```bash
-docker run --rm -it -v $HOME/navigation_planta_ws/src/navigation_planta/results:/navigation_pddl_tomasys/results -v /etc/localtime:/etc/localtime:ro navigation_planta:latest python scripts/runner.py
+docker run --rm -it -v $PWD/results:/navigation_planta/results -v /etc/localtime:/etc/localtime:ro navigation_planta:latest python scripts/runner.py
 ```
 
 Run only the grid-map scalability experiment:
 ```bash
-docker run --rm -it -v $HOME/navigation_planta_ws/src/navigation_planta/results:/navigation_pddl_tomasys/results -v /etc/localtime:/etc/localtime:ro navigation_planta:latest python scripts/run_grid_map_scenario.py
+docker run --rm -it -v $PWD/results:/navigation_planta/results -v /etc/localtime:/etc/localtime:ro navigation_planta:latest python scripts/run_grid_map_scenario.py
 ```
 
 Open a shell inside the container image:
@@ -41,15 +41,15 @@ docker run --rm -it -v /etc/localtime:/etc/localtime:ro navigation_planta:latest
 
 Open a shell with the local repository mounted inside the container:
 ```bash
-docker run --rm -it --name navigation_planta -v $PWD/src/navigation_planta:/navigation_pddl_tomasys/ -v /etc/localtime:/etc/localtime:ro navigation_planta:latest bash
+docker run --rm -it --name navigation_planta -v $PWD/src/navigation_planta:/navigation_planta/ -v /etc/localtime:/etc/localtime:ro navigation_planta:latest bash
 ```
 
 Run the full experiment suite with the GitHub image:
 ```bash
-docker run --rm -it -v $HOME/navigation_planta_ws/src/navigation_planta/results:/navigation_pddl_tomasys/results -v /etc/localtime:/etc/localtime:ro ghcr.io/kas-lab/navigation_planta:main python scripts/runner.py
+docker run --rm -it -v $PWD/results:/navigation_planta/results -v /etc/localtime:/etc/localtime:ro ghcr.io/kas-lab/navigation_planta:main python scripts/runner.py
 ```
 
-**Note:** If you want to change the directory where the results are going to be saved in the host machine, replace `HOME/navigation_planta_ws/src/navigation_planta/results` with the path of the directory where you want the results to be saved.
+**Note:** If you want to change the directory where the results are going to be saved in the host machine, replace `PWD/results` with the path of the directory where you want the results to be saved.
 
 ## Manual installation
 
@@ -108,7 +108,7 @@ python scripts/runner.py
 Normal version:
 
 ```
-export PATH=$HOME/navigation_pddl_tomasys_ws/src/owl_to_pddl:$PATH
+export PATH=$HOME/navigation_planta_ws/src/owl_to_pddl:$PATH
 ```
 
 Example matching the full runner path:
@@ -126,7 +126,7 @@ The repository contains both `owl/navigation.owl` and `owl/navigation_with_impor
 ## Run fast-downward solver
 
 ```
-export PATH=$HOME/navigation_pddl_tomasys_ws/src/downward:$PATH
+export PATH=$HOME/navigation_planta_ws/src/downward:$PATH
 ```
 
 ```
@@ -194,6 +194,10 @@ sys	0m0,287s
 time prism navigate_map_one_path.prism -pf 'R{"time"}min=? [ F stop ]' -exportstrat stdout -const INITIAL_BATTERY=5000,INITIAL_LOCATION=1,TARGET_LOCATION=5,INITIAL_CONFIGURATION=1
 ```
 
+```Bash
+time prism navigate_map_one_path.prism -pf 'R{"energy"}max=? [ F stop ]' -exportstrat stdout -const INITIAL_BATTERY=32560,INITIAL_LOCATION=0,TARGET_LOCATION=16,INITIAL_CONFIGURATION=1
+```
+
 ```
 time prism test.prism -pf 'R{"energy"}min=? [ F stop ]' -exportstrat stdout -const INITIAL_BATTERY=32560,INITIAL_LOCATION=0,TARGET_LOCATION=7,INITIAL_CONFIGURATION=1
 ```
@@ -208,21 +212,21 @@ python scripts/run_camara_prism_scenario.py
 
 Run with docker:
 ```bash
-docker run --rm -it -v $HOME/navigation_pddl_tomasys_ws/src/navigation_pddl_tomasys/results:/navigation_pddl_tomasys/results pddl_tomasys:latest python scripts/run_camara_prism_scenario.py
+docker run --rm -it -v $PWD/results:/navigation_planta/results navigation_planta:latest python scripts/run_camara_prism_scenario.py
 ```
 
 ```bash
-docker run --rm -it -v $HOME/navigation_planta_ws/src/navigation_planta/results:/navigation_pddl_tomasys/results navigation_planta:latest python scripts/run_camara_prism_scenario.py
+docker run --rm -it -v $PWD/results:/navigation_planta/results navigation_planta:latest python scripts/run_camara_prism_scenario.py
 ```
 
 ```bash
-docker run --rm -it -v $HOME/navigation_planta_ws/src/navigation_planta/results:/navigation_pddl_tomasys/results ghcr.io/kas-lab/navigation_planta:main python scripts/run_camara_prism_scenario.py
+docker run --rm -it -v $PWD/results:/navigation_planta/results ghcr.io/kas-lab/navigation_planta:main python scripts/run_camara_prism_scenario.py
 ```
 
 ## Run grid map evaluation
 
 ```bash
-docker run --rm -it -v $HOME/navigation_planta_ws/src/navigation_planta/results:/navigation_pddl_tomasys/results ghcr.io/kas-lab/navigation_planta:main python scripts/run_grid_map_scenario.py
+docker run --rm -it -v $PWD/results:/navigation_planta/results ghcr.io/kas-lab/navigation_planta:main python scripts/run_grid_map_scenario.py
 ```
 
 `scripts/run_grid_map_scenario.py` reports planning time around the `fast-downward.py` call only. The total wall-clock runtime per case is larger because map generation, problem-file generation, plotting, and `OWLToPDDL.sh` happen before the timer starts.

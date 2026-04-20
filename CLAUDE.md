@@ -17,10 +17,19 @@ No ROS required. All experiments run as plain Python scripts.
 | Path | Role |
 |---|---|
 | `scripts/run_camara_scenario.py` | Camara map experiment entrypoint |
+| `scripts/run_camara_scenario_discretized.py` | Discretized Camara experiment (PDDL, supports no-adaptation mode) |
+| `scripts/run_camara_prism_scenario.py` | PRISM baseline for Camara map |
 | `scripts/run_grid_map_scenario.py` | Grid scalability experiment entrypoint |
+| `scripts/run_fd_scale_scenario.py` | Exp A — FD scaling (vary FunctionDesigns) |
+| `scripts/run_corridor_type_scale_scenario.py` | Exp B — Corridor type scaling |
+| `scripts/run_mission_action_scale_scenario.py` | Exp C — Mission action scaling |
+| `scripts/run_combined_scenario.py` | Exp D — Combined scalability |
+| `scripts/run_all_experiments.py` | Runs all experiments sequentially; supports `--search`, `--runs`, `--skip` |
 | `scripts/runner.py` | **Base class only** — not an entrypoint |
-| `scripts/map_generator.py` | Map generation, plotting, and PDDL problem serialization |
-| `scripts/prism_model_generator.py` | PRISM model generation (Camara-style comparison) |
+| `navigation_planta/utils.py` | Shared: `count_plan_actions()`, `NO_PLAN = -1` — import from here, don't redefine |
+| `navigation_planta/map_generator.py` | Map generation, plotting, and PDDL problem serialization |
+| `navigation_planta/prism_model_generator.py` | PRISM model generation + policy simulation |
+| `navigation_planta/no_adaptation.py` | Baseline map generator (no-adaptation mode, uses `domain_no_sas.pddl`) |
 | `pddl/domain_sas.pddl` | Hand-written base PDDL domain — the only file to edit for domain changes |
 | `pddl/domain.pddl` | Baseline domain without TOMASys (for reference only, not used in experiments) |
 | `owl/navigation.owl` | TOMASys ontology — baseline (N=6 FDs) |
@@ -99,6 +108,14 @@ The reported **planning time** covers only the `fast-downward.py` call. Map gene
 - **Plan file naming**: FD writes `{plan-file}.1`, `.2`, … (numbered), not the base name directly.
 - **Subprocess cleanup**: `subprocess.run(timeout=N)` leaves the FD C++ child alive on timeout. Use `subprocess.Popen` + `start_new_session=True`, then `os.killpg(os.getpgid(proc.pid), signal.SIGKILL)` on `TimeoutExpired` to kill the whole process group.
 - **Benchmark script**: `scripts/benchmark_search_strategies.py` tests all viable strategies on the combined scenario with configurable node sizes, runs, and timeout. Run with `--nodes 10,20,50 --runs 3 --timeout 60` to find the fastest strategy before updating experiment scripts.
+
+## PRISM Gotchas
+
+- **Strategy export**: Use `-exportstrat {file}:type=actions` (file path, not stdout capture). Only state→action lines are written — no preamble, simpler parsing.
+- **Strategy is a policy, not a plan**: To get action count, simulate from the initial state following the policy (optimistic: no collisions, no interrupts). See `PrismModelgenerator.count_plan_actions_from_strategy()`.
+- **State tuple order**: `(b, l, c, interrupted, goal, rd, collided)` — matches module variable declaration order. `l` is the **path index** (0 = start), not the node ID.
+- **Battery formula**: `max(0, b - int(dist * speed * conf.energy * 0.01))` — must match exactly to produce state keys that exist in the parsed policy.
+- **Unreachable nodes**: Nodes 20 and 41 are unreachable in the Camara map; skip them in init/goal iteration.
 
 ## Validation Guidance
 

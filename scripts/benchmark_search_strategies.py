@@ -46,6 +46,7 @@ SCRIPT_DIR = Path(__file__).parent
 REPO_ROOT = SCRIPT_DIR.parent
 
 sys.path.insert(0, str(SCRIPT_DIR))
+from navigation_planta.utils import count_plan_actions, NO_PLAN
 from run_combined_scenario import (
     CombinedMapGenerator,
     OWL_FILE,
@@ -69,47 +70,71 @@ STRATEGIES = [
     # preferred=[goalcount()] marks operators that satisfy ≥1 goal as preferred
     ('astar+goalcount',          'astar(goalcount())'),
     ('lazy_greedy+goalcount',    'lazy_greedy([goalcount()])'),
-    ('lazy_greedy+gc+pref',      'lazy_greedy([goalcount()], preferred=[goalcount()])'),
     ('eager_greedy+goalcount',   'eager_greedy([goalcount()])'),
-    ('eager_greedy+gc+pref',     'eager_greedy([goalcount()], preferred=[goalcount()])'),
 
     # --- weighted A* with goalcount: satisficing but bounded-suboptimal ---
     # w>1 makes it prefer h over g, trading plan quality for speed
     ('wastar+gc_w2',             'lazy_wastar([goalcount()], w=2)'),
     ('wastar+gc_w5',             'lazy_wastar([goalcount()], w=5)'),
     ('wastar+gc_w10',            'lazy_wastar([goalcount()], w=10)'),
-    ('wastar+gc+pref_w5',        'lazy_wastar([goalcount()], preferred=[goalcount()], w=5)'),
 
     # --- multi-heuristic: goalcount for guidance, blind as tiebreaker ---
     ('lazy_greedy+gc+blind',     'lazy_greedy([goalcount(), blind()])'),
     ('eager_greedy+gc+blind',    'eager_greedy([goalcount(), blind()])'),
 
     # --- known timeouts (kept commented for reference) ---
-    # ('astar+hmax',             'astar(hmax())'),           # timeout
-    # ('lazy_greedy+hmax',       'lazy_greedy([hmax()])'),   # timeout
-    # ('astar+cg',               'astar(cg())'),             # timeout
-    # ('lazy_greedy+cg',         'lazy_greedy([cg()])'),     # timeout
-    # ('astar+ff',               'astar(ff())'),             # timeout
-    # ('lazy_greedy+ff+pref',    'lazy_greedy([ff()], preferred=[ff()])'),  # timeout
-    # ('lazy_greedy+add+pref',   'lazy_greedy([add()], preferred=[add()])'),# timeout
+    ('astar+hmax',             'astar(hmax())'),           # timeout
+    ('lazy_greedy+hmax',       'lazy_greedy([hmax()])'),   # timeout
+    ('astar+cg',               'astar(cg())'),             # timeout
+    ('lazy_greedy+cg',         'lazy_greedy([cg()])'),     # timeout
+    ('astar+ff',               'astar(ff())'),             # timeout
+    ('lazy_greedy+ff+pref',    'lazy_greedy([ff()], preferred=[ff()])'),  # timeout
+    ('lazy_greedy+add+pref',   'lazy_greedy([add()], preferred=[add()])'),# timeout
+
+    (
+        'eager_wastar_gc_w2',
+        'eager_wastar([goalcount()], w=2)'
+    ),
+    (
+        'eager_wastar_gc_w3',
+        'eager_wastar([goalcount()], w=3)'
+    ),
+    (
+        'lazy_wastar_gc_w2',
+        'lazy_wastar([goalcount()], w=2)'
+    ),
+    (
+        'lazy_wastar_gc_w3',
+        'lazy_wastar([goalcount()], w=3)'
+    ),
+    (
+        'eager_greedy_ff_approxneg',
+        'let(hff, ff(axioms=approximate_negative),'
+        'eager_greedy([hff]))'
+    ),
+    (
+        'eager_greedy_add_approxneg',
+        'let(hadd, add(axioms=approximate_negative),'
+        'eager_greedy([hadd]))'
+    ),
+    (
+        'eager_greedy_hmax_approxneg',
+        'let(hm, hmax(axioms=approximate_negative),'
+        'eager_greedy([hm]))'
+    ),
+    (
+        'lazy_greedy_ff_approxneg',
+        'let(hff, ff(axioms=approximate_negative),'
+        'lazy_greedy([hff]))'
+    ),
+    (
+        'lazy_greedy_add_approxneg',
+        'let(hadd, add(axioms=approximate_negative),'
+        'lazy_greedy([hadd]))'
+    ),
 ]
 
 TIMEOUT_SENTINEL = float('inf')
-NO_PLAN = -1
-
-
-def count_plan_actions(plan_file: Path) -> int:
-    """Count actions in an FD plan file, ignoring comment/cost lines.
-
-    FD writes plans to {plan_file}.1, .2, ... — take the last (best for
-    satisficing search). Returns NO_PLAN (-1) if no plan file is found.
-    """
-    candidates = sorted(plan_file.parent.glob(plan_file.name + '.*'))
-    target = candidates[-1] if candidates else (plan_file if plan_file.exists() else None)
-    if target is None:
-        return NO_PLAN
-    lines = target.read_text().splitlines()
-    return sum(1 for line in lines if line.strip() and not line.startswith(';'))
 
 
 def run_fd(

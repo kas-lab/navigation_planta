@@ -1,32 +1,30 @@
-FROM ubuntu:22.04
+FROM python:3.11-slim
 
-RUN apt update && apt install -y --no-install-recommends \
+RUN apt-get update && apt-get install -y --no-install-recommends \
   git \
   vim \
   cmake \
-  g++ \
-  make \
-  python3 \
   build-essential \
-  python-is-python3 \
-  python3-pip \
-  openjdk-17-jdk \
+  default-jdk \
   wget \
   unzip \
   && rm -rf /var/lib/apt/lists/*
 
-RUN pip install psutil networkx numpy==1.26.4 matplotlib scipy unified-planning unified-planning[fast-downward]
+RUN pip install --no-cache-dir \
+  psutil networkx "numpy==1.26.4" matplotlib scipy \
+  unified-planning "unified-planning[fast-downward]"
 
-ENV JAVA_HOME=/usr/lib/jvm/java-17-openjdk-amd64
+ENV JAVA_HOME=/usr/lib/jvm/default-java
 
 WORKDIR /gradle
-RUN wget -c https://services.gradle.org/distributions/gradle-8.13-bin.zip
-RUN mkdir /opt/gradle
-RUN unzip -d /opt/gradle gradle-8.13-bin.zip
+RUN wget -q https://services.gradle.org/distributions/gradle-8.13-bin.zip \
+  && mkdir -p /opt/gradle \
+  && unzip -d /opt/gradle gradle-8.13-bin.zip \
+  && rm gradle-8.13-bin.zip
 ENV PATH=$PATH:/opt/gradle/gradle-8.13/bin
 
 WORKDIR /
-RUN git clone https://github.com/prismmodelchecker/prism.git
+RUN git clone https://github.com/prismmodelchecker/prism.git -b v4.10.1
 RUN cd prism/prism && make && make test
 RUN ln -s /prism/prism/bin/prism /usr/local/bin/prism
 
@@ -42,10 +40,12 @@ WORKDIR /dlToPlanning
 RUN ./gradlew shadowJar
 ENV PATH=/dlToPlanning:$PATH
 
-WORKDIR /navigation_pddl_tomasys
+WORKDIR /navigation_planta
+COPY navigation_planta/ navigation_planta/
+COPY scripts/ scripts/
 COPY owl/ owl/
 COPY pddl/ pddl/
-COPY scripts/ scripts/
-COPY map_camara_2020_paper/map-p2cp3.json map_camara_2020_paper/map-p2cp3.json
-
-WORKDIR /navigation_pddl_tomasys
+COPY prism/ prism/
+COPY data/map_camara_2020_paper/ data/map_camara_2020_paper/
+COPY setup.py .
+RUN pip install --no-cache-dir -e .

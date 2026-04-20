@@ -4,7 +4,6 @@
 
 import argparse
 import subprocess
-import sys
 import time
 from datetime import datetime
 from pathlib import Path
@@ -15,9 +14,9 @@ import numpy as np
 SCRIPT_DIR = Path(__file__).parent
 REPO_ROOT = SCRIPT_DIR.parent
 
-sys.path.insert(0, str(SCRIPT_DIR))
-from map_generator import MapGenerator
-from no_adaptation import NoAdaptationMapGenerator
+from navigation_planta.map_generator import MapGenerator
+from navigation_planta.no_adaptation import NoAdaptationMapGenerator
+from navigation_planta.utils import count_plan_actions, NO_PLAN
 
 OWL_FILES = {
     2: REPO_ROOT / 'owl' / 'experiment_fd_scalability' / 'navigation_fd_2.owl',
@@ -111,10 +110,12 @@ def run_single(folder: Path, mode: str, run_id: int, n_fd: int, search: str = 'l
         problem_for_planner = problem_file
         owltopddl_time = 0.0
 
+    plan_file = run_folder / 'plan'
     fd_start = time.perf_counter()
     subprocess.run(
         [
             'fast-downward.py',
+            '--plan-file', str(plan_file),
             str(domain_for_planner),
             str(problem_for_planner),
             '--search', search,
@@ -123,87 +124,95 @@ def run_single(folder: Path, mode: str, run_id: int, n_fd: int, search: str = 'l
         check=True,
     )
     planning_time = time.perf_counter() - fd_start
+    action_count = count_plan_actions(plan_file)
 
     print(
         f'mode={mode:<13} n_fd={n_fd:2d} run={run_id:2d} '
-        f'owltopddl={owltopddl_time:.3f}s planning={planning_time:.6f}s'
+        f'owltopddl={owltopddl_time:.3f}s planning={planning_time:.6f}s actions={action_count}'
     )
-    return mode, n_fd, owltopddl_time, planning_time
+    return mode, n_fd, owltopddl_time, planning_time, action_count
 
 
 def save_results(folder: Path, records):
     csv_path = folder / 'planning_times.csv'
-    single_mode = len({mode for mode, _, _, _ in records}) == 1
+    single_mode = len({mode for mode, _, _, _, _ in records}) == 1
 
     if single_mode:
         arr = np.array(
-            [(n_fd, owltopddl_time, planning_time)
-             for _, n_fd, owltopddl_time, planning_time in records],
-            dtype=[('n_fd', 'i4'), ('owltopddl_time', 'f8'), ('planning_time', 'f8')],
+            [(n_fd, owltopddl_time, planning_time, action_count)
+             for _, n_fd, owltopddl_time, planning_time, action_count in records],
+            dtype=[('n_fd', 'i4'), ('owltopddl_time', 'f8'),
+                   ('planning_time', 'f8'), ('action_count', 'i4')],
         )
         np.savetxt(
-            csv_path,
-            arr,
-            delimiter=',',
-            header='n_fd,owltopddl_time,planning_time',
-            comments='',
+            csv_path, arr, delimiter=',',
+            header='n_fd,owltopddl_time,planning_time,action_count',
+            comments='', fmt='%d,%.18e,%.18e,%d',
         )
         return arr
 
     arr = np.array(
-        records,
-        dtype=[
-            ('mode', 'U20'),
-            ('n_fd', 'i4'),
-            ('owltopddl_time', 'f8'),
-            ('planning_time', 'f8'),
-        ],
+        [(mode, n_fd, owltopddl_time, planning_time, action_count)
+         for mode, n_fd, owltopddl_time, planning_time, action_count in records],
+        dtype=[('mode', 'U20'), ('n_fd', 'i4'), ('owltopddl_time', 'f8'),
+               ('planning_time', 'f8'), ('action_count', 'i4')],
     )
     np.savetxt(
-        csv_path,
-        arr,
-        delimiter=',',
-        header='mode,n_fd,owltopddl_time,planning_time',
-        comments='',
-        fmt='%s,%d,%.18e,%.18e',
+        csv_path, arr, delimiter=',',
+        header='mode,n_fd,owltopddl_time,planning_time,action_count',
+        comments='', fmt='%s,%d,%.18e,%.18e,%d',
     )
     return arr
 
 
 def plot_results(folder: Path, records, modes):
-    fig, ax = plt.subplots(figsize=(8, 5))
+    fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(14, 5))
 
     for mode in modes:
-        mean_t = []
-        std_t = []
+        mean_t, std_t, mean_ac, std_ac = [], [], [], []
         for n_fd in N_FD_VALUES:
             times = np.array([
-                planning_time
-                for record_mode, record_n_fd, _, planning_time in records
-                if record_mode == mode and record_n_fd == n_fd
+                pt for m, nf, _, pt, _ in records if m == mode and nf == n_fd
             ])
             mean_t.append(times.mean())
             std_t.append(times.std())
-        mean_t = np.array(mean_t)
-        std_t = np.array(std_t)
+            counts = np.array([
+                ac for m, nf, _, _, ac in records
+                if m == mode and nf == n_fd and ac != NO_PLAN
+            ], dtype=float)
+            mean_ac.append(counts.mean() if counts.size else float('nan'))
+            std_ac.append(counts.std() if counts.size else 0.0)
 
-        ax.plot(N_FD_VALUES, mean_t, marker='o', linestyle='-', label=MODE_LABELS[mode])
-        ax.fill_between(N_FD_VALUES, mean_t - std_t, mean_t + std_t, alpha=0.2)
+        mean_t, std_t = np.array(mean_t), np.array(std_t)
+        mean_ac, std_ac = np.array(mean_ac), np.array(std_ac)
 
-    ax.set_xlabel('Number of FunctionDesigns (N)')
-    ax.set_ylabel('Mean Planning Time (seconds)')
-    ax.set_title('Planning Time vs. Number of FunctionDesigns')
-    ax.legend()
-    ax.grid(True)
+        ax1.plot(N_FD_VALUES, mean_t, marker='o', linestyle='-', label=MODE_LABELS[mode])
+        ax1.fill_between(N_FD_VALUES, mean_t - std_t, mean_t + std_t, alpha=0.2)
+        ax2.plot(N_FD_VALUES, mean_ac, marker='o', linestyle='-', label=MODE_LABELS[mode])
+        ax2.fill_between(N_FD_VALUES, mean_ac - std_ac, mean_ac + std_ac, alpha=0.2)
+
+    ax1.set_xlabel('Number of FunctionDesigns (N)')
+    ax1.set_ylabel('Mean Planning Time (seconds)')
+    ax1.set_title('Planning Time vs. Number of FunctionDesigns')
+    ax1.legend()
+    ax1.grid(True)
+
+    ax2.set_xlabel('Number of FunctionDesigns (N)')
+    ax2.set_ylabel('Mean Plan Length (actions)')
+    ax2.set_ylim(bottom=0)
+    ax2.set_title('Plan Length vs. Number of FunctionDesigns')
+    ax2.legend()
+    ax2.grid(True)
+
     plot_path = folder / 'planning_time_fd_scale.png'
     plt.savefig(plot_path, dpi=300, bbox_inches='tight')
     plt.close(fig)
     print(f'Plot saved to {plot_path}')
 
 
-def runner(n_runs: int, mode: str, search: str = 'lazy_greedy([ff()], preferred=[ff()])'):
+def runner(n_runs: int, mode: str, search: str = 'lazy_greedy([ff()], preferred=[ff()])', out_dir: Path | None = None) -> Path:
     date = datetime.now().strftime('%d-%b-%Y-%H-%M-%S')
-    folder = REPO_ROOT / 'results' / 'scalability_fd' / date
+    folder = out_dir if out_dir is not None else (REPO_ROOT / 'results' / 'scalability_fd' / date)
     folder.mkdir(parents=True, exist_ok=True)
 
     modes = ['adaptive', 'no-adaptation'] if mode == 'both' else [mode]
@@ -220,6 +229,7 @@ def runner(n_runs: int, mode: str, search: str = 'lazy_greedy([ff()], preferred=
     save_results(folder, records)
     print(f'\nResults saved to {csv_path}')
     plot_results(folder, records, modes)
+    return csv_path
 
 
 def main():

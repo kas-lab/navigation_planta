@@ -1,4 +1,5 @@
-from map_generator import MapGenerator
+from .map_generator import MapGenerator
+from .utils import NO_PLAN
 import textwrap
 from pathlib import Path
 
@@ -166,9 +167,90 @@ class PrismModelgenerator(MapGenerator):
             file.write(energy_reward)
 
 
+    def count_plan_actions_from_strategy(
+            self,
+            strategy_text: str,
+            nav_path: list,
+            initial_battery: int,
+            initial_config: int) -> int:
+        """Simulate the nominal execution path and return the number of actions.
+
+        Parses the PRISM strategy export (type=actions) and follows the policy
+        from the initial state, taking the optimistic branch at each stochastic
+        move (no collision).  Returns the number of reconfig + move actions
+        taken before (and excluding) the terminal 'finish' action, or NO_PLAN
+        if the strategy does not cover the initial state or the cap is hit.
+        """
+        speed = 0.68
+
+        # Pre-compute battery decrement per (path step, conf index)
+        # Matches the b_upd_lX_lY formula: int(dist * speed * conf.energy * 0.01)
+        step_costs: list[list[int]] = []
+        for i in range(len(nav_path) - 1):
+            dist = self.graph[nav_path[i]][nav_path[i + 1]]['weight']
+            step_costs.append([
+                int(dist * speed * conf.energy * 0.01)
+                for conf in self.configurations
+            ])
+
+        # Parse strategy lines: "(b,l,c,interrupted,goal,rd,collided)=action"
+        # Works with both raw file content and captured stdout — lines that
+        # don't start with '(' (PRISM preamble, blank lines) are ignored.
+        policy: dict[tuple, str] = {}
+        for line in strategy_text.splitlines():
+            line = line.strip()
+            if not line.startswith('('):
+                continue
+            try:
+                state_str, action = line.rsplit('=', 1)
+                vals = state_str.strip('()').split(',')
+                state = (
+                    int(vals[0]),           # b
+                    int(vals[1]),           # l (path index)
+                    int(vals[2]),           # c (conf index)
+                    vals[3].strip() == 'true',  # interrupted
+                    vals[4].strip() == 'true',  # goal
+                    vals[5].strip() == 'true',  # rd
+                    vals[6].strip() == 'true',  # collided
+                )
+                policy[state] = action.strip()
+            except (ValueError, IndexError):
+                continue
+
+        conf_name_to_idx = {conf.name: i for i, conf in enumerate(self.configurations)}
+
+        # Simulate from initial state (optimistic: no collisions, no interrupts)
+        b = initial_battery
+        l = 0       # path index; 0 = start, len(nav_path)-1 = target
+        c = initial_config
+        interrupted, goal, rd, collided = False, False, False, False
+        action_count = 0
+
+        for _ in range(10_000):
+            action = policy.get((b, l, c, interrupted, goal, rd, collided))
+            if action is None:
+                return NO_PLAN
+            if action == 'finish':
+                return action_count
+            action_count += 1
+            if action.startswith('t_set_'):
+                conf_name = action[len('t_set_'):]   # e.g. "conf_aruco"
+                c = conf_name_to_idx[conf_name]
+                rd = True
+            else:
+                # Move action (e.g. "l1_l2"): advance path index, drain battery
+                cost = step_costs[l][c]
+                b = max(0, b - cost)
+                l += 1
+                rd = False
+                collided = False  # optimistic branch
+
+        return NO_PLAN  # safety cap exceeded
+
+
 if __name__ == '__main__':
     prism_generator = PrismModelgenerator()
-    base_folder = Path("map_camara_2020_paper")
+    base_folder = Path("data/map_camara_2020_paper")
     prism_generator.load_json(base_folder / "map-p2cp3.json")
     nav_path = prism_generator.find_shortest_path(from_node=1, to_node=18)
     print(nav_path)

@@ -9,8 +9,8 @@ from matplotlib.patches import Patch
 from matplotlib.lines import Line2D
 from typing import Tuple
 
-from map_generator import MapGenerator
-from prism_model_generator import PrismModelgenerator
+from navigation_planta.map_generator import MapGenerator
+from navigation_planta.prism_model_generator import PrismModelgenerator
 
 
 def retry_on_failure(func):
@@ -32,7 +32,7 @@ class Runner:
         self.execution_times = []
         self.experiment_header = ''
 
-    def load_json_map(self, json_path='map_camara_2020_paper/map-p2cp3.json'):
+    def load_json_map(self, json_path='data/map_camara_2020_paper/map-p2cp3.json'):
         self.map_generator.load_json(json_path)
 
     def execute_case(self, map_folder: Path, init: int, goal: int) -> float:
@@ -357,7 +357,7 @@ class CamaraMapRunner(Runner):
 class CamaraMapPrismRunner(CamaraMapRunner):
     def __init__(self,
                  result_folder="results/map_camara_2020_paper/prism",
-                 map_path='map_camara_2020_paper/map-p2cp3.json'):
+                 map_path='data/map_camara_2020_paper/map-p2cp3.json'):
         super().__init__(PrismModelgenerator, result_folder)
         self.map_generator.load_json(map_path)
 
@@ -396,7 +396,7 @@ class CamaraMapPDDLRunner(CamaraMapRunner):
     def __init__(
             self,
             result_folder="results/map_camara_2020_paper/pddl",
-            map_path='map_camara_2020_paper/map-p2cp3.json'):
+            map_path='data/map_camara_2020_paper/map-p2cp3.json'):
         super().__init__(PrismModelgenerator, result_folder)
         self.map_generator.load_and_discretize_json(map_path)
 
