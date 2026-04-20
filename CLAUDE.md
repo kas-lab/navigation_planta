@@ -25,16 +25,19 @@ No ROS required. All experiments run as plain Python scripts.
 | `scripts/run_mission_action_scale_scenario.py` | Exp C — Mission action scaling |
 | `scripts/run_combined_scenario.py` | Exp D — Combined scalability |
 | `scripts/run_all_experiments.py` | Runs all experiments sequentially; supports `--search`, `--runs`, `--skip` |
-| `scripts/runner.py` | **Base class only** — not an entrypoint |
+| `scripts/benchmark_search_strategies.py` | Benchmarks viable FD strategies on the combined scenario |
+| `navigation_planta/experiment_runner.py` | Shared sweep execution framework |
+| `navigation_planta/reporting.py` | Shared plotting, summaries, and comparison figures |
+| `navigation_planta/scenario_variants.py` | Package-level corridor, mission, and combined scenario variants |
 | `navigation_planta/utils.py` | Shared: `count_plan_actions()`, `NO_PLAN = -1` — import from here, don't redefine |
-| `navigation_planta/map_generator.py` | Map generation, plotting, and PDDL problem serialization |
+| `navigation_planta/map_generator.py` | Facade over graph generation, map I/O, and PDDL serialization |
 | `navigation_planta/prism_model_generator.py` | PRISM model generation + policy simulation |
 | `navigation_planta/no_adaptation.py` | Baseline map generator (no-adaptation mode, uses `domain_no_sas.pddl`) |
 | `pddl/domain_sas.pddl` | Hand-written base PDDL domain — the only file to edit for domain changes |
 | `pddl/domain.pddl` | Baseline domain without TOMASys (for reference only, not used in experiments) |
 | `owl/navigation.owl` | TOMASys ontology — baseline (N=6 FDs) |
 | `owl/experiment_fd_scalability/` | FD-scaling OWL series (N=2,4,6,8,10,12,15); **cumulative** — each file contains all FDs from smaller N |
-| `map_camara_2020_paper/` | JSON map assets for the Camara comparison scenario |
+| `data/map_camara_2020_paper/` | JSON map assets for the Camara comparison scenario |
 | `results/` | Generated experiment outputs (gitignored) |
 
 ## Pipeline
@@ -43,7 +46,7 @@ Each experiment script runs these steps in order:
 
 1. **Map → problem.pddl** — `map_generator.py` builds the waypoint graph and serializes it as a PDDL problem file.
 2. **OWL + base domain → created files** — `OWLToPDDL.sh` takes `owl/navigation.owl` and `pddl/domain_sas.pddl` as inputs and produces `domain_created.pddl` + `problem_created.pddl`.
-3. **Planning** — `fast-downward.py` runs greedy best-first search with the FF heuristic and preferred operators (`lazy_greedy([ff()], preferred=[ff()])`) on the created files.
+3. **Planning** — `fast-downward.py` runs the search configured by each script on the created files.
 4. **Results** — planning times saved to `results/planning_times.csv`.
 
 Only `domain_sas.pddl` and `navigation.owl` are hand-authored. Everything else is generated.
@@ -65,11 +68,16 @@ Run grid scalability experiment:
 python scripts/run_grid_map_scenario.py
 ```
 
+Run the full suite:
+```bash
+python scripts/run_all_experiments.py
+```
+
 Run via Docker:
 ```bash
 docker build -t navigation_planta .
 docker run --rm -it --name navigation_planta \
-  -v $PWD/src/navigation_planta:/navigation_pddl_tomasys/ \
+  -v $PWD/src/navigation_planta:/navigation_planta/ \
   -v /etc/localtime:/etc/localtime:ro \
   navigation_planta:latest bash
 ```

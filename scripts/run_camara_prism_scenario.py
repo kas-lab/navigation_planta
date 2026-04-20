@@ -1,8 +1,11 @@
 from navigation_planta.prism_model_generator import PrismModelgenerator
+from navigation_planta.reporting import (
+    plot_mode_summary,
+    summarize_mode_records,
+    write_summary_report,
+)
 from navigation_planta.utils import (
     ExperimentRecord,
-    NO_PLAN,
-    plot_camara_results,
     run_subprocess_with_memory,
     save_experiment_records_csv,
 )
@@ -10,8 +13,6 @@ import subprocess
 import time
 from pathlib import Path
 from datetime import datetime
-import numpy as np
-
 
 def run(folder_name, run, init, goal):
     # n_nodes_resulting = n_nodes - int(n_nodes*nodes_skip)
@@ -93,16 +94,15 @@ def runner(out_dir: Path | None = None) -> Path:
         x_name='init_goal',
         time_name='time',
     )
-    mean = np.mean([record.planning_time for record in planning_time_list])
-    std_dev = np.std([record.planning_time for record in planning_time_list])
-    valid_counts = np.array([
-        record.action_count for record in planning_time_list if record.action_count != NO_PLAN
-    ])
-    count_str = (f'  mean actions: {valid_counts.mean():.1f}' if valid_counts.size else '')
-    max_mem = np.max([record.peak_memory for record in planning_time_list])
-    print(f'Mean {mean:.4f}s Std dev: {std_dev:.4f}s{count_str}  Max mem: {max_mem:.1f}MB')
+    summary_lines = summarize_mode_records(
+        planning_time_list,
+        {'prism': 'Cámara et al. (2020)'},
+    )
+    for line in summary_lines:
+        print(line)
+    write_summary_report(folder_name, summary_lines)
 
-    plot_camara_results(
+    plot_mode_summary(
         folder_name, planning_time_list,
         {'prism': 'Cámara et al. (2020)'},
         filename='camara_prism_summary.png')

@@ -2,6 +2,7 @@ from pathlib import Path
 
 import time
 
+from navigation_planta import reporting
 from navigation_planta import utils
 from navigation_planta.utils import ExperimentRecord
 
@@ -122,7 +123,7 @@ def test_save_experiment_records_csv_keeps_mode_for_multi_mode_runs(
     assert lines[2].startswith("no-adaptation,wp1_wp2,")
 
 
-def test_plot_memory_boxplot_creates_png(tmp_path: Path) -> None:
+def test_plot_memory_summary_creates_png(tmp_path: Path) -> None:
     records = [
         ExperimentRecord("adaptive", 10, 0.1, 3, 40.0),
         ExperimentRecord("adaptive", 20, 0.2, 4, 42.0),
@@ -131,7 +132,7 @@ def test_plot_memory_boxplot_creates_png(tmp_path: Path) -> None:
     ]
     out_file = tmp_path / "peak_memory_boxplot.png"
 
-    utils.plot_memory_boxplot(
+    reporting.plot_memory_summary(
         tmp_path,
         records,
         {"adaptive": "Adaptive", "no-adaptation": "No adaptation"},
@@ -142,7 +143,7 @@ def test_plot_memory_boxplot_creates_png(tmp_path: Path) -> None:
     assert out_file.stat().st_size > 0
 
 
-def test_plot_camara_results_creates_png(tmp_path: Path) -> None:
+def test_plot_mode_summary_creates_png(tmp_path: Path) -> None:
     records = [
         ExperimentRecord("adaptive", "wp1_wp2", 0.4, 3, 40.0),
         ExperimentRecord("adaptive", "wp2_wp3", 0.5, 4, 42.0),
@@ -151,7 +152,7 @@ def test_plot_camara_results_creates_png(tmp_path: Path) -> None:
     ]
     out_file = tmp_path / "camara_summary.png"
 
-    utils.plot_camara_results(
+    reporting.plot_mode_summary(
         tmp_path,
         records,
         {"adaptive": "Adaptive", "no-adaptation": "No adaptation"},

@@ -13,9 +13,6 @@ import argparse
 import subprocess
 from pathlib import Path
 
-import matplotlib.pyplot as plt
-import numpy as np
-
 from navigation_planta.experiment_runner import (
     SweepExperimentConfig,
     execute_pddl_case,
@@ -23,10 +20,7 @@ from navigation_planta.experiment_runner import (
 )
 from navigation_planta.map_generator import MapGenerator
 from navigation_planta.no_adaptation import NoAdaptationMapGenerator
-from navigation_planta.utils import (
-    NO_PLAN,
-    plot_memory_boxplot,
-)
+from navigation_planta.reporting import plot_memory_summary, plot_numeric_sweep_results
 
 SCRIPT_DIR = Path(__file__).resolve().parent
 REPO_ROOT = SCRIPT_DIR.parent
@@ -129,55 +123,18 @@ def run_single_case(
     return record
 
 def plot_results(folder_name, planning_time_list, modes, show_plot):
-    fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(14, 5))
-
-    for mode in modes:
-        mode_nodes = np.array(
-            [record.x_value for record in planning_time_list if record.mode == mode], dtype='i4')
-        mode_times = np.array(
-            [record.planning_time for record in planning_time_list if record.mode == mode])
-        mode_counts = np.array(
-            [record.action_count for record in planning_time_list if record.mode == mode], dtype='i4')
-
-        unique_nodes, indices = np.unique(mode_nodes, return_inverse=True)
-        mean_times = np.bincount(indices, weights=mode_times) / np.bincount(indices)
-        sum_sq = np.bincount(indices, weights=(mode_times - mean_times[indices]) ** 2)
-        std_times = np.sqrt(sum_sq / np.bincount(indices))
-
-        ax1.plot(unique_nodes, mean_times, marker='o', linestyle='-', label=MODE_LABELS[mode])
-        ax1.fill_between(unique_nodes, mean_times - std_times, mean_times + std_times, alpha=0.2)
-
-        valid = mode_counts != NO_PLAN
-        if valid.any():
-            v_nodes = mode_nodes[valid]
-            v_counts = mode_counts[valid].astype(float)
-            u_nodes, idx = np.unique(v_nodes, return_inverse=True)
-            mean_ac = np.bincount(idx, weights=v_counts) / np.bincount(idx)
-            sum_sq_ac = np.bincount(idx, weights=(v_counts - mean_ac[idx]) ** 2)
-            std_ac = np.sqrt(sum_sq_ac / np.bincount(idx))
-            ax2.plot(u_nodes, mean_ac, marker='o', linestyle='-', label=MODE_LABELS[mode])
-            ax2.fill_between(u_nodes, mean_ac - std_ac, mean_ac + std_ac, alpha=0.2)
-
-    ax1.set_xlabel('Number of Nodes')
-    ax1.set_ylabel('Mean Elapsed Time (seconds)')
-    ax1.set_ylim(bottom=0)
-    ax1.set_title('Average Planning Execution Time with Std Dev')
-    ax1.legend()
-    ax1.grid(True)
-
-    ax2.set_xlabel('Number of Nodes')
-    ax2.set_ylabel('Mean Plan Length (actions)')
-    ax2.set_ylim(bottom=0)
-    ax2.set_title('Average Plan Length with Std Dev')
-    ax2.legend()
-    ax2.grid(True)
-
-    planning_time_png = folder_name / 'planning_time_avg_std.png'
-    plt.savefig(planning_time_png, format='png', dpi=300, bbox_inches='tight')
-
-    if show_plot:
-        plt.show(block=True)
-    plt.close(fig)
+    plot_numeric_sweep_results(
+        folder_name,
+        planning_time_list,
+        {mode: MODE_LABELS[mode] for mode in modes},
+        xlabel='Number of Nodes',
+        time_title='Average Planning Execution Time with Std Dev',
+        action_title='Average Plan Length with Std Dev',
+        filename='planning_time_avg_std.png',
+        x_values=sorted({record.x_value for record in planning_time_list}),
+        time_ylabel='Mean Elapsed Time (seconds)',
+        show_plot=show_plot,
+    )
 
 
 def parse_args():
@@ -249,7 +206,7 @@ def runner(
         ),
         plot_results=lambda folder_name, records, modes: plot_results(
             folder_name, records, modes, show_plot),
-        after_run=lambda folder_name, records, _modes: plot_memory_boxplot(
+        after_run=lambda folder_name, records, _modes: plot_memory_summary(
             folder_name, records, MODE_LABELS, filename='peak_memory_boxplot.png'),
         search=search,
         out_dir=out_dir,

@@ -56,8 +56,8 @@ Purpose: establish a stable baseline before structural changes.
 3. Add a `tests/` directory if one does not exist.
 4. Add focused tests for current stable utilities, especially:
    - `count_plan_actions()`
-   - `plot_camara_results()` with synthetic records
-   - `plot_memory_boxplot()` with synthetic records
+   - `plot_mode_summary()` with synthetic records
+   - `plot_memory_summary()` with synthetic records
    - `write_problem_fast()` using a small generated problem
 5. Add one smoke test for `MapGenerator.generate_domain_problem_files()`.
 
@@ -342,31 +342,28 @@ Purpose: remove repeated plotting and output-format code.
 - Scripts do not each maintain their own bespoke plotting boilerplate.
 - Reporting behavior is centralized and easier to evolve.
 
-## Phase 7: Reassess Or Retire `scripts/runner.py`
+## Phase 7: Remove Legacy Runner
 
-Purpose: resolve overlap between the legacy runner framework and newer standalone scripts.
+Purpose: eliminate the old execution path once the shared experiment framework is in place.
 
 ### Scope
 
-- Decide whether `runner.py` remains a supported compatibility entrypoint or is deprecated.
+- Remove `scripts/runner.py` and standardize on explicit experiment entrypoints.
 
 ### Tasks
 
-1. Compare `runner.py` responsibilities with the new shared experiment framework.
-2. Choose one of these paths:
-   - keep `runner.py` as a thin compatibility entrypoint using the shared framework
-   - deprecate it in favor of explicit experiment scripts
-3. Remove duplicated helper wrappers from `runner.py`, especially subprocess and measurement helpers already available in the package.
-4. Update README usage examples to reflect the chosen direction.
+1. Delete `scripts/runner.py`.
+2. Remove references to it from documentation and repo guidance files.
+3. Ensure experiment execution guidance points to the standalone scripts and `run_all_experiments.py`.
 
 ### Deliverables
 
-- Clear status for `runner.py`.
-- Reduced ambiguity about which entrypoints are canonical.
+- Legacy runner removed.
+- Documentation updated to describe the canonical entrypoints.
 
 ### Suggested Tests
 
-- If retained, add a smoke test covering the legacy entrypoint interface.
+- No dedicated runner tests needed after removal.
 
 ### Exit Criteria
 
@@ -432,7 +429,7 @@ Recommended order:
   - scenario logic and package boundaries cleaned up
 - Milestone D:
   - Phases 6 to 8 complete
-  - plotting, docs, and legacy runner status finalized
+  - plotting, docs, and legacy runner removal finalized
 
 ## Cross-Phase Risks To Watch
 

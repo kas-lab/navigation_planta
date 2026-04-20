@@ -6,8 +6,6 @@ import argparse
 import subprocess
 from pathlib import Path
 
-import numpy as np
-
 from navigation_planta.experiment_runner import (
     SweepExperimentConfig,
     execute_pddl_case,
@@ -15,9 +13,10 @@ from navigation_planta.experiment_runner import (
 )
 from navigation_planta.map_generator import MapGenerator
 from navigation_planta.no_adaptation import NoAdaptationMapGenerator
-from navigation_planta.utils import (
-    NO_PLAN,
-    plot_camara_results,
+from navigation_planta.reporting import (
+    plot_mode_summary,
+    summarize_mode_records,
+    write_summary_report,
 )
 
 SCRIPT_DIR = Path(__file__).resolve().parent
@@ -94,39 +93,20 @@ def run_single_case(folder_name, mode, run_n, init_goal, search='lazy_greedy([ff
     return record
 
 def plot_results(folder_name, planning_time_list, modes):
-    plot_camara_results(
+    plot_mode_summary(
         folder_name, planning_time_list,
         {m: MODE_LABELS[m] for m in modes},
         filename='camara_discretized_summary.png')
 
 
-def print_summary(planning_time_list, modes):
-    if len(modes) == 1:
-        times = np.array([record.planning_time for record in planning_time_list])
-        counts = np.array(
-            [record.action_count for record in planning_time_list if record.action_count != NO_PLAN],
-            dtype=float)
-        mems = np.array([record.peak_memory for record in planning_time_list])
-        ac_str = f' mean actions: {counts.mean():.1f}' if counts.size else ''
-        print(f'Mean {times.mean():.4f}s Std dev: {times.std():.4f}s{ac_str} Max mem: {mems.max():.1f}MB')
-        return
-
-    for mode in modes:
-        times = np.array([
-            record.planning_time for record in planning_time_list if record.mode == mode
-        ])
-        counts = np.array([
-            record.action_count
-            for record in planning_time_list
-            if record.mode == mode and record.action_count != NO_PLAN
-        ], dtype=float)
-        mems = np.array([
-            record.peak_memory for record in planning_time_list if record.mode == mode
-        ])
-        ac_str = f' mean actions: {counts.mean():.1f}' if counts.size else ''
-        print(
-            f'{MODE_LABELS[mode]} mean {times.mean():.4f}s std dev: {times.std():.4f}s{ac_str} '
-            f'max mem: {mems.max():.1f}MB')
+def print_summary(folder_name: Path, planning_time_list, modes):
+    summary_lines = summarize_mode_records(
+        planning_time_list,
+        {m: MODE_LABELS[m] for m in modes},
+    )
+    for line in summary_lines:
+        print(line)
+    write_summary_report(folder_name, summary_lines)
 
 
 def parse_args():
@@ -180,7 +160,7 @@ def runner(
         mode=mode,
         run_one=run_single_case,
         plot_results=plot_results,
-        after_run=lambda folder_name, records, modes: print_summary(records, modes),
+        after_run=lambda folder_name, records, modes: print_summary(folder_name, records, modes),
         search=search,
         out_dir=out_dir,
     )

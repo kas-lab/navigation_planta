@@ -10,6 +10,20 @@ This repo contains the experimental setup used in the paper "Plan your Self-Adap
 
 The remainder of this README explains how to reproduce the experiments.
 
+## Repository structure
+
+- `experiment_runner.py`: shared sweep orchestration
+- `reporting.py`: plotting, comparison figures, and summary reports
+- `scenario_variants.py`: corridor, mission, and combined scenario variants
+- `map_generator.py`: facade over graph generation, map I/O, and PDDL construction
+- `graph_generation.py`: graph generation and pathfinding
+- `map_io.py`: JSON loading, discretization, and map plotting
+- `pddl_builder.py`: Unified Planning domain/problem construction and serialization
+- `utils.py`: planner execution, CSV serialization, and plan parsing
+- `prism_model_generator.py`: PRISM model generation and policy simulation
+
+See `docs/architecture.md` for a developer-oriented overview.
+
 ## Docker
 
 The first step is to get the docker image used for the experiments.
@@ -26,7 +40,7 @@ docker pull ghcr.io/kas-lab/navigation_planta:main
 
 Run the full experiment suite with the locally built image:
 ```bash
-docker run --rm -it -v $PWD/results:/navigation_planta/results -v /etc/localtime:/etc/localtime:ro navigation_planta:latest python scripts/runner.py
+docker run --rm -it -v $PWD/results:/navigation_planta/results -v /etc/localtime:/etc/localtime:ro navigation_planta:latest python scripts/run_all_experiments.py
 ```
 
 Run only the grid-map scalability experiment:
@@ -46,7 +60,7 @@ docker run --rm -it --name navigation_planta -v $PWD/src/navigation_planta:/navi
 
 Run the full experiment suite with the GitHub image:
 ```bash
-docker run --rm -it -v $PWD/results:/navigation_planta/results -v /etc/localtime:/etc/localtime:ro ghcr.io/kas-lab/navigation_planta:main python scripts/runner.py
+docker run --rm -it -v $PWD/results:/navigation_planta/results -v /etc/localtime:/etc/localtime:ro ghcr.io/kas-lab/navigation_planta:main python scripts/run_all_experiments.py
 ```
 
 **Note:** If you want to change the directory where the results are going to be saved in the host machine, replace `PWD/results` with the path of the directory where you want the results to be saved.
@@ -77,19 +91,7 @@ Build:
 colcon build --symlink-install --packages-skip plansys2_downward_planner
 ```
 
-## Run a standalone map example
-
-In the repository root:
-```bash
-python scripts/map_generator.py
-```
-
-This standalone script:
-
-- generates a connected grid map
-- writes `problem.pddl` in the current working directory
-- solves one example internally through Unified Planning
-- shows the generated plot
+## Run experiments
 
 To reproduce the grid-map experiment from the paper, use:
 
@@ -100,8 +102,27 @@ python scripts/run_grid_map_scenario.py
 To run the full experiment suite, including the Cámara-style PRISM and PDDL comparisons, use:
 
 ```bash
-python scripts/runner.py
+python scripts/run_all_experiments.py
 ```
+
+To benchmark search strategies on the combined scenario, use:
+
+```bash
+python scripts/benchmark_search_strategies.py --nodes 10,20,50 --runs 3 --timeout 60
+```
+
+The supported standalone experiment entrypoints are:
+
+- `scripts/run_grid_map_scenario.py`
+- `scripts/run_camara_scenario.py`
+- `scripts/run_camara_scenario_discretized.py`
+- `scripts/run_camara_prism_scenario.py`
+- `scripts/run_fd_scale_scenario.py`
+- `scripts/run_corridor_type_scale_scenario.py`
+- `scripts/run_mission_action_scale_scenario.py`
+- `scripts/run_combined_scenario.py`
+- `scripts/run_all_experiments.py`
+- `scripts/benchmark_search_strategies.py`
 
 ## Convert OWL ontology to PDDL
 
@@ -111,9 +132,9 @@ Normal version:
 export PATH=$HOME/navigation_planta_ws/src/owl_to_pddl:$PATH
 ```
 
-Example matching the full runner path:
+Example matching the adaptive experiment flow:
 ```bash
-OWLToPDDL.sh --owl=owl/navigation_with_imports.owl --tBox --inDomain=pddl/domain_sas.pddl --outDomain=pddl/domain_sas_created.pddl --aBox --inProblem=problem.pddl --outProblem=problem_created.pddl --replace-output --add-num-comparisons
+OWLToPDDL.sh --owl=owl/navigation.owl --tBox --inDomain=pddl/domain_sas.pddl --outDomain=pddl/domain_sas_created.pddl --aBox --inProblem=problem.pddl --outProblem=problem_created.pddl --replace-output --add-num-comparisons
 ```
 
 ROS version:
@@ -121,7 +142,17 @@ ROS version:
 ros2 run owl_to_pddl owl_to_pddl.py --ros-args -p owl_file:=owl/navigation.owl -p in_domain_file:=pddl/domain_sas.pddl -p out_domain_file:=pddl/domain_sas_created.pddl -p in_problem_file:=pddl/problem.pddl -p out_problem_file:=pddl/problem_created.pddl
 ```
 
-The repository contains both `owl/navigation.owl` and `owl/navigation_with_imports.owl`. The full runner currently uses `navigation_with_imports.owl`, while `scripts/run_grid_map_scenario.py` still uses `navigation.owl`.
+The repository contains both `owl/navigation.owl` and `owl/navigation_with_imports.owl`. The current Python experiment scripts use `owl/navigation.owl` unless a scenario-specific OWL file is selected.
+
+## Adding a new experiment
+
+The current pattern is:
+
+1. add or extend a scenario generator in `navigation_planta/`
+2. create a thin script in `scripts/` with constants and CLI parsing
+3. use `run_sweep_experiment()` from `navigation_planta.experiment_runner`
+4. use plotting and summary helpers from `navigation_planta.reporting`
+5. add focused tests in `tests/` for new scenario or reporting behavior
 
 ## Run fast-downward solver
 

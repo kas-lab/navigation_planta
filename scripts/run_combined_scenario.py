@@ -6,9 +6,6 @@ import argparse
 import subprocess
 from pathlib import Path
 
-import matplotlib.pyplot as plt
-import numpy as np
-
 SCRIPT_DIR = Path(__file__).parent
 REPO_ROOT = SCRIPT_DIR.parent
 
@@ -18,13 +15,10 @@ from navigation_planta.experiment_runner import (
     run_sweep_experiment,
 )
 from navigation_planta.map_generator import MapGenerator
+from navigation_planta.reporting import plot_memory_summary, plot_numeric_sweep_results
 from navigation_planta.scenario_variants import (
     CombinedScenarioMapGenerator,
     MissionActionNoAdaptationMapGenerator,
-)
-from navigation_planta.utils import (
-    NO_PLAN,
-    plot_memory_boxplot,
 )
 
 OWL_FILE = REPO_ROOT / 'owl' / 'experiment_combined_scalability' / 'navigation_combined.owl'
@@ -115,54 +109,18 @@ def run_single(folder: Path, mode: str, run_id: int, n_nodes: int, search: str =
     return record
 
 def plot_results(folder: Path, records, modes):
-    fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(16, 5))
-
-    unique_nodes = sorted({record.x_value for record in records})
-    for mode in modes:
-        mean_t, std_t, mean_ac, std_ac = [], [], [], []
-        for node_count in unique_nodes:
-            times = np.array([
-                record.planning_time
-                for record in records
-                if record.mode == mode and record.x_value == node_count
-            ])
-            mean_t.append(times.mean())
-            std_t.append(times.std())
-            counts = np.array([
-                record.action_count
-                for record in records
-                if record.mode == mode and record.x_value == node_count and record.action_count != NO_PLAN
-            ], dtype=float)
-            mean_ac.append(counts.mean() if counts.size else float('nan'))
-            std_ac.append(counts.std() if counts.size else 0.0)
-
-        mean_t, std_t = np.array(mean_t), np.array(std_t)
-        mean_ac, std_ac = np.array(mean_ac), np.array(std_ac)
-
-        ax1.plot(unique_nodes, mean_t, marker='o', linestyle='-', markersize=3,
-                 label=MODE_LABELS[mode])
-        ax1.fill_between(unique_nodes, mean_t - std_t, mean_t + std_t, alpha=0.2)
-        ax2.plot(unique_nodes, mean_ac, marker='o', linestyle='-', markersize=3,
-                 label=MODE_LABELS[mode])
-        ax2.fill_between(unique_nodes, mean_ac - std_ac, mean_ac + std_ac, alpha=0.2)
-
-    ax1.set_xlabel('Effective Map Size (nodes)')
-    ax1.set_ylabel('Mean Planning Time (seconds)')
-    ax1.set_title('Combined Stress Test: Planning Time vs. Map Size')
-    ax1.legend()
-    ax1.grid(True)
-
-    ax2.set_xlabel('Effective Map Size (nodes)')
-    ax2.set_ylabel('Mean Plan Length (actions)')
-    ax2.set_ylim(bottom=0)
-    ax2.set_title('Combined Stress Test: Plan Length vs. Map Size')
-    ax2.legend()
-    ax2.grid(True)
-
-    plot_path = folder / 'planning_time_combined.png'
-    plt.savefig(plot_path, dpi=300, bbox_inches='tight')
-    plt.close(fig)
-    print(f'Plot saved to {plot_path}')
+    plot_numeric_sweep_results(
+        folder,
+        records,
+        {mode: MODE_LABELS[mode] for mode in modes},
+        xlabel='Effective Map Size (nodes)',
+        time_title='Combined Stress Test: Planning Time vs. Map Size',
+        action_title='Combined Stress Test: Plan Length vs. Map Size',
+        filename='planning_time_combined.png',
+        x_values=sorted({record.x_value for record in records}),
+        figsize=(16, 5),
+        markersize=3,
+    )
 
 
 def runner(n_runs: int, mode: str, min_nodes: int = MIN_NODES, max_nodes: int = MAX_NODES, search: str = 'astar(blind())', out_dir: Path | None = None) -> Path:
@@ -179,7 +137,7 @@ def runner(n_runs: int, mode: str, min_nodes: int = MIN_NODES, max_nodes: int = 
         mode=mode,
         run_one=run_single,
         plot_results=plot_results,
-        after_run=lambda folder_mode, records, _modes: plot_memory_boxplot(
+        after_run=lambda folder_mode, records, _modes: plot_memory_summary(
             folder_mode, records, MODE_LABELS, filename='peak_memory_boxplot.png'),
         search=search,
         out_dir=out_dir,

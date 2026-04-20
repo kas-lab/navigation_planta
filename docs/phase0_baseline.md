@@ -18,7 +18,7 @@ Use these commands as representative checks after behavior-preserving refactors.
 |---|---|---|---|
 | `scripts/run_grid_map_scenario.py` | `python scripts/run_grid_map_scenario.py --mode adaptive --runs 1 --search 'astar(blind())'` | `results/grid_map/<date>/adaptive/` | Numeric node sweep, adaptive flow |
 | `scripts/run_grid_map_scenario.py` | `python scripts/run_grid_map_scenario.py --mode no-adaptation --runs 1 --search 'astar(blind())'` | `results/grid_map/<date>/no-adaptation/` | Numeric node sweep, baseline flow |
-| `scripts/run_camara_scenario.py` | `python scripts/run_camara_scenario.py --mode adaptive --runs 1` | `results/map_camara_2020_paper/<date>/adaptive/` | Original Cámara PDDL experiment |
+| `scripts/run_camara_scenario.py` | `python scripts/run_camara_scenario.py --mode adaptive --runs 1` | `results/map_camara_2020_paper/<date>/` | Original Cámara PDDL experiment |
 | `scripts/run_camara_scenario_discretized.py` | `python scripts/run_camara_scenario_discretized.py --mode adaptive --runs 1` | `results/map_camara_2020_paper/discretized/<date>/adaptive/` | Discretized Cámara PDDL experiment |
 | `scripts/run_camara_prism_scenario.py` | `python scripts/run_camara_prism_scenario.py` | `results/map_camara_2020_paper/prism/<date>/` | PRISM baseline |
 | `scripts/run_fd_scale_scenario.py` | `python scripts/run_fd_scale_scenario.py --mode adaptive --runs 1 --search 'astar(blind())'` | `results/scalability_fd/<date>/adaptive/` | Experiment A |
@@ -50,13 +50,14 @@ Use these commands as representative checks after behavior-preserving refactors.
 ### `scripts/run_camara_scenario.py`
 
 - Default results root: `results/map_camara_2020_paper/<date>/`
-- Per-mode folder: `<root>/<mode>/`
+- Case folders: `<root>/<mode>/`
 - CSV: `planning_times.csv`
 - CSV columns:
   - single mode: `init_goal,time,action_count,peak_memory`
   - both modes: `mode,init_goal,time,action_count,peak_memory`
 - Plot files:
   - `camara_summary.png`
+  - `summary.txt`
 - Main CLI args:
   - `--mode adaptive|no-adaptation|both`
   - `--runs N`
@@ -72,6 +73,7 @@ Use these commands as representative checks after behavior-preserving refactors.
   - both modes: `mode,init_goal,time,action_count,peak_memory`
 - Plot files:
   - `camara_discretized_summary.png`
+  - `summary.txt`
 - Main CLI args:
   - `--mode adaptive|no-adaptation|both`
   - `--runs N`
@@ -85,6 +87,7 @@ Use these commands as representative checks after behavior-preserving refactors.
   - `init_goal,time,action_count,peak_memory`
 - Plot files:
   - `camara_prism_summary.png`
+  - `summary.txt`
 - Main CLI args:
   - no scenario-specific CLI options today
 
@@ -185,8 +188,8 @@ Use these commands as representative checks after behavior-preserving refactors.
 These are good candidates for automated tests because later refactors are likely to touch them:
 
 - `navigation_planta.utils.count_plan_actions()`
-- `navigation_planta.utils.plot_camara_results()`
-- `navigation_planta.utils.plot_memory_boxplot()`
+- `navigation_planta.reporting.plot_mode_summary()`
+- `navigation_planta.reporting.plot_memory_summary()`
 - `navigation_planta.map_generator.MapGenerator.write_problem_fast()`
 - `navigation_planta.map_generator.MapGenerator.generate_domain_problem_files()`
 
