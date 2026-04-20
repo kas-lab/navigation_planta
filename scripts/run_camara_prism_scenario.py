@@ -1,15 +1,16 @@
 from navigation_planta.prism_model_generator import PrismModelgenerator
-from navigation_planta.utils import NO_PLAN, plot_camara_results
+from navigation_planta.utils import (
+    ExperimentRecord,
+    NO_PLAN,
+    plot_camara_results,
+    run_subprocess_with_memory,
+    save_experiment_records_csv,
+)
 import subprocess
-import sys
 import time
 from pathlib import Path
 from datetime import datetime
 import numpy as np
-
-_SCRIPT_DIR = Path(__file__).resolve().parent
-sys.path.insert(0, str(_SCRIPT_DIR))
-from runner import run_subprocess_with_memory  # noqa: E402
 
 
 def run(folder_name, run, init, goal):
@@ -55,7 +56,13 @@ def run(folder_name, run, init, goal):
         strat_file.unlink()
 
     print(f"Execution Time: {elapsed_time:.6f} seconds  actions={action_count}  mem={peak_memory:.1f}MB")
-    return (f'wp{init}_wp{goal}', elapsed_time, action_count, peak_memory)
+    return ExperimentRecord(
+        mode='prism',
+        x_value=f'wp{init}_wp{goal}',
+        planning_time=elapsed_time,
+        action_count=action_count,
+        peak_memory=peak_memory,
+    )
 
 
 def runner(out_dir: Path | None = None) -> Path:
@@ -77,26 +84,22 @@ def runner(out_dir: Path | None = None) -> Path:
         for goal in range(1, 59):
             if init != goal and init not in unreacheable_nodes and goal not in unreacheable_nodes:
                 for n in range(n_runs):
-                    init_goal, elapsed_time, action_count, peak_memory = run(folder_name, n, init, goal)
-                    planning_time_list.append(('prism', init_goal, elapsed_time, action_count, peak_memory))
+                    planning_time_list.append(run(folder_name, n, init, goal))
 
-    csv_rows = [(ig, t, ac, pm) for _, ig, t, ac, pm in planning_time_list]
-    planning_time_array = np.array(
-        csv_rows, dtype=[
-            ("init_goal", "U15"), ("time", "f8"), ("action_count", "i4"), ("peak_memory", "f8")])
     planning_time_csv = folder_name / 'planning_times.csv'
-    np.savetxt(
+    save_experiment_records_csv(
         planning_time_csv,
-        planning_time_array,
-        delimiter=",",
-        header="init_goal,time,action_count,peak_memory",
-        comments="",
-        fmt="%s,%.18e,%d,%f")
-    mean = np.mean(planning_time_array["time"])
-    std_dev = np.std(planning_time_array["time"])
-    valid_counts = planning_time_array["action_count"][planning_time_array["action_count"] != -1]
+        planning_time_list,
+        x_name='init_goal',
+        time_name='time',
+    )
+    mean = np.mean([record.planning_time for record in planning_time_list])
+    std_dev = np.std([record.planning_time for record in planning_time_list])
+    valid_counts = np.array([
+        record.action_count for record in planning_time_list if record.action_count != NO_PLAN
+    ])
     count_str = (f'  mean actions: {valid_counts.mean():.1f}' if valid_counts.size else '')
-    max_mem = np.max(planning_time_array["peak_memory"])
+    max_mem = np.max([record.peak_memory for record in planning_time_list])
     print(f'Mean {mean:.4f}s Std dev: {std_dev:.4f}s{count_str}  Max mem: {max_mem:.1f}MB')
 
     plot_camara_results(

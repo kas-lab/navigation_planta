@@ -5,8 +5,6 @@
 import argparse
 import random
 import subprocess
-import time
-from datetime import datetime
 from pathlib import Path
 
 import matplotlib.pyplot as plt
@@ -17,9 +15,17 @@ from unified_planning.shortcuts import BoolType, Object
 SCRIPT_DIR = Path(__file__).parent
 REPO_ROOT = SCRIPT_DIR.parent
 
+from navigation_planta.experiment_runner import (
+    SweepExperimentConfig,
+    execute_pddl_case,
+    run_sweep_experiment,
+)
 from navigation_planta.map_generator import MapGenerator
 from navigation_planta.no_adaptation import MissionNoAdaptationMapGenerator
-from navigation_planta.utils import NO_PLAN, plot_memory_boxplot, run_planner_with_metrics
+from navigation_planta.utils import (
+    NO_PLAN,
+    plot_memory_boxplot,
+)
 
 OWL_FILE = REPO_ROOT / 'owl' / 'experiment_combined_scalability' / 'navigation_combined.owl'
 ADAPTIVE_DOMAIN_FILE = (
@@ -169,96 +175,53 @@ def run_adaptive_preprocessor(problem_file, run_folder):
 def run_single(folder: Path, mode: str, run_id: int, n_nodes: int, search: str = 'astar(blind())'):
     """Run one trial for a given map size."""
     n_nodes_resulting = n_nodes - int(n_nodes * NODES_SKIP)
-    run_folder = folder / mode / f'n{n_nodes}_run{run_id}'
-    run_folder.mkdir(parents=True, exist_ok=True)
+    def prepare_problem(run_folder: Path, current_mode: str) -> Path:
+        mg = make_generator(current_mode, n_nodes)
+        mg.generate_connected_grid_map()
 
-    mg = make_generator(mode, n_nodes)
-    mg.generate_connected_grid_map()
+        problem_file = run_folder / (
+            'problem.pddl' if current_mode == 'adaptive' else 'problem_no_sas.pddl')
+        mg.generate_domain_problem_files(save_problem=True, problem_filename=problem_file)
+        mg.plot_graph(show_plot=False, save_file=True, filename=run_folder / 'map.png')
+        return problem_file
 
-    problem_file = run_folder / (
-        'problem.pddl' if mode == 'adaptive' else 'problem_no_sas.pddl')
-    mg.generate_domain_problem_files(save_problem=True, problem_filename=problem_file)
-    mg.plot_graph(show_plot=False, save_file=True, filename=run_folder / 'map.png')
-
-    if mode == 'adaptive':
-        owltopddl_start = time.perf_counter()
-        try:
-            domain_for_planner, problem_for_planner = run_adaptive_preprocessor(
-                problem_file,
-                run_folder,
-            )
-        except subprocess.CalledProcessError as error:
-            print(f'OWLToPDDL failed (mode={mode}, n={n_nodes}, run={run_id}): {error.stderr}')
-            return run_single(folder, mode, run_id, n_nodes, search)
-        owltopddl_time = time.perf_counter() - owltopddl_start
-    else:
-        domain_for_planner = BASELINE_DOMAIN_FILE
-        problem_for_planner = problem_file
-        owltopddl_time = 0.0
-
-    plan_file = run_folder / 'plan'
-    planning_time, action_count, peak_memory = run_planner_with_metrics(
-        plan_file,
-        domain_for_planner,
-        problem_for_planner,
-        search,
+    record = execute_pddl_case(
+        folder=folder,
+        mode=mode,
+        case_id=f'n{n_nodes}_run{run_id}',
+        x_value=n_nodes_resulting,
+        search=search,
+        prepare_problem=prepare_problem,
+        adaptive_preprocessor=run_adaptive_preprocessor,
+        baseline_domain=BASELINE_DOMAIN_FILE,
+        include_owltopddl_time=True,
     )
 
     print(
         f'mode={mode:<13} n={n_nodes:4d} (eff={n_nodes_resulting:3d}) run={run_id:2d} '
-        f'owltopddl={owltopddl_time:.3f}s planning={planning_time:.6f}s '
-        f'actions={action_count} peak_memory={peak_memory:.2f}MB'
+        f'owltopddl={record.owltopddl_time:.3f}s planning={record.planning_time:.6f}s '
+        f'actions={record.action_count} peak_memory={record.peak_memory:.2f}MB'
     )
-    return mode, n_nodes_resulting, owltopddl_time, planning_time, action_count, peak_memory
-
-
-def save_results(folder: Path, records):
-    csv_path = folder / 'planning_times.csv'
-    single_mode = len({mode for mode, _, _, _, _, _ in records}) == 1
-
-    if single_mode:
-        arr = np.array(
-            [(nodes, owltopddl_time, planning_time, action_count, peak_memory)
-             for _, nodes, owltopddl_time, planning_time, action_count, peak_memory in records],
-            dtype=[('nodes', 'i4'), ('owltopddl_time', 'f8'),
-                   ('planning_time', 'f8'), ('action_count', 'i4'), ('peak_memory', 'f8')],
-        )
-        np.savetxt(
-            csv_path, arr, delimiter=',',
-            header='nodes,owltopddl_time,planning_time,action_count,peak_memory',
-            comments='', fmt='%d,%.18e,%.18e,%d,%f',
-        )
-        return arr
-
-    arr = np.array(
-        [(mode, nodes, owltopddl_time, planning_time, action_count, peak_memory)
-         for mode, nodes, owltopddl_time, planning_time, action_count, peak_memory in records],
-        dtype=[('mode', 'U20'), ('nodes', 'i4'), ('owltopddl_time', 'f8'),
-               ('planning_time', 'f8'), ('action_count', 'i4'), ('peak_memory', 'f8')],
-    )
-    np.savetxt(
-        csv_path, arr, delimiter=',',
-        header='mode,nodes,owltopddl_time,planning_time,action_count,peak_memory',
-        comments='', fmt='%s,%d,%.18e,%.18e,%d,%f',
-    )
-    return arr
-
+    return record
 
 def plot_results(folder: Path, records, modes):
     fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(16, 5))
 
-    unique_nodes = sorted({nodes for _, nodes, _, _, _, _ in records})
+    unique_nodes = sorted({record.x_value for record in records})
     for mode in modes:
         mean_t, std_t, mean_ac, std_ac = [], [], [], []
         for node_count in unique_nodes:
             times = np.array([
-                pt for m, n, _, pt, _, _ in records if m == mode and n == node_count
+                record.planning_time
+                for record in records
+                if record.mode == mode and record.x_value == node_count
             ])
             mean_t.append(times.mean())
             std_t.append(times.std())
             counts = np.array([
-                ac for m, n, _, _, ac, _ in records
-                if m == mode and n == node_count and ac != NO_PLAN
+                record.action_count
+                for record in records
+                if record.mode == mode and record.x_value == node_count and record.action_count != NO_PLAN
             ], dtype=float)
             mean_ac.append(counts.mean() if counts.size else float('nan'))
             std_ac.append(counts.std() if counts.size else 0.0)
@@ -293,28 +256,24 @@ def plot_results(folder: Path, records, modes):
 
 
 def runner(n_runs: int, mode: str, min_nodes: int = MIN_NODES, max_nodes: int = MAX_NODES, search: str = 'astar(blind())', out_dir: Path | None = None) -> Path:
-    date = datetime.now().strftime('%d-%b-%Y-%H-%M-%S')
-    folder = out_dir if out_dir is not None else (REPO_ROOT / 'results' / 'scalability_combined' / date)
-    folder.mkdir(parents=True, exist_ok=True)
-
-    modes = ['adaptive', 'no-adaptation'] if mode == 'both' else [mode]
-    records = []
-    node_sizes = range(min_nodes, max_nodes + NODES_STEP, NODES_STEP)
-
-    for current_mode in modes:
-        print(f'\n--- {MODE_LABELS[current_mode]} ---')
-        for n_nodes in node_sizes:
-            for run_id in range(n_runs):
-                records.append(run_single(folder, current_mode, run_id, n_nodes, search))
-
-    folder_mode = folder / mode
-    folder_mode.mkdir(parents=True, exist_ok=True)
-    csv_path = folder_mode / 'planning_times.csv'
-    save_results(folder_mode, records)
-    print(f'\nResults saved to {csv_path}')
-    plot_results(folder_mode, records, modes)
-    plot_memory_boxplot(folder_mode, records, MODE_LABELS, filename='peak_memory_boxplot.png')
-    return csv_path
+    config = SweepExperimentConfig(
+        results_root=REPO_ROOT / 'results' / 'scalability_combined',
+        mode_labels=MODE_LABELS,
+        x_values=list(range(min_nodes, max_nodes + NODES_STEP, NODES_STEP)),
+        x_name='nodes',
+        time_name='planning_time',
+    )
+    return run_sweep_experiment(
+        config,
+        n_runs=n_runs,
+        mode=mode,
+        run_one=run_single,
+        plot_results=plot_results,
+        after_run=lambda folder_mode, records, _modes: plot_memory_boxplot(
+            folder_mode, records, MODE_LABELS, filename='peak_memory_boxplot.png'),
+        search=search,
+        out_dir=out_dir,
+    )
 
 
 def main():

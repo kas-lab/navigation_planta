@@ -5,8 +5,6 @@
 import argparse
 import random
 import subprocess
-import time
-from datetime import datetime
 from pathlib import Path
 
 import matplotlib.pyplot as plt
@@ -17,9 +15,17 @@ from unified_planning.shortcuts import BoolType, Object
 SCRIPT_DIR = Path(__file__).parent
 REPO_ROOT = SCRIPT_DIR.parent
 
+from navigation_planta.experiment_runner import (
+    SweepExperimentConfig,
+    execute_pddl_case,
+    run_sweep_experiment,
+)
 from navigation_planta.map_generator import MapGenerator
 from navigation_planta.no_adaptation import NoAdaptationMapGenerator
-from navigation_planta.utils import NO_PLAN, plot_memory_boxplot, run_planner_with_metrics
+from navigation_planta.utils import (
+    NO_PLAN,
+    plot_memory_boxplot,
+)
 
 OWL_FILES = {
     2: REPO_ROOT / 'owl' / 'navigation.owl',
@@ -164,84 +170,39 @@ def run_adaptive_preprocessor(owl_file, domain_file, problem_file, run_folder):
 
 def run_single(folder: Path, mode: str, run_id: int, k: int, search: str = 'lazy_greedy([ff()], preferred=[ff()])'):
     """Run one experiment trial."""
-    run_folder = folder / mode / f'ct{k}_run{run_id}'
-    run_folder.mkdir(parents=True, exist_ok=True)
+    def prepare_problem(run_folder: Path, current_mode: str) -> Path:
+        mg = make_generator(current_mode, k)
+        mg.generate_connected_grid_map()
 
-    mg = make_generator(mode, k)
-    mg.generate_connected_grid_map()
+        problem_file = run_folder / (
+            'problem.pddl' if current_mode == 'adaptive' else 'problem_no_sas.pddl')
+        mg.generate_domain_problem_files(save_problem=True, problem_filename=problem_file)
+        mg.plot_graph(show_plot=False, save_file=True, filename=run_folder / 'map.png')
+        return problem_file
 
-    problem_file = run_folder / (
-        'problem.pddl' if mode == 'adaptive' else 'problem_no_sas.pddl')
-    mg.generate_domain_problem_files(save_problem=True, problem_filename=problem_file)
-    mg.plot_graph(show_plot=False, save_file=True, filename=run_folder / 'map.png')
-
-    if mode == 'adaptive':
-        owl_file = OWL_FILES[k]
-        domain_file = ADAPTIVE_DOMAIN_FILES[k]
-        owltopddl_start = time.perf_counter()
-        try:
-            domain_for_planner, problem_for_planner = run_adaptive_preprocessor(
-                owl_file,
-                domain_file,
-                problem_file,
-                run_folder,
-            )
-        except subprocess.CalledProcessError as error:
-            print(f'OWLToPDDL failed (mode={mode}, k={k}, run={run_id}): {error.stderr}')
-            return run_single(folder, mode, run_id, k, search)
-        owltopddl_time = time.perf_counter() - owltopddl_start
-    else:
-        domain_for_planner = BASELINE_DOMAIN_FILE
-        problem_for_planner = problem_file
-        owltopddl_time = 0.0
-
-    plan_file = run_folder / 'plan'
-    planning_time, action_count, peak_memory = run_planner_with_metrics(
-        plan_file,
-        domain_for_planner,
-        problem_for_planner,
-        search,
+    record = execute_pddl_case(
+        folder=folder,
+        mode=mode,
+        case_id=f'ct{k}_run{run_id}',
+        x_value=k,
+        search=search,
+        prepare_problem=prepare_problem,
+        adaptive_preprocessor=lambda problem_file, run_folder: run_adaptive_preprocessor(
+            OWL_FILES[k],
+            ADAPTIVE_DOMAIN_FILES[k],
+            problem_file,
+            run_folder,
+        ),
+        baseline_domain=BASELINE_DOMAIN_FILE,
+        include_owltopddl_time=True,
     )
 
     print(
         f'mode={mode:<13} k={k} run={run_id:2d} '
-        f'owltopddl={owltopddl_time:.3f}s planning={planning_time:.6f}s '
-        f'actions={action_count} peak_memory={peak_memory:.2f}MB'
+        f'owltopddl={record.owltopddl_time:.3f}s planning={record.planning_time:.6f}s '
+        f'actions={record.action_count} peak_memory={record.peak_memory:.2f}MB'
     )
-    return mode, k, owltopddl_time, planning_time, action_count, peak_memory
-
-
-def save_results(folder: Path, records):
-    csv_path = folder / 'planning_times.csv'
-    single_mode = len({mode for mode, _, _, _, _, _ in records}) == 1
-
-    if single_mode:
-        arr = np.array(
-            [(k, owltopddl_time, planning_time, action_count, peak_memory)
-             for _, k, owltopddl_time, planning_time, action_count, peak_memory in records],
-            dtype=[('k', 'i4'), ('owltopddl_time', 'f8'),
-                   ('planning_time', 'f8'), ('action_count', 'i4'), ('peak_memory', 'f8')],
-        )
-        np.savetxt(
-            csv_path, arr, delimiter=',',
-            header='k,owltopddl_time,planning_time,action_count,peak_memory',
-            comments='', fmt='%d,%.18e,%.18e,%d,%f',
-        )
-        return arr
-
-    arr = np.array(
-        [(mode, k, owltopddl_time, planning_time, action_count, peak_memory)
-         for mode, k, owltopddl_time, planning_time, action_count, peak_memory in records],
-        dtype=[('mode', 'U20'), ('k', 'i4'), ('owltopddl_time', 'f8'),
-               ('planning_time', 'f8'), ('action_count', 'i4'), ('peak_memory', 'f8')],
-    )
-    np.savetxt(
-        csv_path, arr, delimiter=',',
-        header='mode,k,owltopddl_time,planning_time,action_count,peak_memory',
-        comments='', fmt='%s,%d,%.18e,%.18e,%d,%f',
-    )
-    return arr
-
+    return record
 
 def plot_results(folder: Path, records, modes):
     fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(14, 5))
@@ -250,13 +211,16 @@ def plot_results(folder: Path, records, modes):
         mean_t, std_t, mean_ac, std_ac = [], [], [], []
         for k in K_VALUES:
             times = np.array([
-                pt for m, rk, _, pt, _, _ in records if m == mode and rk == k
+                record.planning_time
+                for record in records
+                if record.mode == mode and record.x_value == k
             ])
             mean_t.append(times.mean())
             std_t.append(times.std())
             counts = np.array([
-                ac for m, rk, _, _, ac, _ in records
-                if m == mode and rk == k and ac != NO_PLAN
+                record.action_count
+                for record in records
+                if record.mode == mode and record.x_value == k and record.action_count != NO_PLAN
             ], dtype=float)
             mean_ac.append(counts.mean() if counts.size else float('nan'))
             std_ac.append(counts.std() if counts.size else 0.0)
@@ -291,27 +255,25 @@ def plot_results(folder: Path, records, modes):
 
 
 def runner(n_runs: int, mode: str, search: str = 'lazy_greedy([ff()], preferred=[ff()])', out_dir: Path | None = None) -> Path:
-    date = datetime.now().strftime('%d-%b-%Y-%H-%M-%S')
-    folder = out_dir if out_dir is not None else (REPO_ROOT / 'results' / 'scalability_ct' / date)
-    folder.mkdir(parents=True, exist_ok=True)
-
-    modes = ['adaptive', 'no-adaptation'] if mode == 'both' else [mode]
-    records = []
-
-    for current_mode in modes:
-        print(f'\n--- {MODE_LABELS[current_mode]} ---')
-        for k in K_VALUES:
-            print(f'  K = {k}')
-            for run_id in range(n_runs):
-                records.append(run_single(folder, current_mode, run_id, k, search))
-
-    folder_mode = folder / mode
-    csv_path = folder_mode / 'planning_times.csv'
-    save_results(folder_mode, records)
-    print(f'\nResults saved to {csv_path}')
-    plot_results(folder_mode, records, modes)
-    plot_memory_boxplot(folder_mode, records, MODE_LABELS, filename='peak_memory_boxplot.png')
-    return csv_path
+    config = SweepExperimentConfig(
+        results_root=REPO_ROOT / 'results' / 'scalability_ct',
+        mode_labels=MODE_LABELS,
+        x_values=K_VALUES,
+        x_name='k',
+        time_name='planning_time',
+    )
+    return run_sweep_experiment(
+        config,
+        n_runs=n_runs,
+        mode=mode,
+        run_one=run_single,
+        plot_results=plot_results,
+        after_run=lambda folder_mode, records, _modes: plot_memory_boxplot(
+            folder_mode, records, MODE_LABELS, filename='peak_memory_boxplot.png'),
+        value_printer=lambda k: f'  K = {k}',
+        search=search,
+        out_dir=out_dir,
+    )
 
 
 def main():

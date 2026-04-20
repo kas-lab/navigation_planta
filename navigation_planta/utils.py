@@ -1,6 +1,46 @@
+from dataclasses import dataclass
 from pathlib import Path
+from typing import Sequence
 
 NO_PLAN = -1
+
+
+@dataclass(frozen=True)
+class ExperimentRecord:
+    """Shared record shape for experiment results."""
+
+    mode: str
+    x_value: int | str
+    planning_time: float
+    action_count: int
+    peak_memory: float
+    owltopddl_time: float | None = None
+
+
+def _record_mode(record: ExperimentRecord | tuple) -> str:
+    return record.mode if isinstance(record, ExperimentRecord) else record[0]
+
+
+def _record_x_value(record: ExperimentRecord | tuple) -> int | str:
+    return record.x_value if isinstance(record, ExperimentRecord) else record[1]
+
+
+def _record_planning_time(record: ExperimentRecord | tuple) -> float:
+    return record.planning_time if isinstance(record, ExperimentRecord) else record[2]
+
+
+def _record_action_count(record: ExperimentRecord | tuple) -> int:
+    return record.action_count if isinstance(record, ExperimentRecord) else record[3]
+
+
+def _record_peak_memory(record: ExperimentRecord | tuple) -> float:
+    return record.peak_memory if isinstance(record, ExperimentRecord) else record[-1]
+
+
+def _record_owltopddl_time(record: ExperimentRecord | tuple) -> float | None:
+    if isinstance(record, ExperimentRecord):
+        return record.owltopddl_time
+    return record[2] if len(record) == 6 else None
 
 
 def run_subprocess_with_memory(command: list) -> float:
@@ -49,9 +89,50 @@ def run_planner_with_metrics(
     return planning_time, action_count, peak_memory
 
 
+def save_experiment_records_csv(
+        csv_path: Path,
+        records: Sequence[ExperimentRecord],
+        x_name: str,
+        time_name: str = 'planning_time') -> None:
+    """Serialize experiment records, omitting ``mode`` for single-mode runs."""
+    import csv
+
+    csv_path.parent.mkdir(parents=True, exist_ok=True)
+    single_mode = len({record.mode for record in records}) == 1
+    has_owltopddl = any(record.owltopddl_time is not None for record in records)
+
+    fieldnames = []
+    if not single_mode:
+        fieldnames.append('mode')
+    fieldnames.append(x_name)
+    if has_owltopddl:
+        fieldnames.append('owltopddl_time')
+    fieldnames.extend([time_name, 'action_count', 'peak_memory'])
+
+    with csv_path.open('w', newline='') as csv_file:
+        writer = csv.writer(csv_file)
+        writer.writerow(fieldnames)
+        for record in records:
+            row = []
+            if not single_mode:
+                row.append(record.mode)
+            row.append(record.x_value)
+            if has_owltopddl:
+                row.append(
+                    ''
+                    if record.owltopddl_time is None
+                    else f'{record.owltopddl_time:.18e}')
+            row.extend([
+                f'{record.planning_time:.18e}',
+                record.action_count,
+                f'{record.peak_memory:f}',
+            ])
+            writer.writerow(row)
+
+
 def plot_memory_boxplot(
         folder: Path,
-        records: list,
+        records: Sequence[ExperimentRecord | tuple],
         mode_labels: dict,
         filename: str = 'peak_memory_boxplot.png') -> None:
     """Peak-memory summary plot by mode using the same mean/std style as Camara.
@@ -66,7 +147,11 @@ def plot_memory_boxplot(
     labels = []
     mean_mems, std_mems = [], []
     for mode in modes:
-        mems = np.array([r[-1] for r in records if r[0] == mode], dtype=float)
+        mems = np.array([
+            _record_peak_memory(record)
+            for record in records
+            if _record_mode(record) == mode
+        ], dtype=float)
         if mems.size:
             labels.append(mode_labels[mode])
             mean_mems.append(mems.mean())
@@ -99,7 +184,7 @@ def plot_memory_boxplot(
 
 def plot_camara_results(
         folder: Path,
-        records: list,
+        records: Sequence[ExperimentRecord | tuple],
         mode_labels: dict,
         filename: str = 'camara_summary.png') -> None:
     """Bar chart (mean ± std) of time, plan length, and peak memory per mode.
@@ -117,11 +202,23 @@ def plot_camara_results(
     mean_mems, std_mems = [], []
 
     for mode in modes:
-        times = np.array([t for m, _, t, _, _ in records if m == mode])
+        times = np.array([
+            _record_planning_time(record)
+            for record in records
+            if _record_mode(record) == mode
+        ])
         counts = np.array(
-            [ac for m, _, _, ac, _ in records if m == mode and ac != NO_PLAN],
+            [
+                _record_action_count(record)
+                for record in records
+                if _record_mode(record) == mode and _record_action_count(record) != NO_PLAN
+            ],
             dtype=float)
-        mems = np.array([pm for m, _, _, _, pm in records if m == mode])
+        mems = np.array([
+            _record_peak_memory(record)
+            for record in records
+            if _record_mode(record) == mode
+        ])
         mean_times.append(times.mean())
         std_times.append(times.std())
         mean_actions.append(counts.mean() if counts.size else float('nan'))
