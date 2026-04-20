@@ -20,7 +20,7 @@ import numpy as np
 
 from navigation_planta.map_generator import MapGenerator
 from navigation_planta.no_adaptation import NoAdaptationMapGenerator
-from navigation_planta.utils import count_plan_actions, NO_PLAN
+from navigation_planta.utils import count_plan_actions, NO_PLAN, run_subprocess_with_memory, plot_memory_boxplot
 
 SCRIPT_DIR = Path(__file__).resolve().parent
 REPO_ROOT = SCRIPT_DIR.parent
@@ -129,51 +129,51 @@ def run_single_case(
 
     plan_file = run_folder / 'plan'
     start_time = time.perf_counter()
-    subprocess.run([
+    peak_memory = run_subprocess_with_memory([
         'fast-downward.py',
         '--plan-file', str(plan_file),
         str(domain_for_planner),
         str(problem_for_planner),
         '--search', search,
-    ], check=True)
+    ])
     elapsed_time = time.perf_counter() - start_time
     action_count = count_plan_actions(plan_file)
 
     print(
         f'mode={mode:<13} nodes={n_nodes_resulting:<4} '
         f'run={run_n:<2} time={elapsed_time:.6f}s actions={action_count}')
-    return mode, n_nodes_resulting, elapsed_time, action_count
+    return mode, n_nodes_resulting, elapsed_time, action_count, peak_memory
 
 
 def save_results(folder_name, planning_time_list):
-    single_mode = len({mode for mode, _, _, _ in planning_time_list}) == 1
+    single_mode = len({mode for mode, _, _, _, _ in planning_time_list}) == 1
     planning_time_csv = folder_name / 'planning_times.csv'
 
     if single_mode:
         planning_time_array = np.array(
-            [(nodes, elapsed_time, action_count)
-             for _, nodes, elapsed_time, action_count in planning_time_list],
-            dtype=[('nodes', 'i4'), ('time', 'f8'), ('action_count', 'i4')])
+            [(nodes, elapsed_time, action_count, peak_memory)
+             for _, nodes, elapsed_time, action_count, peak_memory in planning_time_list],
+            dtype=[('nodes', 'i4'), ('time', 'f8'), ('action_count', 'i4'), ('peak_memory', 'f8')])
         np.savetxt(
             planning_time_csv,
             planning_time_array,
             delimiter=',',
-            header='nodes,time,action_count',
+            header='nodes,time,action_count,peak_memory',
             comments='',
-            fmt='%d,%.18e,%d')
+            fmt='%d,%.18e,%d,%f')
         return
 
     planning_time_array = np.array(
-        [(mode, nodes, elapsed_time, action_count)
-         for mode, nodes, elapsed_time, action_count in planning_time_list],
-        dtype=[('mode', 'U20'), ('nodes', 'i4'), ('time', 'f8'), ('action_count', 'i4')])
+        [(mode, nodes, elapsed_time, action_count, peak_memory)
+         for mode, nodes, elapsed_time, action_count, peak_memory in planning_time_list],
+        dtype=[('mode', 'U20'), ('nodes', 'i4'), ('time', 'f8'), ('action_count', 'i4'), ('peak_memory', 'f8')])
     np.savetxt(
         planning_time_csv,
         planning_time_array,
         delimiter=',',
-        header='mode,nodes,time,action_count',
+        header='mode,nodes,time,action_count,peak_memory',
         comments='',
-        fmt='%s,%d,%.18e,%d')
+        fmt='%s,%d,%.18e,%d,%f')
 
 
 def plot_results(folder_name, planning_time_list, modes, show_plot):
@@ -181,11 +181,11 @@ def plot_results(folder_name, planning_time_list, modes, show_plot):
 
     for mode in modes:
         mode_nodes = np.array(
-            [nodes for m, nodes, _, _ in planning_time_list if m == mode], dtype='i4')
+            [nodes for m, nodes, _, _, _ in planning_time_list if m == mode], dtype='i4')
         mode_times = np.array(
-            [t for m, _, t, _ in planning_time_list if m == mode])
+            [t for m, _, t, _, _ in planning_time_list if m == mode])
         mode_counts = np.array(
-            [ac for m, _, _, ac in planning_time_list if m == mode], dtype='i4')
+            [ac for m, _, _, ac, _ in planning_time_list if m == mode], dtype='i4')
 
         unique_nodes, indices = np.unique(mode_nodes, return_inverse=True)
         mean_times = np.bincount(indices, weights=mode_times) / np.bincount(indices)
@@ -300,10 +300,11 @@ def runner(
                 planning_time_list.append(result)
 
     folder_mode = folder_name / mode
-    csv_path = folder_name / 'planning_times.csv'
+    csv_path = folder_mode / 'planning_times.csv'
     save_results(folder_mode, planning_time_list)
     print(f'\nResults saved to {csv_path}')
     plot_results(folder_mode, planning_time_list, modes, show_plot)
+    plot_memory_boxplot(folder_mode, planning_time_list, MODE_LABELS, filename='peak_memory_boxplot.png')
     return csv_path
 
 

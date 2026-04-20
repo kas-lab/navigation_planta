@@ -11,6 +11,7 @@ from typing import Tuple
 
 from navigation_planta.map_generator import MapGenerator
 from navigation_planta.prism_model_generator import PrismModelgenerator
+from navigation_planta.utils import run_subprocess_with_memory as _run_subprocess_with_memory
 
 
 def retry_on_failure(func):
@@ -20,6 +21,10 @@ def retry_on_failure(func):
         except subprocess.CalledProcessError:
             return func(*args, **kwargs)
     return wrapper
+
+
+def run_subprocess_with_memory(command: list[str]) -> float:
+    return _run_subprocess_with_memory(command)
 
 
 class Runner:
@@ -107,38 +112,8 @@ class Runner:
             print(e.stderr)
             raise
 
-    def _run_subprocess_with_memory(self, command: list[str]) -> int:
-        """
-        Runs the given command as a subprocess and monitors its peak RSS memory usage (in bytes).
-
-        Returns:
-            - maximum resident set size (RSS) in bytes
-        """
-        process = subprocess.Popen(
-            command,
-            stdout=subprocess.DEVNULL,
-            stderr=subprocess.DEVNULL,
-            text=True
-        )
-
-        try:
-            proc = psutil.Process(process.pid)
-        except psutil.NoSuchProcess:
-            raise RuntimeError("Failed to monitor process; it exited too quickly.")
-
-        max_rss = 0
-        while process.poll() is None:
-            try:
-                mem_info = proc.memory_info()
-                max_rss = max(max_rss, mem_info.rss)
-            except psutil.NoSuchProcess:
-                break
-            time.sleep(0.05)  # Sampling interval
-
-        if process.returncode != 0:
-            print(f"[ERROR] Command failed: {' '.join(command)}")
-
-        return max_rss / (1024 * 1024)  # Convert bytes to MB
+    def _run_subprocess_with_memory(self, command: list[str]) -> float:
+        return run_subprocess_with_memory(command)
 
 
 class GridMapRunner(Runner):

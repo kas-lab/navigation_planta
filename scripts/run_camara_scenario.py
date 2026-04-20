@@ -4,18 +4,21 @@
 
 import argparse
 import subprocess
+import sys
 import time
 from datetime import datetime
 from pathlib import Path
 
-import matplotlib.pyplot as plt
 import numpy as np
 
 from navigation_planta.map_generator import MapGenerator
 from navigation_planta.no_adaptation import NoAdaptationMapGenerator
-from navigation_planta.utils import count_plan_actions, NO_PLAN
+from navigation_planta.utils import count_plan_actions, NO_PLAN, plot_camara_results
 
 SCRIPT_DIR = Path(__file__).resolve().parent
+sys.path.insert(0, str(SCRIPT_DIR))
+from runner import run_subprocess_with_memory  # noqa: E402
+
 REPO_ROOT = SCRIPT_DIR.parent
 
 MAP_FILE = REPO_ROOT / 'data' / 'map_camara_2020_paper' / 'map-p2cp3.json'
@@ -87,112 +90,80 @@ def run_single_case(folder_name, mode, run_n, init, goal, search='lazy_greedy([f
 
     plan_file = run_folder / 'plan'
     start_time = time.perf_counter()
-    subprocess.run([
+    peak_memory = run_subprocess_with_memory([
         'fast-downward.py',
         '--plan-file', str(plan_file),
         str(domain_for_planner),
         str(problem_for_planner),
         '--search', search,
-    ], check=True)
+    ])
     elapsed_time = time.perf_counter() - start_time
     action_count = count_plan_actions(plan_file)
 
     print(
         f'mode={mode:<13} init={init:<2} goal={goal:<2} '
-        f'run={run_n:<2} time={elapsed_time:.6f}s actions={action_count}')
-    return mode, f'wp{init}_wp{goal}', elapsed_time, action_count
+        f'run={run_n:<2} time={elapsed_time:.6f}s actions={action_count} '
+        f'mem={peak_memory:.1f}MB')
+    return mode, f'wp{init}_wp{goal}', elapsed_time, action_count, peak_memory
 
 
 def save_results(folder_name, planning_time_list):
     planning_time_csv = folder_name / 'planning_times.csv'
-    single_mode = len({mode for mode, _, _, _ in planning_time_list}) == 1
+    single_mode = len({mode for mode, _, _, _, _ in planning_time_list}) == 1
 
     if single_mode:
         planning_time_array = np.array(
-            [(init_goal, elapsed_time, action_count)
-             for _, init_goal, elapsed_time, action_count in planning_time_list],
-            dtype=[('init_goal', 'U15'), ('time', 'f8'), ('action_count', 'i4')])
+            [(init_goal, elapsed_time, action_count, peak_memory)
+             for _, init_goal, elapsed_time, action_count, peak_memory in planning_time_list],
+            dtype=[('init_goal', 'U15'), ('time', 'f8'), ('action_count', 'i4'), ('peak_memory', 'f8')])
         np.savetxt(
             planning_time_csv,
             planning_time_array,
             delimiter=',',
-            header='init_goal,time,action_count',
+            header='init_goal,time,action_count,peak_memory',
             comments='',
-            fmt='%s,%.18e,%d')
+            fmt='%s,%.18e,%d,%f')
         return
 
     planning_time_array = np.array(
-        [(mode, init_goal, elapsed_time, action_count)
-         for mode, init_goal, elapsed_time, action_count in planning_time_list],
-        dtype=[('mode', 'U20'), ('init_goal', 'U15'), ('time', 'f8'), ('action_count', 'i4')])
+        [(mode, init_goal, elapsed_time, action_count, peak_memory)
+         for mode, init_goal, elapsed_time, action_count, peak_memory in planning_time_list],
+        dtype=[('mode', 'U20'), ('init_goal', 'U15'), ('time', 'f8'), ('action_count', 'i4'), ('peak_memory', 'f8')])
     np.savetxt(
         planning_time_csv,
         planning_time_array,
         delimiter=',',
-        header='mode,init_goal,time,action_count',
+        header='mode,init_goal,time,action_count,peak_memory',
         comments='',
-        fmt='%s,%s,%.18e,%d')
+        fmt='%s,%s,%.18e,%d,%f')
 
 
 def plot_results(folder_name, planning_time_list, modes):
-    fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(12, 5))
-
-    labels = [MODE_LABELS[m] for m in modes]
-    mean_times = []
-    std_times = []
-    mean_actions = []
-    std_actions = []
-
-    for mode in modes:
-        times = np.array([t for m, _, t, _ in planning_time_list if m == mode])
-        counts = np.array(
-            [ac for m, _, _, ac in planning_time_list if m == mode and ac != NO_PLAN],
-            dtype=float)
-        mean_times.append(times.mean())
-        std_times.append(times.std())
-        mean_actions.append(counts.mean() if counts.size else float('nan'))
-        std_actions.append(counts.std() if counts.size else 0.0)
-
-    x = np.arange(len(modes))
-    ax1.bar(x, mean_times, yerr=std_times, capsize=5, color='steelblue', alpha=0.8)
-    ax1.set_xticks(x)
-    ax1.set_xticklabels(labels)
-    ax1.set_ylabel('Mean Planning Time (seconds)')
-    ax1.set_title('Planning Time by Mode')
-    ax1.set_ylim(bottom=0)
-    ax1.grid(True, axis='y')
-
-    ax2.bar(x, mean_actions, yerr=std_actions, capsize=5, color='darkorange', alpha=0.8)
-    ax2.set_xticks(x)
-    ax2.set_xticklabels(labels)
-    ax2.set_ylabel('Mean Plan Length (actions)')
-    ax2.set_title('Plan Length by Mode')
-    ax2.set_ylim(bottom=0)
-    ax2.grid(True, axis='y')
-
-    plot_path = folder_name / 'camara_summary.png'
-    plt.savefig(plot_path, dpi=300, bbox_inches='tight')
-    plt.close(fig)
-    print(f'Plot saved to {plot_path}')
+    plot_camara_results(
+        folder_name, planning_time_list,
+        {m: MODE_LABELS[m] for m in modes},
+        filename='camara_summary.png')
 
 
 def print_summary(planning_time_list, modes):
     if len(modes) == 1:
-        times = np.array([elapsed_time for _, _, elapsed_time, _ in planning_time_list])
-        counts = np.array([ac for _, _, _, ac in planning_time_list if ac != NO_PLAN], dtype=float)
-        print(f'Mean {times.mean():.4f}s Std dev: {times.std():.4f}s '
-              f'Mean actions: {counts.mean():.1f}' if counts.size else f'Mean {times.mean():.4f}s')
+        times = np.array([elapsed_time for _, _, elapsed_time, _, _ in planning_time_list])
+        counts = np.array([ac for _, _, _, ac, _ in planning_time_list if ac != NO_PLAN], dtype=float)
+        mems = np.array([pm for _, _, _, _, pm in planning_time_list])
+        ac_str = f' mean actions: {counts.mean():.1f}' if counts.size else ''
+        print(f'Mean {times.mean():.4f}s Std dev: {times.std():.4f}s{ac_str} Max mem: {mems.max():.1f}MB')
         return
 
     for mode in modes:
-        times = np.array([
-            t for m, _, t, _ in planning_time_list if m == mode
-        ])
+        times = np.array([t for m, _, t, _, _ in planning_time_list if m == mode])
         counts = np.array([
-            ac for m, _, _, ac in planning_time_list if m == mode and ac != NO_PLAN
+            ac for m, _, _, ac, _ in planning_time_list if m == mode and ac != NO_PLAN
         ], dtype=float)
+        mems = np.array([pm for m, _, _, _, pm in planning_time_list if m == mode])
         ac_str = f' mean actions: {counts.mean():.1f}' if counts.size else ''
-        print(f'{MODE_LABELS[mode]} mean {times.mean():.4f}s std dev: {times.std():.4f}s{ac_str}')
+        print(
+            f'{MODE_LABELS[mode]} mean {times.mean():.4f}s std dev: {times.std():.4f}s{ac_str} '
+            f'max mem: {mems.max():.1f}MB')
 
 
 def parse_args():

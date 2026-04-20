@@ -53,8 +53,8 @@ EXPERIMENT_CSV_CONFIG = {
     'grid_map':                  {'x': 'nodes',     'y': 'time',          'xlabel': 'Number of Nodes',   'numeric': True},
     'grid_map_no_sas':           {'x': 'nodes',     'y': 'time',          'xlabel': 'Number of Nodes',   'numeric': True},
     # 'camara_pddl':             {'x': 'init_goal', 'y': 'time',          'xlabel': 'Init→Goal Pair',    'numeric': False},
-    'camara_discretized':        {'x': 'init_goal', 'y': 'time',          'xlabel': 'Init→Goal Pair',    'numeric': False},
-    'camara_discretized_no_sas': {'x': 'init_goal', 'y': 'time',          'xlabel': 'Init→Goal Pair',    'numeric': False},
+    'camara_discretized':        {'x': 'init_goal', 'y': 'time',          'xlabel': 'Init→Goal Pair',    'numeric': False, 'box': True},
+    'camara_discretized_no_sas': {'x': 'init_goal', 'y': 'time',          'xlabel': 'Init→Goal Pair',    'numeric': False, 'box': True},
     'camara_prism':              {'x': 'init_goal', 'y': 'time',          'xlabel': 'Init→Goal Pair',    'numeric': False},
     'fd':                        {'x': 'n_fd',      'y': 'planning_time', 'xlabel': 'N FunctionDesigns', 'numeric': True},
     'corridor':                  {'x': 'k',         'y': 'planning_time', 'xlabel': 'K Corridor Types',  'numeric': True},
@@ -65,6 +65,19 @@ EXPERIMENT_CSV_CONFIG = {
 }
 
 PDDL_EXPERIMENT_NAMES = set(EXPERIMENT_CSV_CONFIG.keys())
+
+# Display labels and order for camara box plots.
+# Keys are the raw strategy identifiers used in strategy_csvs.
+CAMARA_BOX_LABEL_MAP: dict[str, str] = {
+    'prism (baseline)':           'Cámara et al. (2020)',
+    'eager_greedy([goalcount()])': 'PDDL-SAS-first',
+    'astar(blind())':              'PDDL-SAS-best',
+}
+CAMARA_BOX_ORDER: list[str] = [
+    'prism (baseline)',
+    'eager_greedy([goalcount()])',
+    'astar(blind())',
+]
 
 
 def _sanitize(s: str) -> str:
@@ -90,57 +103,106 @@ def plot_strategy_comparison(
     resolved_y: str = y_col if y_col is not None else config['y']
     x_label: str = config['xlabel']
     x_numeric: bool = config['numeric']
+    use_box: bool = config.get('box', False)
 
     fig, ax = plt.subplots(figsize=(10, 5))
     colors = plt.get_cmap('tab10').colors  # type: ignore[attr-defined]
 
-    for i, (strat_label, csv_path) in enumerate(strategy_csvs.items()):
-        try:
-            data = np.genfromtxt(
-                csv_path, delimiter=',', names=True, dtype=None, encoding='utf-8')
-        except Exception as exc:
-            print(f'  Warning: could not read {csv_path}: {exc}')
-            continue
-        if data.ndim == 0:
-            data = data.reshape(1)
-        if resolved_y not in data.dtype.names:
-            continue
-
-        color = colors[i % len(colors)]
-
-        if x_numeric:
-            xs = data[x_col].astype(float)
+    if use_box:
+        box_data: list[np.ndarray] = []
+        box_labels: list[str] = []
+        box_colors: list = []
+        is_camara = exp_name.startswith('camara_discretized')
+        ordered_items = (
+            sorted(strategy_csvs.items(),
+                   key=lambda kv: CAMARA_BOX_ORDER.index(kv[0])
+                   if kv[0] in CAMARA_BOX_ORDER else len(CAMARA_BOX_ORDER))
+            if is_camara else list(strategy_csvs.items())
+        )
+        for i, (strat_label, csv_path) in enumerate(ordered_items):
+            try:
+                data = np.genfromtxt(
+                    csv_path, delimiter=',', names=True, dtype=None, encoding='utf-8')
+            except Exception as exc:
+                print(f'  Warning: could not read {csv_path}: {exc}')
+                continue
+            if data.ndim == 0:
+                data = data.reshape(1)
+            if resolved_y not in data.dtype.names:
+                continue
             ys = data[resolved_y].astype(float)
             if y_col == 'action_count':
-                ys = np.where(ys == -1, float('nan'), ys)
-            unique_x = np.unique(xs)
-            mean_y = np.array([np.nanmean(ys[xs == x]) for x in unique_x])
-            std_y = np.array([np.nanstd(ys[xs == x]) for x in unique_x])
-            ax.plot(unique_x, mean_y, marker='o', markersize=4,
-                    label=strat_label, color=color)
-            ax.fill_between(unique_x, mean_y - std_y, mean_y + std_y,
-                            alpha=0.15, color=color)
-        else:
-            xs = data[x_col].astype(str)
-            ys = data[resolved_y].astype(float)
-            if y_col == 'action_count':
-                ys = np.where(ys == -1, float('nan'), ys)
-            unique_x = list(dict.fromkeys(xs))
-            n = len(strategy_csvs)
-            width = 0.8 / n
-            x_pos = np.arange(len(unique_x)) + i * width
-            mean_y = [float(np.nanmean(ys[xs == x])) if (xs == x).any() else 0.0
-                      for x in unique_x]
-            ax.bar(x_pos, mean_y, width=width, label=strat_label,
-                   color=color, alpha=0.8)
-            ax.set_xticks(np.arange(len(unique_x)) + 0.4 - width / 2)
-            ax.set_xticklabels(unique_x, rotation=45, ha='right')
+                ys = ys[ys != -1]
+            else:
+                ys = ys[~np.isnan(ys)]
+            display_label = CAMARA_BOX_LABEL_MAP.get(strat_label, strat_label) if is_camara else strat_label
+            box_data.append(ys)
+            box_labels.append(display_label)
+            box_colors.append(colors[i % len(colors)])
+
+        if box_data:
+            bp = ax.boxplot(
+                box_data,
+                patch_artist=True,
+                showmeans=True,
+                labels=box_labels,
+                meanprops=dict(marker='o', markerfacecolor='red', markeredgecolor='black'),
+                medianprops=dict(color='orange'),
+                whiskerprops=dict(color='black'),
+            )
+            for patch, color in zip(bp['boxes'], box_colors):
+                patch.set_facecolor(color)
+                patch.set_alpha(0.7)
+            ax.set_xticklabels(box_labels, rotation=15, ha='right')
+    else:
+        for i, (strat_label, csv_path) in enumerate(strategy_csvs.items()):
+            try:
+                data = np.genfromtxt(
+                    csv_path, delimiter=',', names=True, dtype=None, encoding='utf-8')
+            except Exception as exc:
+                print(f'  Warning: could not read {csv_path}: {exc}')
+                continue
+            if data.ndim == 0:
+                data = data.reshape(1)
+            if resolved_y not in data.dtype.names:
+                continue
+
+            color = colors[i % len(colors)]
+
+            if x_numeric:
+                xs = data[x_col].astype(float)
+                ys = data[resolved_y].astype(float)
+                if y_col == 'action_count':
+                    ys = np.where(ys == -1, float('nan'), ys)
+                unique_x = np.unique(xs)
+                mean_y = np.array([np.nanmean(ys[xs == x]) for x in unique_x])
+                std_y = np.array([np.nanstd(ys[xs == x]) for x in unique_x])
+                ax.plot(unique_x, mean_y, marker='o', markersize=4,
+                        label=strat_label, color=color)
+                ax.fill_between(unique_x, mean_y - std_y, mean_y + std_y,
+                                alpha=0.15, color=color)
+            else:
+                xs = data[x_col].astype(str)
+                ys = data[resolved_y].astype(float)
+                if y_col == 'action_count':
+                    ys = np.where(ys == -1, float('nan'), ys)
+                unique_x = list(dict.fromkeys(xs))
+                n = len(strategy_csvs)
+                width = 0.8 / n
+                x_pos = np.arange(len(unique_x)) + i * width
+                mean_y = [float(np.nanmean(ys[xs == x])) if (xs == x).any() else 0.0
+                          for x in unique_x]
+                ax.bar(x_pos, mean_y, width=width, label=strat_label,
+                       color=color, alpha=0.8)
+                ax.set_xticks(np.arange(len(unique_x)) + 0.4 - width / 2)
+                ax.set_xticklabels(unique_x, rotation=45, ha='right')
+
+        ax.legend(fontsize=8)
 
     ax.set_xlabel(x_label)
     ax.set_ylabel(ylabel)
     ax.set_title(f'Search Strategy Comparison — {exp_name}')
     ax.set_ylim(bottom=0)
-    ax.legend(fontsize=8)
     ax.grid(True)
 
     plot_path = out_dir / f'comparison_{exp_name}{plot_suffix}.png'
@@ -277,17 +339,17 @@ def main():
         if csv:
             strategy_results['combined_no_sas'][strat_label] = csv
 
-        # PRISM baseline has no --search; run it only once across all strategies
-        if not prism_done:
-            prism_csv = _run_one(
-                'camara_prism', 'Camara 2020 map — PRISM (baseline)',
-                run_prism, strat_dir / 'camara_prism')
-            if prism_csv:
-                strategy_results['camara_prism']['prism'] = prism_csv
-                # Inject PRISM as a reference series in the discretized comparisons
-                strategy_results['camara_discretized']['prism (baseline)'] = prism_csv
-                strategy_results['camara_discretized_no_sas']['prism (baseline)'] = prism_csv
-            prism_done = True
+    # PRISM baseline has no --search; run it only once across all strategies
+    if not prism_done:
+        prism_csv = _run_one(
+            'camara_prism', 'Camara 2020 map — PRISM (baseline)',
+            run_prism, base_out / 'camara_prism')
+        if prism_csv:
+            strategy_results['camara_prism']['prism'] = prism_csv
+            # Inject PRISM as a reference series in the discretized comparisons
+            strategy_results['camara_discretized']['prism (baseline)'] = prism_csv
+            strategy_results['camara_discretized_no_sas']['prism (baseline)'] = prism_csv
+        prism_done = True
 
     total_elapsed = time.perf_counter() - total_start
 
@@ -316,6 +378,12 @@ def main():
                     y_col='action_count',
                     ylabel='Mean Plan Length (actions)',
                     plot_suffix='_actions')
+                if exp_name.startswith('camara_discretized'):
+                    plot_strategy_comparison(
+                        exp_name, csv_by_strategy, comparison_dir,
+                        y_col='peak_memory',
+                        ylabel='Peak Memory (MB)',
+                        plot_suffix='_memory')
 
 
 if __name__ == '__main__':

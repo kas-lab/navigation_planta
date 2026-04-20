@@ -1,9 +1,15 @@
 from navigation_planta.prism_model_generator import PrismModelgenerator
+from navigation_planta.utils import NO_PLAN, plot_camara_results
 import subprocess
+import sys
 import time
 from pathlib import Path
 from datetime import datetime
 import numpy as np
+
+_SCRIPT_DIR = Path(__file__).resolve().parent
+sys.path.insert(0, str(_SCRIPT_DIR))
+from runner import run_subprocess_with_memory  # noqa: E402
 
 
 def run(folder_name, run, init, goal):
@@ -34,11 +40,12 @@ def run(folder_name, run, init, goal):
         f"INITIAL_BATTERY=32560,INITIAL_LOCATION=0,TARGET_LOCATION={len(nav_path)-1},INITIAL_CONFIGURATION=1",
     ]
 
-    start_time = time.perf_counter()
     action_count = -1
-    try:
-        subprocess.run(command, check=True, capture_output=True, text=True)
-        elapsed_time = time.perf_counter() - start_time
+    start_time = time.perf_counter()
+    peak_memory = run_subprocess_with_memory(command)
+    elapsed_time = time.perf_counter() - start_time
+
+    if strat_file.exists():
         action_count = map_generator.count_plan_actions_from_strategy(
             strat_file.read_text(),
             nav_path,
@@ -46,14 +53,9 @@ def run(folder_name, run, init, goal):
             initial_config=1,
         )
         strat_file.unlink()
-    except subprocess.CalledProcessError as e:
-        elapsed_time = time.perf_counter() - start_time
-        print("An error occurred:", e)
-        print("Return code:", e.returncode)
-        print("Errors:", e.stderr)
 
-    print(f"Execution Time: {elapsed_time:.6f} seconds  actions={action_count}")
-    return (f'wp{init}_wp{goal}', elapsed_time, action_count)
+    print(f"Execution Time: {elapsed_time:.6f} seconds  actions={action_count}  mem={peak_memory:.1f}MB")
+    return (f'wp{init}_wp{goal}', elapsed_time, action_count, peak_memory)
 
 
 def runner(out_dir: Path | None = None) -> Path:
@@ -75,25 +77,32 @@ def runner(out_dir: Path | None = None) -> Path:
         for goal in range(1, 59):
             if init != goal and init not in unreacheable_nodes and goal not in unreacheable_nodes:
                 for n in range(n_runs):
-                    init_goal, elapsed_time, action_count = run(folder_name, n, init, goal)
-                    planning_time_list.append((init_goal, elapsed_time, action_count))
+                    init_goal, elapsed_time, action_count, peak_memory = run(folder_name, n, init, goal)
+                    planning_time_list.append(('prism', init_goal, elapsed_time, action_count, peak_memory))
 
-    planning_time_csv = folder_name / 'planning_times.csv'
+    csv_rows = [(ig, t, ac, pm) for _, ig, t, ac, pm in planning_time_list]
     planning_time_array = np.array(
-        planning_time_list, dtype=[
-            ("init_goal", "U15"), ("time", "f8"), ("action_count", "i4")])
+        csv_rows, dtype=[
+            ("init_goal", "U15"), ("time", "f8"), ("action_count", "i4"), ("peak_memory", "f8")])
+    planning_time_csv = folder_name / 'planning_times.csv'
     np.savetxt(
         planning_time_csv,
         planning_time_array,
         delimiter=",",
-        header="init_goal,time,action_count",
+        header="init_goal,time,action_count,peak_memory",
         comments="",
-        fmt="%s,%.18e,%d")
+        fmt="%s,%.18e,%d,%f")
     mean = np.mean(planning_time_array["time"])
     std_dev = np.std(planning_time_array["time"])
     valid_counts = planning_time_array["action_count"][planning_time_array["action_count"] != -1]
     count_str = (f'  mean actions: {valid_counts.mean():.1f}' if valid_counts.size else '')
-    print(f'Mean {mean:.4f}s Std dev: {std_dev:.4f}s{count_str}')
+    max_mem = np.max(planning_time_array["peak_memory"])
+    print(f'Mean {mean:.4f}s Std dev: {std_dev:.4f}s{count_str}  Max mem: {max_mem:.1f}MB')
+
+    plot_camara_results(
+        folder_name, planning_time_list,
+        {'prism': 'Cámara et al. (2020)'},
+        filename='camara_prism_summary.png')
     return planning_time_csv
 
 

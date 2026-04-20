@@ -18,7 +18,7 @@ REPO_ROOT = SCRIPT_DIR.parent
 
 from navigation_planta.map_generator import MapGenerator
 from navigation_planta.no_adaptation import MissionNoAdaptationMapGenerator
-from navigation_planta.utils import count_plan_actions, NO_PLAN
+from navigation_planta.utils import NO_PLAN, plot_memory_boxplot, run_planner_with_metrics
 
 OWL_FILES = {
     1: REPO_ROOT / 'owl' / 'navigation.owl',
@@ -176,56 +176,49 @@ def run_single(folder: Path, mode: str, run_id: int, m: int, search: str = 'lazy
         owltopddl_time = 0.0
 
     plan_file = run_folder / 'plan'
-    fd_start = time.perf_counter()
-    subprocess.run(
-        [
-            'fast-downward.py',
-            '--plan-file', str(plan_file),
-            str(domain_for_planner),
-            str(problem_for_planner),
-            '--search', search,
-        ],
-        capture_output=True,
-        check=True,
+    planning_time, action_count, peak_memory = run_planner_with_metrics(
+        plan_file,
+        domain_for_planner,
+        problem_for_planner,
+        search,
     )
-    planning_time = time.perf_counter() - fd_start
-    action_count = count_plan_actions(plan_file)
 
     print(
         f'mode={mode:<13} m={m} run={run_id:2d} '
-        f'owltopddl={owltopddl_time:.3f}s planning={planning_time:.6f}s actions={action_count}'
+        f'owltopddl={owltopddl_time:.3f}s planning={planning_time:.6f}s '
+        f'actions={action_count} peak_memory={peak_memory:.2f}MB'
     )
-    return mode, m, owltopddl_time, planning_time, action_count
+    return mode, m, owltopddl_time, planning_time, action_count, peak_memory
 
 
 def save_results(folder: Path, records):
     csv_path = folder / 'planning_times.csv'
-    single_mode = len({mode for mode, _, _, _, _ in records}) == 1
+    single_mode = len({mode for mode, _, _, _, _, _ in records}) == 1
 
     if single_mode:
         arr = np.array(
-            [(m, owltopddl_time, planning_time, action_count)
-             for _, m, owltopddl_time, planning_time, action_count in records],
+            [(m, owltopddl_time, planning_time, action_count, peak_memory)
+             for _, m, owltopddl_time, planning_time, action_count, peak_memory in records],
             dtype=[('m', 'i4'), ('owltopddl_time', 'f8'),
-                   ('planning_time', 'f8'), ('action_count', 'i4')],
+                   ('planning_time', 'f8'), ('action_count', 'i4'), ('peak_memory', 'f8')],
         )
         np.savetxt(
             csv_path, arr, delimiter=',',
-            header='m,owltopddl_time,planning_time,action_count',
-            comments='', fmt='%d,%.18e,%.18e,%d',
+            header='m,owltopddl_time,planning_time,action_count,peak_memory',
+            comments='', fmt='%d,%.18e,%.18e,%d,%f',
         )
         return arr
 
     arr = np.array(
-        [(mode, m, owltopddl_time, planning_time, action_count)
-         for mode, m, owltopddl_time, planning_time, action_count in records],
+        [(mode, m, owltopddl_time, planning_time, action_count, peak_memory)
+         for mode, m, owltopddl_time, planning_time, action_count, peak_memory in records],
         dtype=[('mode', 'U20'), ('m', 'i4'), ('owltopddl_time', 'f8'),
-               ('planning_time', 'f8'), ('action_count', 'i4')],
+               ('planning_time', 'f8'), ('action_count', 'i4'), ('peak_memory', 'f8')],
     )
     np.savetxt(
         csv_path, arr, delimiter=',',
-        header='mode,m,owltopddl_time,planning_time,action_count',
-        comments='', fmt='%s,%d,%.18e,%.18e,%d',
+        header='mode,m,owltopddl_time,planning_time,action_count,peak_memory',
+        comments='', fmt='%s,%d,%.18e,%.18e,%d,%f',
     )
     return arr
 
@@ -237,12 +230,12 @@ def plot_results(folder: Path, records, modes):
         mean_t, std_t, mean_ac, std_ac = [], [], [], []
         for m in M_VALUES:
             times = np.array([
-                pt for rm, rv, _, pt, _ in records if rm == mode and rv == m
+                pt for rm, rv, _, pt, _, _ in records if rm == mode and rv == m
             ])
             mean_t.append(times.mean())
             std_t.append(times.std())
             counts = np.array([
-                ac for rm, rv, _, _, ac in records
+                ac for rm, rv, _, _, ac, _ in records
                 if rm == mode and rv == m and ac != NO_PLAN
             ], dtype=float)
             mean_ac.append(counts.mean() if counts.size else float('nan'))
@@ -293,10 +286,12 @@ def runner(n_runs: int, mode: str, search: str = 'lazy_greedy([ff()], preferred=
                 records.append(run_single(folder, current_mode, run_id, m, search))
 
     folder_mode = folder / mode
-    csv_path = folder / 'planning_times.csv'
+    folder_mode.mkdir(parents=True, exist_ok=True)
+    csv_path = folder_mode / 'planning_times.csv'
     save_results(folder_mode, records)
     print(f'\nResults saved to {csv_path}')
     plot_results(folder_mode, records, modes)
+    plot_memory_boxplot(folder_mode, records, MODE_LABELS, filename='peak_memory_boxplot.png')
     return csv_path
 
 
@@ -318,8 +313,8 @@ def main():
         '--runs', type=int, default=10, metavar='N',
         help='Number of runs per M value (default: 10)')
     parser.add_argument(
-        '--search', default='lazy_greedy([ff()], preferred=[ff()])',
-        help='Fast Downward search configuration string (default: lazy_greedy with ff)')
+        '--search', default='astar(blind())',
+        help='Fast Downward search configuration string (default: astar blind)')
     args = parser.parse_args()
 
     print(f'MA scaling experiment: mode={args.mode}, M={M_VALUES}, runs={args.runs}, nodes={N_NODES}')
