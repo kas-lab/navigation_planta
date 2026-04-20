@@ -3,14 +3,11 @@
 """Experiment B — Corridor type scaling with optional no-adaptation mode."""
 
 import argparse
-import random
 import subprocess
 from pathlib import Path
 
 import matplotlib.pyplot as plt
 import numpy as np
-import unified_planning
-from unified_planning.shortcuts import BoolType, Object
 
 SCRIPT_DIR = Path(__file__).parent
 REPO_ROOT = SCRIPT_DIR.parent
@@ -22,6 +19,7 @@ from navigation_planta.experiment_runner import (
 )
 from navigation_planta.map_generator import MapGenerator
 from navigation_planta.no_adaptation import NoAdaptationMapGenerator
+from navigation_planta.scenario_variants import CorridorTypeMapGenerator
 from navigation_planta.utils import (
     NO_PLAN,
     plot_memory_boxplot,
@@ -57,76 +55,6 @@ OUTDOOR_AMOUNT = 0.20
 DUSTY_AMOUNT = 0.20
 
 
-class ExtendedMapGenerator(MapGenerator):
-    """MapGenerator extended with outdoor and dusty corridor types."""
-
-    def __init__(self, num_nodes, nodes_skip, unconnected_amount,
-                 unsafe_amount, dark_amount,
-                 outdoor_amount=0.0, dusty_amount=0.0):
-        super().__init__(
-            num_nodes, nodes_skip, unconnected_amount, unsafe_amount, dark_amount)
-        self.outdoor_amount = outdoor_amount
-        self.dusty_amount = dusty_amount
-
-    def assign_dark_unsafe_corridors(self, graph):
-        for u, v in graph.edges:
-            graph[u][v]['outdoor'] = False
-            graph[u][v]['dusty'] = False
-
-        graph = super().assign_dark_unsafe_corridors(graph)
-
-        remaining_edges = list(graph.edges)
-        if self.outdoor_amount > 0:
-            num_outdoor = int(self.outdoor_amount * len(remaining_edges))
-            for u, v in random.sample(remaining_edges, num_outdoor):
-                graph[u][v]['outdoor'] = True
-        if self.dusty_amount > 0:
-            num_dusty = int(self.dusty_amount * len(remaining_edges))
-            for u, v in random.sample(remaining_edges, num_dusty):
-                graph[u][v]['dusty'] = True
-
-        return graph
-
-    def generate_domain(self):
-        super().generate_domain()
-        if self.outdoor_amount > 0:
-            self.outdoor_requirement = unified_planning.model.Fluent(
-                'outdoor_requirement', BoolType(),
-                wp1=self.waypoint_type,
-                wp2=self.waypoint_type,
-                v=self.numerical_object_type)
-        if self.dusty_amount > 0:
-            self.dust_requirement = unified_planning.model.Fluent(
-                'dust_requirement', BoolType(),
-                wp1=self.waypoint_type,
-                wp2=self.waypoint_type,
-                v=self.numerical_object_type)
-
-    def generate_problem(self, add_init_goal=True):
-        super().generate_problem(add_init_goal)
-
-        waypoints = {
-            node_id: Object(f'wp{node_id}', self.waypoint_type)
-            for node_id in self.graph.nodes
-        }
-        zero_decimal = Object('0.0_decimal', self.numerical_object_type)
-        zero_eight_decimal = Object('0.8_decimal', self.numerical_object_type)
-
-        for u, v in self.graph.edges:
-            if self.outdoor_amount > 0:
-                req = zero_eight_decimal if self.graph[u][v].get('outdoor') else zero_decimal
-                self.problem.set_initial_value(
-                    self.outdoor_requirement(waypoints[u], waypoints[v], req), True)
-                self.problem.set_initial_value(
-                    self.outdoor_requirement(waypoints[v], waypoints[u], req), True)
-            if self.dusty_amount > 0:
-                req = zero_eight_decimal if self.graph[u][v].get('dusty') else zero_decimal
-                self.problem.set_initial_value(
-                    self.dust_requirement(waypoints[u], waypoints[v], req), True)
-                self.problem.set_initial_value(
-                    self.dust_requirement(waypoints[v], waypoints[u], req), True)
-
-
 def make_generator(mode: str, k: int) -> MapGenerator:
     if mode == 'no-adaptation':
         return NoAdaptationMapGenerator(
@@ -135,11 +63,11 @@ def make_generator(mode: str, k: int) -> MapGenerator:
         return MapGenerator(
             N_NODES, NODES_SKIP, UNCONNECTED_AMOUNT, UNSAFE_AMOUNT, DARK_AMOUNT)
     if k == 3:
-        return ExtendedMapGenerator(
+        return CorridorTypeMapGenerator(
             N_NODES, NODES_SKIP, UNCONNECTED_AMOUNT, UNSAFE_AMOUNT, DARK_AMOUNT,
             outdoor_amount=OUTDOOR_AMOUNT)
     if k == 4:
-        return ExtendedMapGenerator(
+        return CorridorTypeMapGenerator(
             N_NODES, NODES_SKIP, UNCONNECTED_AMOUNT, UNSAFE_AMOUNT, DARK_AMOUNT,
             outdoor_amount=OUTDOOR_AMOUNT, dusty_amount=DUSTY_AMOUNT)
     raise ValueError(f'Unsupported K={k}')

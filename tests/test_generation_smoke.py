@@ -6,7 +6,7 @@ import pytest
 
 try:
     from navigation_planta.map_generator import MapGenerator
-    from navigation_planta.no_adaptation import MissionNoAdaptationMapGenerator
+    from navigation_planta.scenario_variants import MissionActionNoAdaptationMapGenerator
 except Exception as exc:  # pragma: no cover - environment dependent
     pytest.skip(
         f"Unified Planning stack is not importable in this host environment: {exc}",
@@ -62,7 +62,7 @@ def test_generate_domain_problem_files_rewrites_decimal_names(tmp_path: Path) ->
 
 
 def test_mission_no_adaptation_problem_generation_smoke(tmp_path: Path) -> None:
-    generator = MissionNoAdaptationMapGenerator(
+    generator = MissionActionNoAdaptationMapGenerator(
         num_nodes=3,
         nodes_skip=0.0,
         unconnected_amount=0.0,

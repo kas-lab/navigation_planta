@@ -195,14 +195,14 @@ Purpose: separate domain logic from CLI scripts.
 ### Tasks
 
 1. Move these script-local classes into package modules:
-   - `ExtendedMapGenerator`
-   - `MissionMapGenerator`
-   - `CombinedMapGenerator`
+   - `CorridorTypeMapGenerator`
+   - `MissionActionMapGenerator`
+   - `CombinedScenarioMapGenerator`
 2. Create a dedicated module, for example:
    - `navigation_planta.scenario_variants`
    - or `navigation_planta.experiments.scenarios`
 3. Keep scripts responsible only for choosing which variant to use.
-4. Review `NoAdaptationMapGenerator` and `MissionNoAdaptationMapGenerator` so their logic lives beside the adaptive variants they correspond to.
+4. Review `NoAdaptationMapGenerator` and `MissionActionNoAdaptationMapGenerator` so their logic lives beside the adaptive variants they correspond to.
 5. Standardize naming of scenario variants and their parameters:
    - corridor-type scaling
    - mission-action scaling
@@ -246,10 +246,10 @@ Purpose: remove repeated `generate_domain()` and `generate_problem()` logic.
    - graph annotation helpers
 3. Refactor `generate_domain()` and `generate_problem()` so the base `MapGenerator` delegates to extension hooks rather than forcing whole-method overrides.
 4. Reduce duplication between:
-   - `MissionMapGenerator`
-   - `MissionNoAdaptationMapGenerator`
-   - `ExtendedMapGenerator`
-   - `CombinedMapGenerator`
+   - `MissionActionMapGenerator`
+   - `MissionActionNoAdaptationMapGenerator`
+   - `CorridorTypeMapGenerator`
+   - `CombinedScenarioMapGenerator`
 5. Keep the final public scenario classes simple wrappers around composed features.
 
 ### Deliverables

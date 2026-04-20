@@ -8,8 +8,6 @@ from pathlib import Path
 
 import matplotlib.pyplot as plt
 import numpy as np
-import unified_planning
-from unified_planning.shortcuts import BoolType, Object
 
 SCRIPT_DIR = Path(__file__).parent
 REPO_ROOT = SCRIPT_DIR.parent
@@ -20,7 +18,10 @@ from navigation_planta.experiment_runner import (
     run_sweep_experiment,
 )
 from navigation_planta.map_generator import MapGenerator
-from navigation_planta.no_adaptation import MissionNoAdaptationMapGenerator
+from navigation_planta.scenario_variants import (
+    MissionActionMapGenerator,
+    MissionActionNoAdaptationMapGenerator,
+)
 from navigation_planta.utils import (
     NO_PLAN,
     plot_memory_boxplot,
@@ -64,64 +65,14 @@ UNSAFE_AMOUNT = 0.25
 DARK_AMOUNT = 0.25
 
 
-class MissionMapGenerator(MapGenerator):
-    """MapGenerator extended with secondary mission action types."""
-
-    ACTION_NAMES = ['inspection', 'delivery', 'recharge', 'report']
-
-    def __init__(self, num_nodes, nodes_skip, unconnected_amount,
-                 unsafe_amount, dark_amount, m):
-        super().__init__(
-            num_nodes, nodes_skip, unconnected_amount, unsafe_amount, dark_amount)
-        assert 1 <= m <= 5, f'M must be in 1..5, got {m}'
-        self.m = m
-        self.active_actions = self.ACTION_NAMES[:m - 1]
-
-    def generate_domain(self):
-        super().generate_domain()
-        for action_name in self.active_actions:
-            setattr(
-                self,
-                f'{action_name}_waypoint_fluent',
-                unified_planning.model.Fluent(
-                    f'{action_name}_waypoint', BoolType(), wp=self.waypoint_type))
-            setattr(
-                self,
-                f'{action_name}_done_fluent',
-                unified_planning.model.Fluent(
-                    f'{action_name}_done', BoolType()))
-
-    def generate_problem(self, add_init_goal=True):
-        super().generate_problem(add_init_goal)
-
-        if not self.active_actions:
-            return
-
-        sorted_nodes = sorted(self.graph.nodes)
-        n = len(sorted_nodes)
-        waypoints = {
-            node_id: Object(f'wp{node_id}', self.waypoint_type)
-            for node_id in self.graph.nodes
-        }
-
-        for i, action_name in enumerate(self.active_actions):
-            wp_fluent = getattr(self, f'{action_name}_waypoint_fluent')
-            done_fluent = getattr(self, f'{action_name}_done_fluent')
-            self.problem.add_fluent(done_fluent, default_initial_value=False)
-
-            target_node = sorted_nodes[(i + 1) * n // self.m]
-            self.problem.set_initial_value(wp_fluent(waypoints[target_node]), True)
-            self.problem.add_goal(done_fluent())
-
-
 def make_generator(mode: str, m: int) -> MapGenerator:
     if mode == 'no-adaptation':
-        return MissionNoAdaptationMapGenerator(
+        return MissionActionNoAdaptationMapGenerator(
             N_NODES, NODES_SKIP, UNCONNECTED_AMOUNT, UNSAFE_AMOUNT, DARK_AMOUNT, m=m)
     if m == 1:
         return MapGenerator(
             N_NODES, NODES_SKIP, UNCONNECTED_AMOUNT, UNSAFE_AMOUNT, DARK_AMOUNT)
-    return MissionMapGenerator(
+    return MissionActionMapGenerator(
         N_NODES, NODES_SKIP, UNCONNECTED_AMOUNT, UNSAFE_AMOUNT, DARK_AMOUNT, m=m)
 
 

@@ -3,14 +3,11 @@
 """Experiment D — Combined stress test with optional no-adaptation mode."""
 
 import argparse
-import random
 import subprocess
 from pathlib import Path
 
 import matplotlib.pyplot as plt
 import numpy as np
-import unified_planning
-from unified_planning.shortcuts import BoolType, Object
 
 SCRIPT_DIR = Path(__file__).parent
 REPO_ROOT = SCRIPT_DIR.parent
@@ -21,7 +18,10 @@ from navigation_planta.experiment_runner import (
     run_sweep_experiment,
 )
 from navigation_planta.map_generator import MapGenerator
-from navigation_planta.no_adaptation import MissionNoAdaptationMapGenerator
+from navigation_planta.scenario_variants import (
+    CombinedScenarioMapGenerator,
+    MissionActionNoAdaptationMapGenerator,
+)
 from navigation_planta.utils import (
     NO_PLAN,
     plot_memory_boxplot,
@@ -51,101 +51,11 @@ OUTDOOR_AMOUNT = 0.20
 DUSTY_AMOUNT = 0.20
 
 
-class CombinedMapGenerator(MapGenerator):
-    """MapGenerator at maximum adaptive complexity: K=4 and M=5."""
-
-    ACTION_NAMES = ['inspection', 'delivery', 'recharge', 'report']
-    M = 5
-
-    def __init__(self, num_nodes, nodes_skip, unconnected_amount,
-                 unsafe_amount, dark_amount,
-                 outdoor_amount=OUTDOOR_AMOUNT, dusty_amount=DUSTY_AMOUNT):
-        super().__init__(
-            num_nodes, nodes_skip, unconnected_amount, unsafe_amount, dark_amount)
-        self.outdoor_amount = outdoor_amount
-        self.dusty_amount = dusty_amount
-
-    def assign_dark_unsafe_corridors(self, graph):
-        for u, v in graph.edges:
-            graph[u][v]['outdoor'] = False
-            graph[u][v]['dusty'] = False
-
-        graph = super().assign_dark_unsafe_corridors(graph)
-
-        remaining_edges = list(graph.edges)
-        if self.outdoor_amount > 0:
-            num_outdoor = int(self.outdoor_amount * len(remaining_edges))
-            for u, v in random.sample(remaining_edges, num_outdoor):
-                graph[u][v]['outdoor'] = True
-        if self.dusty_amount > 0:
-            num_dusty = int(self.dusty_amount * len(remaining_edges))
-            for u, v in random.sample(remaining_edges, num_dusty):
-                graph[u][v]['dusty'] = True
-
-        return graph
-
-    def generate_domain(self):
-        super().generate_domain()
-        self.outdoor_requirement = unified_planning.model.Fluent(
-            'outdoor_requirement', BoolType(),
-            wp1=self.waypoint_type, wp2=self.waypoint_type,
-            v=self.numerical_object_type)
-        self.dust_requirement = unified_planning.model.Fluent(
-            'dust_requirement', BoolType(),
-            wp1=self.waypoint_type, wp2=self.waypoint_type,
-            v=self.numerical_object_type)
-        for action_name in self.ACTION_NAMES:
-            setattr(
-                self,
-                f'{action_name}_waypoint_fluent',
-                unified_planning.model.Fluent(
-                    f'{action_name}_waypoint', BoolType(), wp=self.waypoint_type))
-            setattr(
-                self,
-                f'{action_name}_done_fluent',
-                unified_planning.model.Fluent(f'{action_name}_done', BoolType()))
-
-    def generate_problem(self, add_init_goal=True):
-        super().generate_problem(add_init_goal)
-
-        waypoints = {
-            node_id: Object(f'wp{node_id}', self.waypoint_type)
-            for node_id in self.graph.nodes
-        }
-        zero_decimal = Object('0.0_decimal', self.numerical_object_type)
-        zero_eight_decimal = Object('0.8_decimal', self.numerical_object_type)
-
-        for u, v in self.graph.edges:
-            req_out = zero_eight_decimal if self.graph[u][v].get('outdoor') else zero_decimal
-            self.problem.set_initial_value(
-                self.outdoor_requirement(waypoints[u], waypoints[v], req_out), True)
-            self.problem.set_initial_value(
-                self.outdoor_requirement(waypoints[v], waypoints[u], req_out), True)
-
-            req_dust = zero_eight_decimal if self.graph[u][v].get('dusty') else zero_decimal
-            self.problem.set_initial_value(
-                self.dust_requirement(waypoints[u], waypoints[v], req_dust), True)
-            self.problem.set_initial_value(
-                self.dust_requirement(waypoints[v], waypoints[u], req_dust), True)
-
-        sorted_nodes = sorted(self.graph.nodes)
-        n = len(sorted_nodes)
-
-        for i, action_name in enumerate(self.ACTION_NAMES):
-            wp_fluent = getattr(self, f'{action_name}_waypoint_fluent')
-            done_fluent = getattr(self, f'{action_name}_done_fluent')
-            self.problem.add_fluent(done_fluent, default_initial_value=False)
-
-            target_node = sorted_nodes[(i + 1) * n // self.M]
-            self.problem.set_initial_value(wp_fluent(waypoints[target_node]), True)
-            self.problem.add_goal(done_fluent())
-
-
 def make_generator(mode: str, n_nodes: int) -> MapGenerator:
     if mode == 'no-adaptation':
-        return MissionNoAdaptationMapGenerator(
+        return MissionActionNoAdaptationMapGenerator(
             n_nodes, NODES_SKIP, UNCONNECTED_AMOUNT, UNSAFE_AMOUNT, DARK_AMOUNT, m=5)
-    return CombinedMapGenerator(
+    return CombinedScenarioMapGenerator(
         n_nodes, NODES_SKIP, UNCONNECTED_AMOUNT, UNSAFE_AMOUNT, DARK_AMOUNT)
 
 

@@ -47,8 +47,8 @@ REPO_ROOT = SCRIPT_DIR.parent
 
 sys.path.insert(0, str(SCRIPT_DIR))
 from navigation_planta.utils import count_plan_actions, NO_PLAN
+from navigation_planta.scenario_variants import CombinedScenarioMapGenerator
 from run_combined_scenario import (
-    CombinedMapGenerator,
     OWL_FILE,
     ADAPTIVE_DOMAIN_FILE,
     NODES_SKIP,
@@ -180,8 +180,8 @@ def prepare_trial(folder: Path, run_id: int, n_nodes: int):
     trial_folder = folder / f'n{n_nodes}_run{run_id}'
     trial_folder.mkdir(parents=True, exist_ok=True)
 
-    mg = CombinedMapGenerator(n_nodes, NODES_SKIP, UNCONNECTED_AMOUNT,
-                               UNSAFE_AMOUNT, DARK_AMOUNT)
+    mg = CombinedScenarioMapGenerator(
+        n_nodes, NODES_SKIP, UNCONNECTED_AMOUNT, UNSAFE_AMOUNT, DARK_AMOUNT)
     mg.generate_connected_grid_map()
 
     problem_file = trial_folder / 'problem.pddl'
