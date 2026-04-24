@@ -9,17 +9,12 @@ from navigation_planta.utils import (
     run_subprocess_with_memory,
     save_experiment_records_csv,
 )
-import subprocess
+import argparse
 import time
 from pathlib import Path
 from datetime import datetime
 
-def run(folder_name, run, init, goal):
-    # n_nodes_resulting = n_nodes - int(n_nodes*nodes_skip)
-    map_generator = PrismModelgenerator()
-    base_folder = Path("data/map_camara_2020_paper")
-    map_generator.load_json(base_folder / "map-p2cp3.json")
-
+def run(folder_name, run, init, goal, map_generator, debug=False):
     map_folder_name = f'wp{init}_wp{goal}_{run}'
     map_folder = folder_name / map_folder_name
     if map_folder.is_dir() is False:
@@ -27,7 +22,8 @@ def run(folder_name, run, init, goal):
 
     prism_filename = map_folder / f'l{init}_l{goal}.prism'
     nav_path = map_generator.find_shortest_path(from_node=init, to_node=goal)
-    print(nav_path)
+    if debug:
+        print(nav_path)
     map_generator.generate_prism_model(prism_filename, nav_path)
 
     strat_file = map_folder / 'strategy.txt'
@@ -54,7 +50,8 @@ def run(folder_name, run, init, goal):
             initial_battery=32560,
             initial_config=1,
         )
-        strat_file.unlink()
+        if not debug:
+            strat_file.unlink()
 
     print(f"Execution Time: {elapsed_time:.6f} seconds  actions={action_count}  mem={peak_memory:.1f}MB")
     return ExperimentRecord(
@@ -66,8 +63,11 @@ def run(folder_name, run, init, goal):
     )
 
 
-def runner(out_dir: Path | None = None) -> Path:
-    n_runs = 1
+def runner(out_dir: Path | None = None,
+           n_runs : int = 1,
+           debug: bool = False,
+           init_range: tuple[int, int] = (1, 59),
+           goal_range: tuple[int, int] = (1, 59)) -> Path:
     planning_time_list = []
 
     if out_dir is not None:
@@ -78,14 +78,18 @@ def runner(out_dir: Path | None = None) -> Path:
     if folder_name.is_dir() is False:
         folder_name.mkdir(parents=True)
 
-    # for n_nodes in range(min_nodes, max_nodes + nodes_interval,
-    # nodes_interval):
+    map_generator = PrismModelgenerator()
+    map_generator.load_json(Path("data/map_camara_2020_paper") / "map-p2cp3.json")
+
+    if debug:
+        map_generator.plot_graph(save_file=True, filename=str(folder_name / 'map.png'))
+
     unreacheable_nodes = [20, 41]
-    for init in range(1, 59):
-        for goal in range(1, 59):
+    for init in range(*init_range):
+        for goal in range(*goal_range):
             if init != goal and init not in unreacheable_nodes and goal not in unreacheable_nodes:
                 for n in range(n_runs):
-                    planning_time_list.append(run(folder_name, n, init, goal))
+                    planning_time_list.append(run(folder_name, n, init, goal, map_generator, debug=debug))
 
     planning_time_csv = folder_name / 'planning_times.csv'
     save_experiment_records_csv(
@@ -110,4 +114,13 @@ def runner(out_dir: Path | None = None) -> Path:
 
 
 if __name__ == '__main__':
-    runner()
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--debug', action='store_true',
+                        help='Save map image and keep strategy file for each run')
+    parser.add_argument('--init', nargs=2, type=int, metavar=('START', 'END'),
+                        default=[1, 59], help='Range of init nodes (default: 1 59)')
+    parser.add_argument('--goal', nargs=2, type=int, metavar=('START', 'END'),
+                        default=[1, 59], help='Range of goal nodes (default: 1 59)')
+    parser.add_argument('--runs',type=int,default=1, help='Number of runs for each init/goal pair and mode.')
+    args = parser.parse_args()
+    runner(n_runs=args.runs, debug=args.debug, init_range=tuple(args.init), goal_range=tuple(args.goal))

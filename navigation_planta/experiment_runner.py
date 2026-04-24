@@ -116,12 +116,13 @@ def run_sweep_experiment(
         *,
         n_runs: int,
         mode: str,
-        run_one: Callable[[Path, str, int, X, str], ExperimentRecord],
+        run_one: Callable[..., ExperimentRecord],
         plot_results: Callable[[Path, Sequence[ExperimentRecord], Sequence[str]], None],
         search: str,
         out_dir: Path | None = None,
         after_run: Callable[[Path, Sequence[ExperimentRecord], Sequence[str]], None] | None = None,
-        value_printer: Callable[[X], str | None] | None = None) -> Path:
+        value_printer: Callable[[X], str | None] | None = None,
+        base_seed: int | None = None) -> Path:
     """Run an experiment sweep with shared folder and CSV handling."""
     folder = resolve_output_folder(config.results_root, out_dir)
     modes = resolve_modes(mode)
@@ -129,20 +130,22 @@ def run_sweep_experiment(
 
     for current_mode in modes:
         print(f'\n--- {config.mode_labels[current_mode]} ---')
-        for x_value in config.x_values:
+        for x_idx, x_value in enumerate(config.x_values):
             if value_printer is not None:
                 value_message = value_printer(x_value)
                 if value_message:
                     print(value_message)
             for run_id in range(n_runs):
+                seed = None if base_seed is None else base_seed + x_idx * n_runs + run_id
                 context = f'mode={current_mode} value={x_value} run={run_id}'
                 record = run_with_retries(
-                    lambda current_mode=current_mode, run_id=run_id, x_value=x_value: run_one(
+                    lambda current_mode=current_mode, run_id=run_id, x_value=x_value, seed=seed: run_one(
                         folder,
                         current_mode,
                         run_id,
                         x_value,
                         search,
+                        seed=seed,
                     ),
                     attempts=config.retry_attempts,
                     context=context,

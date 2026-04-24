@@ -93,9 +93,12 @@ def run_adaptive_preprocessor(owl_file, domain_file, problem_file, run_folder):
     return domain_out, problem_out
 
 
-def run_single(folder: Path, mode: str, run_id: int, m: int, search: str = 'lazy_greedy([ff()], preferred=[ff()])'):
+def run_single(folder: Path, mode: str, run_id: int, m: int, search: str = 'lazy_greedy([ff()], preferred=[ff()])', seed: int | None = None):
     """Run one experiment trial."""
     def prepare_problem(run_folder: Path, current_mode: str) -> Path:
+        if seed is not None:
+            import random
+            random.seed(seed)
         mg = make_generator(current_mode, m)
         mg.generate_connected_grid_map()
 
@@ -143,7 +146,7 @@ def plot_results(folder: Path, records, modes):
     )
 
 
-def runner(n_runs: int, mode: str, search: str = 'lazy_greedy([ff()], preferred=[ff()])', out_dir: Path | None = None) -> Path:
+def runner(n_runs: int, mode: str, search: str = 'lazy_greedy([ff()], preferred=[ff()])', out_dir: Path | None = None, base_seed: int | None = None) -> Path:
     config = SweepExperimentConfig(
         results_root=REPO_ROOT / 'results' / 'scalability_ma',
         mode_labels=MODE_LABELS,
@@ -162,6 +165,7 @@ def runner(n_runs: int, mode: str, search: str = 'lazy_greedy([ff()], preferred=
         value_printer=lambda m: f'  M = {m}',
         search=search,
         out_dir=out_dir,
+        base_seed=base_seed,
     )
 
 

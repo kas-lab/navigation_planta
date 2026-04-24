@@ -78,13 +78,17 @@ def run_single_case(
         unconnected_amount,
         unsafe_amount,
         dark_amount,
-        search='astar(blind())'):
+        search='astar(blind())',
+        seed=None):
     n_nodes_resulting = n_nodes - int(n_nodes * nodes_skip)
     map_folder_name = (
         f'{n_nodes}_{nodes_skip}_{unconnected_amount}_{unsafe_amount}_{dark_amount}_{run_n}'
     )
 
     def prepare_problem(run_folder: Path, current_mode: str) -> Path:
+        if seed is not None:
+            import random
+            random.seed(seed)
         map_generator = make_map_generator(
             current_mode,
             n_nodes,
@@ -172,7 +176,8 @@ def runner(
         runs: int = 10,
         show_plot: bool = False,
         search: str = 'astar(blind())',
-        out_dir: Path | None = None) -> Path:
+        out_dir: Path | None = None,
+        base_seed: int | None = None) -> Path:
     min_nodes = 10
     max_nodes = 1000
     nodes_interval = 10
@@ -193,7 +198,7 @@ def runner(
         config,
         n_runs=runs,
         mode=mode,
-        run_one=lambda folder_name, current_mode, run_n, n_nodes, search: run_single_case(
+        run_one=lambda folder_name, current_mode, run_n, n_nodes, search, seed=None: run_single_case(
             folder_name,
             current_mode,
             run_n,
@@ -203,6 +208,7 @@ def runner(
             unsafe_amount,
             dark_amount,
             search,
+            seed=seed,
         ),
         plot_results=lambda folder_name, records, modes: plot_results(
             folder_name, records, modes, show_plot),
@@ -210,6 +216,7 @@ def runner(
             folder_name, records, MODE_LABELS, filename='peak_memory_boxplot.png'),
         search=search,
         out_dir=out_dir,
+        base_seed=base_seed,
     )
 
 

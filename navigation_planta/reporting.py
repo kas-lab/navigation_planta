@@ -11,82 +11,78 @@ NO_PLAN = -1
 
 
 @dataclass(frozen=True)
-class StrategyComparisonConfig:
+class StrategyLineComparisonConfig:
     x_column: str
     y_column: str
     xlabel: str
-    numeric: bool
-    box: bool = False
 
 
-EXPERIMENT_COMPARISON_CONFIG = {
-    'grid_map': StrategyComparisonConfig(
+@dataclass(frozen=True)
+class StrategyBoxComparisonConfig:
+    y_column: str
+    xlabel: str
+
+
+LINE_EXPERIMENT_COMPARISON_CONFIG = {
+    'grid_map': StrategyLineComparisonConfig(
         x_column='nodes',
         y_column='time',
         xlabel='Number of Nodes',
-        numeric=True,
     ),
-    'grid_map_no_sas': StrategyComparisonConfig(
+    'grid_map_no_sas': StrategyLineComparisonConfig(
         x_column='nodes',
         y_column='time',
         xlabel='Number of Nodes',
-        numeric=True,
     ),
-    'camara_discretized': StrategyComparisonConfig(
-        x_column='init_goal',
-        y_column='time',
-        xlabel='Init→Goal Pair',
-        numeric=False,
-        box=True,
-    ),
-    'camara_discretized_no_sas': StrategyComparisonConfig(
-        x_column='init_goal',
-        y_column='time',
-        xlabel='Init→Goal Pair',
-        numeric=False,
-        box=True,
-    ),
-    'camara_prism': StrategyComparisonConfig(
-        x_column='init_goal',
-        y_column='time',
-        xlabel='Init→Goal Pair',
-        numeric=False,
-    ),
-    'fd': StrategyComparisonConfig(
+    'fd': StrategyLineComparisonConfig(
         x_column='n_fd',
         y_column='planning_time',
         xlabel='N FunctionDesigns',
-        numeric=True,
     ),
-    'corridor': StrategyComparisonConfig(
+    'corridor': StrategyLineComparisonConfig(
         x_column='k',
         y_column='planning_time',
         xlabel='K Corridor Types',
-        numeric=True,
     ),
-    'ma': StrategyComparisonConfig(
+    'ma': StrategyLineComparisonConfig(
         x_column='m',
         y_column='planning_time',
         xlabel='M Mission Actions',
-        numeric=True,
     ),
-    'ma_no_sas': StrategyComparisonConfig(
+    'ma_no_sas': StrategyLineComparisonConfig(
         x_column='m',
         y_column='planning_time',
         xlabel='M Mission Actions',
-        numeric=True,
     ),
-    'combined': StrategyComparisonConfig(
+    'combined': StrategyLineComparisonConfig(
         x_column='nodes',
         y_column='planning_time',
         xlabel='Number of Nodes',
-        numeric=True,
     ),
-    'combined_no_sas': StrategyComparisonConfig(
+    'combined_no_sas': StrategyLineComparisonConfig(
         x_column='nodes',
         y_column='planning_time',
         xlabel='Number of Nodes',
-        numeric=True,
+    ),
+}
+
+BOX_EXPERIMENT_COMPARISON_CONFIG = {
+    'camara_discretized': StrategyBoxComparisonConfig(
+        y_column='time',
+        xlabel='Method',
+    ),
+    'camara_discretized_no_sas': StrategyBoxComparisonConfig(
+        y_column='time',
+        xlabel='Method',
+    ),
+}
+
+EXPERIMENT_COMPARISON_CONFIG = {
+    **LINE_EXPERIMENT_COMPARISON_CONFIG,
+    **BOX_EXPERIMENT_COMPARISON_CONFIG,
+    'camara_prism': StrategyBoxComparisonConfig(
+        y_column='time',
+        xlabel='Method',
     ),
 }
 
@@ -404,7 +400,31 @@ def _load_csv_data(csv_path: Path):
     return data
 
 
-def plot_strategy_comparison(
+def _apply_plot_style(plt, style_name: str) -> None:
+    if style_name in plt.style.available:
+        plt.style.use(style_name)
+
+
+def _strategy_metric_column(
+        data,
+        strategy_label: str,
+        requested_y: str,
+        *,
+        drop_no_plan: bool) -> np.ndarray | None:
+    metric_column = requested_y
+    if requested_y == 'comparable_action_count' and strategy_label == 'prism (baseline)':
+        metric_column = 'action_count'
+    if metric_column not in data.dtype.names:
+        return None
+
+    values = data[metric_column].astype(float)
+    if drop_no_plan:
+        values = values[values != NO_PLAN]
+        values = values[~np.isnan(values)]
+    return values
+
+
+def plot_strategy_line_comparison(
         exp_name: str,
         strategy_csvs: dict[str, Path],
         out_dir: Path,
@@ -414,104 +434,42 @@ def plot_strategy_comparison(
         plot_suffix: str = '') -> Path | None:
     import matplotlib.pyplot as plt
 
-    config = EXPERIMENT_COMPARISON_CONFIG.get(exp_name)
-    min_series = 1 if exp_name == 'camara_prism' else 2
-    if config is None or len(strategy_csvs) < min_series:
+    config = LINE_EXPERIMENT_COMPARISON_CONFIG.get(exp_name)
+    if config is None or len(strategy_csvs) < 2:
         return None
 
     resolved_y = y_col if y_col is not None else config.y_column
     fig, ax = plt.subplots(figsize=(10, 5))
     colors = plt.get_cmap('tab10').colors  # type: ignore[attr-defined]
 
-    if config.box:
-        box_data: list[np.ndarray] = []
-        box_labels: list[str] = []
-        box_colors: list = []
-        is_camara = exp_name.startswith('camara_discretized')
-        ordered_items = (
-            sorted(
-                strategy_csvs.items(),
-                key=lambda kv: CAMARA_BOX_ORDER.index(kv[0])
-                if kv[0] in CAMARA_BOX_ORDER else len(CAMARA_BOX_ORDER),
-            )
-            if is_camara else list(strategy_csvs.items())
+    for index, (strategy_label, csv_path) in enumerate(strategy_csvs.items()):
+        try:
+            data = _load_csv_data(csv_path)
+        except Exception as exc:
+            print(f'  Warning: could not read {csv_path}: {exc}')
+            continue
+        ys = _strategy_metric_column(
+            data,
+            strategy_label,
+            resolved_y,
+            drop_no_plan=False,
         )
-        for index, (strategy_label, csv_path) in enumerate(ordered_items):
-            try:
-                data = _load_csv_data(csv_path)
-            except Exception as exc:
-                print(f'  Warning: could not read {csv_path}: {exc}')
-                continue
-            if resolved_y not in data.dtype.names:
-                continue
-            ys = data[resolved_y].astype(float)
-            if y_col == 'action_count':
-                ys = ys[ys != NO_PLAN]
-            else:
-                ys = ys[~np.isnan(ys)]
-            display_label = (
-                CAMARA_BOX_LABEL_MAP.get(strategy_label, strategy_label)
-                if is_camara else strategy_label
-            )
-            box_data.append(ys)
-            box_labels.append(display_label)
-            box_colors.append(colors[index % len(colors)])
+        if ys is None:
+            continue
+        if resolved_y == 'action_count':
+            ys = np.where(ys == NO_PLAN, float('nan'), ys)
 
-        if box_data:
-            box_plot = ax.boxplot(
-                box_data,
-                patch_artist=True,
-                showmeans=True,
-                labels=box_labels,
-                meanprops=dict(marker='o', markerfacecolor='red', markeredgecolor='black'),
-                medianprops=dict(color='orange'),
-                whiskerprops=dict(color='black'),
-            )
-            for patch, color in zip(box_plot['boxes'], box_colors):
-                patch.set_facecolor(color)
-                patch.set_alpha(0.7)
-            ax.set_xticklabels(box_labels, rotation=15, ha='right')
-    else:
-        for index, (strategy_label, csv_path) in enumerate(strategy_csvs.items()):
-            try:
-                data = _load_csv_data(csv_path)
-            except Exception as exc:
-                print(f'  Warning: could not read {csv_path}: {exc}')
-                continue
-            if resolved_y not in data.dtype.names:
-                continue
+        xs = data[config.x_column].astype(float)
+        color = colors[index % len(colors)]
+        unique_x = np.unique(xs)
+        mean_y = np.array([np.nanmean(ys[xs == x]) for x in unique_x])
+        std_y = np.array([np.nanstd(ys[xs == x]) for x in unique_x])
+        ax.plot(unique_x, mean_y, marker='o', markersize=4, label=strategy_label, color=color)
+        ax.fill_between(unique_x, mean_y - std_y, mean_y + std_y, alpha=0.15, color=color)
 
-            color = colors[index % len(colors)]
-            if config.numeric:
-                xs = data[config.x_column].astype(float)
-                ys = data[resolved_y].astype(float)
-                if y_col == 'action_count':
-                    ys = np.where(ys == NO_PLAN, float('nan'), ys)
-                unique_x = np.unique(xs)
-                mean_y = np.array([np.nanmean(ys[xs == x]) for x in unique_x])
-                std_y = np.array([np.nanstd(ys[xs == x]) for x in unique_x])
-                ax.plot(unique_x, mean_y, marker='o', markersize=4, label=strategy_label, color=color)
-                ax.fill_between(unique_x, mean_y - std_y, mean_y + std_y, alpha=0.15, color=color)
-            else:
-                xs = data[config.x_column].astype(str)
-                ys = data[resolved_y].astype(float)
-                if y_col == 'action_count':
-                    ys = np.where(ys == NO_PLAN, float('nan'), ys)
-                unique_x = list(dict.fromkeys(xs))
-                count = len(strategy_csvs)
-                width = 0.8 / count
-                x_pos = np.arange(len(unique_x)) + index * width
-                mean_y = [
-                    float(np.nanmean(ys[xs == x])) if (xs == x).any() else 0.0
-                    for x in unique_x
-                ]
-                ax.bar(x_pos, mean_y, width=width, label=strategy_label, color=color, alpha=0.8)
-                ax.set_xticks(np.arange(len(unique_x)) + 0.4 - width / 2)
-                ax.set_xticklabels(unique_x, rotation=45, ha='right')
-
-        handles, labels = ax.get_legend_handles_labels()
-        if handles:
-            ax.legend(fontsize=8)
+    handles, labels = ax.get_legend_handles_labels()
+    if handles:
+        ax.legend(fontsize=8)
 
     ax.set_xlabel(config.xlabel)
     ax.set_ylabel(ylabel)
@@ -524,3 +482,165 @@ def plot_strategy_comparison(
     plt.close(fig)
     print(f'  Comparison plot saved to {plot_path}')
     return plot_path
+
+
+def plot_strategy_box_comparison(
+        exp_name: str,
+        strategy_csvs: dict[str, Path],
+        out_dir: Path,
+        *,
+        y_col: str | None = None,
+        ylabel: str = 'Planning Time (seconds)',
+        plot_suffix: str = '') -> Path | None:
+    import matplotlib.pyplot as plt
+    from matplotlib.lines import Line2D
+
+    config = BOX_EXPERIMENT_COMPARISON_CONFIG.get(exp_name)
+    if config is None or len(strategy_csvs) < 2:
+        return None
+
+    resolved_y = y_col if y_col is not None else config.y_column
+    _apply_plot_style(plt, 'seaborn-v0_8-whitegrid')
+    colors = plt.rcParams['axes.prop_cycle'].by_key().get('color')
+    if not colors:
+        colors = plt.get_cmap('tab10').colors  # type: ignore[attr-defined]
+
+    ordered_items = sorted(
+        strategy_csvs.items(),
+        key=lambda kv: CAMARA_BOX_ORDER.index(kv[0])
+        if kv[0] in CAMARA_BOX_ORDER else len(CAMARA_BOX_ORDER),
+    )
+
+    box_data: list[np.ndarray] = []
+    box_labels: list[str] = []
+    box_colors: list = []
+    for index, (strategy_label, csv_path) in enumerate(ordered_items):
+        try:
+            data = _load_csv_data(csv_path)
+        except Exception as exc:
+            print(f'  Warning: could not read {csv_path}: {exc}')
+            continue
+
+        ys = _strategy_metric_column(
+            data,
+            strategy_label,
+            resolved_y,
+            drop_no_plan=(resolved_y in {'action_count', 'comparable_action_count'}),
+        )
+        if ys is None or ys.size == 0:
+            continue
+
+        box_data.append(ys)
+        box_labels.append(CAMARA_BOX_LABEL_MAP.get(strategy_label, strategy_label))
+        box_colors.append(colors[index % len(colors)])
+
+    if not box_data:
+        return None
+
+    fig, ax = plt.subplots(figsize=(10, 5))
+    box_plot = ax.boxplot(
+        box_data,
+        patch_artist=True,
+        showmeans=True,
+        labels=box_labels,
+        meanprops=dict(marker='o', markerfacecolor='red', markeredgecolor='black'),
+        medianprops=dict(color='black'),
+        whiskerprops=dict(linestyle='--', color='black'),
+    )
+    for patch, color in zip(box_plot['boxes'], box_colors):
+        patch.set_facecolor(color)
+        patch.set_alpha(0.7)
+
+    legend_handles = [
+        Line2D(
+            [0], [0],
+            marker='o',
+            color='none',
+            markerfacecolor='red',
+            markeredgecolor='black',
+            label='Mean',
+        ),
+        Line2D([0], [0], color='black', linewidth=1.5, label='Median'),
+        Line2D([0], [0], color='black', linestyle='--', linewidth=1.5, label='Whiskers'),
+    ]
+    ax.legend(
+        handles=legend_handles,
+        loc='upper left',
+        bbox_to_anchor=(1.02, 1.05),
+        borderaxespad=0.0,
+        fontsize=8,
+    )
+
+    ax.set_xlabel(config.xlabel)
+    ax.set_ylabel(ylabel)
+    ax.set_title(f'Search Strategy Comparison — {exp_name}')
+    ax.set_ylim(bottom=0)
+    ax.set_xticklabels(box_labels, rotation=15, ha='right')
+    ax.grid(True)
+
+    plot_path = out_dir / f'comparison_{exp_name}{plot_suffix}.png'
+    plt.savefig(plot_path, dpi=300, bbox_inches='tight')
+    plt.close(fig)
+    print(f'  Comparison plot saved to {plot_path}')
+    return plot_path
+
+
+def generate_strategy_comparison_plots(
+        strategy_results: dict[str, dict[str, Path]],
+        comparison_dir: Path,
+        *,
+        skip: set[str] | None = None) -> list[Path]:
+    """Generate the standard comparison plot set from collected CSV paths."""
+    skip = skip or set()
+    comparison_dir.mkdir(parents=True, exist_ok=True)
+    generated: list[Path] = []
+
+    def _append(plot_path: Path | None) -> None:
+        if plot_path is not None:
+            generated.append(plot_path)
+
+    def _line_comparison(exp_name: str) -> None:
+        csv_by_strategy = strategy_results.get(exp_name, {})
+        if exp_name in skip or len(csv_by_strategy) < 2:
+            return
+        _append(plot_strategy_line_comparison(exp_name, csv_by_strategy, comparison_dir))
+        _append(plot_strategy_line_comparison(
+            exp_name, csv_by_strategy, comparison_dir,
+            y_col='action_count',
+            ylabel='Mean Plan Length (number of actions)',
+            plot_suffix='_actions'))
+
+    def _camara_box_comparison(exp_name: str) -> None:
+        csv_by_strategy = strategy_results.get(exp_name, {})
+        if exp_name in skip or len(csv_by_strategy) < 2:
+            return
+        _append(plot_strategy_box_comparison(
+            exp_name, csv_by_strategy, comparison_dir,
+            ylabel='Planning Time (seconds)'))
+        _append(plot_strategy_box_comparison(
+            exp_name, csv_by_strategy, comparison_dir,
+            y_col='action_count',
+            ylabel='Mean Plan Length (number of actions)',
+            plot_suffix='_actions'))
+        _append(plot_strategy_box_comparison(
+            exp_name, csv_by_strategy, comparison_dir,
+            y_col='peak_memory',
+            ylabel='Peak Memory (MB)',
+            plot_suffix='_memory'))
+        _append(plot_strategy_box_comparison(
+            exp_name, csv_by_strategy, comparison_dir,
+            y_col='comparable_action_count',
+            ylabel='Plan Length (original edges)',
+            plot_suffix='_comparable_actions'))
+
+    _line_comparison('grid_map')
+    _line_comparison('grid_map_no_sas')
+    _line_comparison('fd')
+    _line_comparison('corridor')
+    _line_comparison('ma')
+    _line_comparison('ma_no_sas')
+    _line_comparison('combined')
+    _line_comparison('combined_no_sas')
+    _camara_box_comparison('camara_discretized')
+    _camara_box_comparison('camara_discretized_no_sas')
+    return generated

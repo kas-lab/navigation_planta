@@ -15,6 +15,7 @@ class ExperimentRecord:
     action_count: int
     peak_memory: float
     owltopddl_time: float | None = None
+    comparable_action_count: int | None = None
 
 
 def run_subprocess_with_memory(command: list) -> float:
@@ -74,6 +75,7 @@ def save_experiment_records_csv(
     csv_path.parent.mkdir(parents=True, exist_ok=True)
     single_mode = len({record.mode for record in records}) == 1
     has_owltopddl = any(record.owltopddl_time is not None for record in records)
+    has_comparable = any(record.comparable_action_count is not None for record in records)
 
     fieldnames = []
     if not single_mode:
@@ -82,6 +84,8 @@ def save_experiment_records_csv(
     if has_owltopddl:
         fieldnames.append('owltopddl_time')
     fieldnames.extend([time_name, 'action_count', 'peak_memory'])
+    if has_comparable:
+        fieldnames.append('comparable_action_count')
 
     with csv_path.open('w', newline='') as csv_file:
         writer = csv.writer(csv_file)
@@ -101,16 +105,55 @@ def save_experiment_records_csv(
                 record.action_count,
                 f'{record.peak_memory:f}',
             ])
+            if has_comparable:
+                row.append(
+                    '' if record.comparable_action_count is None
+                    else record.comparable_action_count)
             writer.writerow(row)
+
+def _resolve_fd_plan_file(plan_file: Path) -> Path | None:
+    """Return the actual FD plan file path, or None if not found.
+
+    FD writes plan.1, plan.2, … — the last file is the best plan.
+    """
+    candidates = sorted(plan_file.parent.glob(plan_file.name + '.*'))
+    if candidates:
+        return candidates[-1]
+    return plan_file if plan_file.exists() else None
+
+
 def count_plan_actions(plan_file: Path) -> int:
     """Count actions in an FD plan file, ignoring comment/cost lines.
 
-    FD writes plans to {plan_file}.1, .2, ... — take the last (best for
-    satisficing search). Returns NO_PLAN (-1) if no plan file is found.
+    Returns NO_PLAN (-1) if no plan file is found.
     """
-    candidates = sorted(plan_file.parent.glob(plan_file.name + '.*'))
-    target = candidates[-1] if candidates else (plan_file if plan_file.exists() else None)
+    target = _resolve_fd_plan_file(plan_file)
     if target is None:
         return NO_PLAN
     lines = target.read_text().splitlines()
     return sum(1 for line in lines if line.strip() and not line.startswith(';'))
+
+
+def count_comparable_plan_actions(plan_file: Path, original_node_ids: set[int]) -> int:
+    """Count plan actions in the PRISM-comparable space.
+
+    Move actions whose destination waypoint is an intermediate (discretized)
+    node are skipped; all other actions count as 1. This lets discretized-PDDL
+    action counts be compared directly with PRISM counts on the original map.
+    """
+    target = _resolve_fd_plan_file(plan_file)
+    if target is None:
+        return NO_PLAN
+    count = 0
+    for line in target.read_text().splitlines():
+        line = line.strip()
+        if not line or line.startswith(';'):
+            continue
+        tokens = line.strip('()').split()
+        if tokens[0] == 'move':
+            wp_args = [t for t in tokens[1:] if t.startswith('wp')]
+            dest_id = int(wp_args[1][2:])  # second wp-arg is destination
+            if dest_id not in original_node_ids:
+                continue
+        count += 1
+    return count

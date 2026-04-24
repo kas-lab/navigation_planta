@@ -2,7 +2,8 @@ from pathlib import Path
 
 from navigation_planta.reporting import (
     plot_numeric_sweep_results,
-    plot_strategy_comparison,
+    plot_strategy_box_comparison,
+    plot_strategy_line_comparison,
     summarize_mode_records,
     write_summary_report,
 )
@@ -49,7 +50,7 @@ def test_summarize_mode_records_and_report_file(tmp_path: Path) -> None:
     assert report_path.read_text() == lines[0] + "\n"
 
 
-def test_plot_strategy_comparison_numeric_creates_expected_filename(tmp_path: Path) -> None:
+def test_plot_strategy_line_comparison_creates_expected_filename(tmp_path: Path) -> None:
     csv_a = tmp_path / "fd_a.csv"
     csv_b = tmp_path / "fd_b.csv"
     save_experiment_records_csv(
@@ -69,7 +70,7 @@ def test_plot_strategy_comparison_numeric_creates_expected_filename(tmp_path: Pa
         x_name="n_fd",
     )
 
-    plot_strategy_comparison(
+    plot_strategy_line_comparison(
         "fd",
         {"astar(blind())": csv_a, "eager_greedy([goalcount()])": csv_b},
         tmp_path,
@@ -83,7 +84,7 @@ def test_plot_strategy_comparison_numeric_creates_expected_filename(tmp_path: Pa
     assert out_file.stat().st_size > 0
 
 
-def test_plot_strategy_comparison_boxplot_creates_expected_filename(tmp_path: Path) -> None:
+def test_plot_strategy_box_comparison_creates_expected_filename(tmp_path: Path) -> None:
     csv_a = tmp_path / "camara_a.csv"
     csv_b = tmp_path / "camara_b.csv"
     save_experiment_records_csv(
@@ -105,7 +106,7 @@ def test_plot_strategy_comparison_boxplot_creates_expected_filename(tmp_path: Pa
         time_name="time",
     )
 
-    plot_strategy_comparison(
+    plot_strategy_box_comparison(
         "camara_discretized",
         {"astar(blind())": csv_a, "prism (baseline)": csv_b},
         tmp_path,

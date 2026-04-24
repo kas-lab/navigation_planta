@@ -10,8 +10,8 @@ import numpy as np
 
 
 class MapIOPlottingMixin:
-    def plot_graph(self, show_plot=False, save_file=False, filename="map.png", legend=True, node_labels=True):
-        fig, ax = plt.subplots(figsize=(8, 8))
+    def plot_graph(self, show_plot=False, save_file=False, filename="map.png", legend=True, node_labels=True, figsize=(8, 8)):
+        fig, ax = plt.subplots(figsize=figsize)
         ax.axis("off")
         pos_ = {n: pos['pos'] for n, pos in self.graph.nodes().items()}
 
@@ -46,12 +46,21 @@ class MapIOPlottingMixin:
             ax=ax,
             label="Goal location")
 
-        nx.draw_networkx_labels(
-            self.graph,
-            pos=pos_,
-            labels={first_node: "I", last_node: "G"},
-            font_size=10,
-            ax=ax)
+        if node_labels:
+            nx.draw_networkx_labels(
+                self.graph,
+                pos=pos_,
+                labels={n: str(n) for n in self.graph.nodes},
+                font_size=7,
+                font_color='black',
+                ax=ax)
+        else:
+            nx.draw_networkx_labels(
+                self.graph,
+                pos=pos_,
+                labels={first_node: "I", last_node: "G"},
+                font_size=10,
+                ax=ax)
 
         dark_corridors = [(u, v) for u, v in self.graph.edges if self.graph[u]
                           [v]['dark'] and not self.graph[u][v]['unsafe']]
@@ -170,8 +179,14 @@ class MapIOPlottingMixin:
         self.load_json(file_path)
         self.discretize_graph()
 
+    @property
+    def original_graph(self):
+        """Graph before discretization; equals current graph if not discretized."""
+        return getattr(self, '_pre_discretization_graph', self.graph)
+
     def discretize_graph(self):
         """Discretizes the graph so that all edges have the same maximum possible length."""
+        self._pre_discretization_graph = self.graph.copy()
         edge_lengths = [
             np.linalg.norm(
                 np.array(

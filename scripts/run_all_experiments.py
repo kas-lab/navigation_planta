@@ -44,9 +44,22 @@ from run_corridor_type_scale_scenario import runner as run_corridor
 from run_fd_scale_scenario import runner as run_fd
 from run_grid_map_scenario import runner as run_grid_map
 from run_mission_action_scale_scenario import runner as run_ma
-from navigation_planta.reporting import EXPERIMENT_COMPARISON_CONFIG, plot_strategy_comparison
+from navigation_planta.reporting import (
+    EXPERIMENT_COMPARISON_CONFIG,
+    generate_strategy_comparison_plots,
+)
 
 PDDL_EXPERIMENT_NAMES = set(EXPERIMENT_COMPARISON_CONFIG.keys())
+
+# Per-family base seeds. Variants sharing a map topology use the same constant
+# so each (x_idx, run_id) pair generates an identical underlying graph across
+# all search strategies and across adaptive/no-adaptation pairs.
+_SEED_GRID_MAP    = 100_000
+_SEED_CAMARA_DISC = 200_000
+_SEED_FD          = 300_000
+_SEED_CORRIDOR    = 400_000
+_SEED_MA          = 500_000
+_SEED_COMBINED    = 600_000
 
 
 def _sanitize(s: str) -> str:
@@ -110,6 +123,8 @@ def main():
     for search_str in searches:
         strat_label = search_str
         strat_dir = base_out / _sanitize(search_str)
+        strat_dir.mkdir(parents=True, exist_ok=True)
+        (strat_dir / 'search.txt').write_text(search_str + '\n', encoding='utf-8')
 
         print(f'\n{"#" * 60}')
         print(f'  Strategy: {search_str}')
@@ -117,13 +132,15 @@ def main():
 
         csv = _run_one('grid_map', 'Grid map scalability (vary nodes, PDDL)',
                        run_grid_map, strat_dir / 'grid_map',
-                       mode='adaptive', runs=runs, show_plot=False, search=search_str)
+                       mode='adaptive', runs=runs, show_plot=False, search=search_str,
+                       base_seed=_SEED_GRID_MAP)
         if csv:
             strategy_results['grid_map'][strat_label] = csv
 
         csv = _run_one('grid_map_no_sas', 'Grid map scalability no adaptation (vary nodes, PDDL)',
                        run_grid_map, strat_dir / 'grid_map',
-                       mode='no-adaptation', runs=runs, show_plot=False, search=search_str)
+                       mode='no-adaptation', runs=runs, show_plot=False, search=search_str,
+                       base_seed=_SEED_GRID_MAP)
         if csv:
             strategy_results['grid_map_no_sas'][strat_label] = csv
 
@@ -135,49 +152,57 @@ def main():
 
         csv = _run_one('camara_discretized', 'Camara 2020 map — discretized PDDL',
                        run_camara_discretized, strat_dir / 'camara_discretized',
-                       mode='adaptive', runs=runs, search=search_str)
+                       mode='adaptive', runs=runs, search=search_str,
+                       base_seed=_SEED_CAMARA_DISC)
         if csv:
             strategy_results['camara_discretized'][strat_label] = csv
 
         csv = _run_one('camara_discretized_no_sas', 'Camara 2020 map — discretized PDDL - no adaptation',
                        run_camara_discretized, strat_dir / 'camara_discretized',
-                       mode='no-adaptation', runs=runs, search=search_str)
+                       mode='no-adaptation', runs=runs, search=search_str,
+                       base_seed=_SEED_CAMARA_DISC)
         if csv:
             strategy_results['camara_discretized_no_sas'][strat_label] = csv
 
         csv = _run_one('fd', 'Exp A — FD scaling (vary FunctionDesigns)',
                        run_fd, strat_dir / 'fd',
-                       n_runs=runs, mode='adaptive', search=search_str)
+                       n_runs=runs, mode='adaptive', search=search_str,
+                       base_seed=_SEED_FD)
         if csv:
             strategy_results['fd'][strat_label] = csv
 
         csv = _run_one('corridor', 'Exp B — Corridor type scaling',
                        run_corridor, strat_dir / 'corridor',
-                       n_runs=runs, mode='adaptive', search=search_str)
+                       n_runs=runs, mode='adaptive', search=search_str,
+                       base_seed=_SEED_CORRIDOR)
         if csv:
             strategy_results['corridor'][strat_label] = csv
 
         csv = _run_one('ma', 'Exp C — Mission action scaling',
                        run_ma, strat_dir / 'ma',
-                       n_runs=runs, mode='adaptive', search=search_str)
+                       n_runs=runs, mode='adaptive', search=search_str,
+                       base_seed=_SEED_MA)
         if csv:
             strategy_results['ma'][strat_label] = csv
 
         csv = _run_one('ma_no_sas', 'Exp C — Mission action scaling - no adaptation',
                        run_ma, strat_dir / 'ma',
-                       n_runs=runs, mode='no-adaptation', search=search_str)
+                       n_runs=runs, mode='no-adaptation', search=search_str,
+                       base_seed=_SEED_MA)
         if csv:
             strategy_results['ma_no_sas'][strat_label] = csv
 
         csv = _run_one('combined', 'Exp D — Combined scalability',
                        run_combined, strat_dir / 'combined',
-                       n_runs=runs, mode='adaptive', search=search_str)
+                       n_runs=runs, mode='adaptive', search=search_str,
+                       base_seed=_SEED_COMBINED)
         if csv:
             strategy_results['combined'][strat_label] = csv
 
         csv = _run_one('combined_no_sas', 'Exp D — Combined scalability - no-adaptation',
                        run_combined, strat_dir / 'combined',
-                       n_runs=runs, mode='no-adaptation', search=search_str)
+                       n_runs=runs, mode='no-adaptation', search=search_str,
+                       base_seed=_SEED_COMBINED)
         if csv:
             strategy_results['combined_no_sas'][strat_label] = csv
 
@@ -185,7 +210,7 @@ def main():
     if not prism_done:
         prism_csv = _run_one(
             'camara_prism', 'Camara 2020 map — PRISM (baseline)',
-            run_prism, base_out / 'camara_prism')
+            run_prism, base_out / 'camara_prism', n_runs=runs)
         if prism_csv:
             strategy_results['camara_prism']['prism'] = prism_csv
             # Inject PRISM as a reference series in the discretized comparisons
@@ -208,24 +233,7 @@ def main():
     if generate_comparisons:
         comparison_dir.mkdir(parents=True, exist_ok=True)
         print(f'\n  Generating comparison plots → {comparison_dir}')
-        for exp_name, csv_by_strategy in strategy_results.items():
-            if exp_name in skip:
-                continue
-            # camara_prism is a single series by design; all others need >= 2
-            min_series = 1 if exp_name == 'camara_prism' else 2
-            if len(csv_by_strategy) >= min_series:
-                plot_strategy_comparison(exp_name, csv_by_strategy, comparison_dir)
-                plot_strategy_comparison(
-                    exp_name, csv_by_strategy, comparison_dir,
-                    y_col='action_count',
-                    ylabel='Mean Plan Length (actions)',
-                    plot_suffix='_actions')
-                if exp_name.startswith('camara_discretized'):
-                    plot_strategy_comparison(
-                        exp_name, csv_by_strategy, comparison_dir,
-                        y_col='peak_memory',
-                        ylabel='Peak Memory (MB)',
-                        plot_suffix='_memory')
+        generate_strategy_comparison_plots(strategy_results, comparison_dir, skip=skip)
 
 
 if __name__ == '__main__':

@@ -3,6 +3,8 @@
 """Discretized Cámara navigation experiment runner with optional baseline."""
 
 import argparse
+import dataclasses
+import functools
 import subprocess
 from pathlib import Path
 
@@ -13,6 +15,7 @@ from navigation_planta.experiment_runner import (
 )
 from navigation_planta.map_generator import MapGenerator
 from navigation_planta.no_adaptation import NoAdaptationMapGenerator
+from navigation_planta.utils import count_comparable_plan_actions
 from navigation_planta.reporting import (
     plot_mode_summary,
     summarize_mode_records,
@@ -36,6 +39,7 @@ MODE_LABELS = {
 UNREACHABLE_NODES = [20, 41]
 
 
+@functools.lru_cache(maxsize=None)
 def make_map_generator(mode):
     generator_class = MapGenerator if mode == 'adaptive' else NoAdaptationMapGenerator
     map_generator = generator_class()
@@ -61,7 +65,7 @@ def run_adaptive_preprocessor(problem_input, run_folder):
     return domain_output, problem_output
 
 
-def run_single_case(folder_name, mode, run_n, init_goal, search='lazy_greedy([ff()], preferred=[ff()])'):
+def run_single_case(folder_name, mode, run_n, init_goal, search='astar(blind())', seed=None):
     init, goal = init_goal
     map_folder_name = f'wp{init}_wp{goal}_{run_n}'
 
@@ -86,10 +90,17 @@ def run_single_case(folder_name, mode, run_n, init_goal, search='lazy_greedy([ff
         baseline_domain=BASELINE_DOMAIN_FILE,
     )
 
+    mg = make_map_generator(mode)
+    original_node_ids = set(mg.original_graph.nodes)
+    plan_file = folder_name / mode / map_folder_name / 'plan'
+    comparable = count_comparable_plan_actions(plan_file, original_node_ids)
+    record = dataclasses.replace(record, comparable_action_count=comparable)
+
     print(
         f'mode={mode:<13} init={init:<2} goal={goal:<2} '
         f'run={run_n:<2} time={record.planning_time:.6f}s '
-        f'actions={record.action_count} mem={record.peak_memory:.1f}MB')
+        f'actions={record.action_count} comparable={record.comparable_action_count} '
+        f'mem={record.peak_memory:.1f}MB')
     return record
 
 def plot_results(folder_name, planning_time_list, modes):
@@ -130,20 +141,38 @@ def parse_args():
         help='Number of runs for each init/goal pair and mode.')
     parser.add_argument(
         '--search',
-        default='lazy_greedy([ff()], preferred=[ff()])',
+        default='astar(blind())',
         help='Fast Downward search configuration string.')
+    parser.add_argument('--debug', action='store_true',
+                        help='Save map image and keep strategy file for each run')
+    parser.add_argument('--init', nargs=2, type=int, metavar=('START', 'END'),
+                        default=[1, 59], help='Range of init nodes (default: 1 59)')
+    parser.add_argument('--goal', nargs=2, type=int, metavar=('START', 'END'),
+                        default=[1, 59], help='Range of goal nodes (default: 1 59)')
     return parser.parse_args()
 
 
 def runner(
         mode: str = 'adaptive',
         runs: int = 1,
-        search: str = 'lazy_greedy([ff()], preferred=[ff()])',
-        out_dir: Path | None = None) -> Path:
+        search: str = 'astar(blind())',
+        out_dir: Path | None = None,
+        debug: bool = False,
+        init_range: tuple[int, int] = (1, 59),
+        goal_range: tuple[int, int] = (1, 59),
+        base_seed: int | None = None) -> Path:
+    if debug:
+        RESULTS_ROOT.mkdir(parents=True, exist_ok=True)
+        first_mode = 'adaptive' if mode == 'both' else mode
+        mg = make_map_generator(first_mode)
+        n = len(mg.graph.nodes)
+        side = max(8, int(n ** 0.5 * 1.5))
+        mg.plot_graph(save_file=True, filename=str(RESULTS_ROOT / 'map.png'), figsize=(side, side))
+
     init_goal_pairs = [
         (init, goal)
-        for init in range(1, 59)
-        for goal in range(1, 59)
+        for init in range(*init_range)
+        for goal in range(*goal_range)
         if init != goal and init not in UNREACHABLE_NODES and goal not in UNREACHABLE_NODES
     ]
     config = SweepExperimentConfig(
@@ -163,9 +192,11 @@ def runner(
         after_run=lambda folder_name, records, modes: print_summary(folder_name, records, modes),
         search=search,
         out_dir=out_dir,
+        base_seed=base_seed,
     )
 
 
 if __name__ == '__main__':
     _args = parse_args()
-    runner(mode=_args.mode, runs=_args.runs, search=_args.search)
+    runner(mode=_args.mode, runs=_args.runs, search=_args.search, debug=_args.debug,
+           init_range=tuple(_args.init), goal_range=tuple(_args.goal))

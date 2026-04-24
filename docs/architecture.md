@@ -46,7 +46,12 @@ The PDDL experiment scripts now follow the same structure:
 6. save `planning_times.csv`
 7. generate standardized plots and, for Cámara-style runs, `summary.txt`
 
-`run_all_experiments.py` delegates to the same entrypoints and uses `reporting.plot_strategy_comparison()` for cross-strategy comparison figures.
+`run_all_experiments.py` delegates to the same entrypoints and explicitly calls
+`reporting.plot_strategy_line_comparison()` for numeric sweeps and
+`reporting.plot_strategy_box_comparison()` for Cámara-style comparisons.
+`scripts/regenerate_comparison_plots.py` rebuilds the same comparison figures
+from an existing `results/all_experiments/<timestamp>` folder by probing only
+the expected `planning_times.csv` locations.
 
 ## Scenario Extension Model
 

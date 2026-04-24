@@ -76,10 +76,13 @@ def run_adaptive_preprocessor(problem_file, run_folder):
     return domain_out, problem_out
 
 
-def run_single(folder: Path, mode: str, run_id: int, n_nodes: int, search: str = 'astar(blind())'):
+def run_single(folder: Path, mode: str, run_id: int, n_nodes: int, search: str = 'astar(blind())', seed: int | None = None):
     """Run one trial for a given map size."""
     n_nodes_resulting = n_nodes - int(n_nodes * NODES_SKIP)
     def prepare_problem(run_folder: Path, current_mode: str) -> Path:
+        if seed is not None:
+            import random
+            random.seed(seed)
         mg = make_generator(current_mode, n_nodes)
         mg.generate_connected_grid_map()
 
@@ -123,7 +126,7 @@ def plot_results(folder: Path, records, modes):
     )
 
 
-def runner(n_runs: int, mode: str, min_nodes: int = MIN_NODES, max_nodes: int = MAX_NODES, search: str = 'astar(blind())', out_dir: Path | None = None) -> Path:
+def runner(n_runs: int, mode: str, min_nodes: int = MIN_NODES, max_nodes: int = MAX_NODES, search: str = 'astar(blind())', out_dir: Path | None = None, base_seed: int | None = None) -> Path:
     config = SweepExperimentConfig(
         results_root=REPO_ROOT / 'results' / 'scalability_combined',
         mode_labels=MODE_LABELS,
@@ -141,6 +144,7 @@ def runner(n_runs: int, mode: str, min_nodes: int = MIN_NODES, max_nodes: int = 
             folder_mode, records, MODE_LABELS, filename='peak_memory_boxplot.png'),
         search=search,
         out_dir=out_dir,
+        base_seed=base_seed,
     )
 
 

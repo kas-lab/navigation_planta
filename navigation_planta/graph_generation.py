@@ -8,25 +8,25 @@ from scipy.spatial import Delaunay
 
 
 class GraphGenerationMixin:
-    def generate_graph(self):
-        # Generate random office-like positions
-        positions = np.random.rand(self.num_nodes, 2)  # (x, y) in [0,1]²
+    # def generate_graph(self):
+    #     # Generate random office-like positions
+    #     positions = np.random.rand(self.num_nodes, 2)  # (x, y) in [0,1]²
 
-        # Delaunay triangulation for structured connectivity
-        tri = Delaunay(positions)
-        edges = set()
-        for simplex in tri.simplices:
-            for i in range(3):
-                edges.add(tuple(sorted([simplex[i], simplex[(i + 1) % 3]])))
+    #     # Delaunay triangulation for structured connectivity
+    #     tri = Delaunay(positions)
+    #     edges = set()
+    #     for simplex in tri.simplices:
+    #         for i in range(3):
+    #             edges.add(tuple(sorted([simplex[i], simplex[(i + 1) % 3]])))
 
-        # Construct graph with weighted edges
-        for i, pos in enumerate(positions):
-            self.graph.add_node(i, pos=pos)
+    #     # Construct graph with weighted edges
+    #     for i, pos in enumerate(positions):
+    #         self.graph.add_node(i, pos=pos)
 
-        for u, v in edges:
-            weight = np.linalg.norm(
-                positions[u] - positions[v])  # Euclidean distance
-            self.graph.add_edge(u, v, weight=weight, dark=False, unsafe=False)
+    #     for u, v in edges:
+    #         weight = np.linalg.norm(
+    #             positions[u] - positions[v])  # Euclidean distance
+    #         self.graph.add_edge(u, v, weight=weight, dark=False, unsafe=False)
 
     def generate_grid_graph(self):
         rows = int(np.ceil(np.sqrt(self.num_nodes)))
