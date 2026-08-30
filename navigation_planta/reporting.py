@@ -119,11 +119,39 @@ def _record_peak_memory(record) -> float:
     return record.peak_memory
 
 
+def _record_distance(record) -> float | None:
+    return getattr(record, 'distance', None)
+
+
+def _record_remaining_battery(record) -> float | None:
+    return getattr(record, 'remaining_battery', None)
+
+
 def _series_stats(values: Iterable[float]) -> tuple[float, float]:
     array = np.asarray(list(values), dtype=float)
     if array.size == 0:
         return float('nan'), 0.0
     return float(np.nanmean(array)), float(np.nanstd(array))
+
+
+def _mode_metric_values(
+        records: Sequence,
+        mode: str,
+        accessor,
+        *,
+        drop_no_plan: bool = False) -> np.ndarray:
+    """Extract one metric for a mode, dropping unset (None) and NO_PLAN values."""
+    values = []
+    for record in records:
+        if _record_mode(record) != mode:
+            continue
+        value = accessor(record)
+        if value is None:
+            continue
+        if drop_no_plan and value == NO_PLAN:
+            continue
+        values.append(value)
+    return np.array(values, dtype=float)
 
 
 def summarize_mode_records(records: Sequence, mode_labels: dict[str, str]) -> list[str]:
@@ -328,62 +356,48 @@ def plot_mode_summary(
 
     modes = list(mode_labels.keys())
     labels = [mode_labels[m] for m in modes]
-    mean_times, std_times = [], []
-    mean_actions, std_actions = [], []
-    mean_mems, std_mems = [], []
 
-    for mode in modes:
-        times = np.array([
-            _record_planning_time(record)
-            for record in records
-            if _record_mode(record) == mode
-        ])
-        counts = np.array(
-            [
-                _record_action_count(record)
-                for record in records
-                if _record_mode(record) == mode and _record_action_count(record) != NO_PLAN
-            ],
-            dtype=float,
-        )
-        mems = np.array([
-            _record_peak_memory(record)
-            for record in records
-            if _record_mode(record) == mode
-        ])
-        mean_times.append(times.mean())
-        std_times.append(times.std())
-        mean_actions.append(counts.mean() if counts.size else float('nan'))
-        std_actions.append(counts.std() if counts.size else 0.0)
-        mean_mems.append(mems.mean())
-        std_mems.append(mems.std())
+    # (ylabel, title, bar color, accessor) for each candidate panel. A panel
+    # is only drawn if some mode has at least one valid sample for it, so
+    # scenarios that don't track distance/battery (e.g. run_camara_scenario.py)
+    # keep the original 3-panel figure.
+    metric_specs = [
+        ('Mean Planning Time (seconds)', 'Planning Time by Mode', 'steelblue',
+         _record_planning_time, False),
+        ('Mean Plan Length (actions)', 'Plan Length by Mode', 'darkorange',
+         _record_action_count, True),
+        ('Mean Peak Memory (MB)', 'Peak Memory by Mode', 'mediumseagreen',
+         _record_peak_memory, False),
+        ('Mean Distance Traveled (m)', 'Distance by Mode', 'mediumpurple',
+         _record_distance, True),
+        ('Mean Remaining Battery', 'Remaining Battery by Mode', 'firebrick',
+         _record_remaining_battery, True),
+    ]
 
-    fig, (ax1, ax2, ax3) = plt.subplots(1, 3, figsize=(18, 5))
+    panels = []
+    for ylabel, title, color, accessor, drop_no_plan in metric_specs:
+        mode_values = {
+            mode: _mode_metric_values(records, mode, accessor, drop_no_plan=drop_no_plan)
+            for mode in modes
+        }
+        if any(values.size for values in mode_values.values()):
+            panels.append((ylabel, title, color, mode_values))
+
+    fig, axes = plt.subplots(1, len(panels), figsize=(6 * len(panels), 5))
+    if len(panels) == 1:
+        axes = [axes]
     x = np.arange(len(modes))
 
-    ax1.bar(x, mean_times, yerr=std_times, capsize=5, color='steelblue', alpha=0.8)
-    ax1.set_xticks(x)
-    ax1.set_xticklabels(labels)
-    ax1.set_ylabel('Mean Planning Time (seconds)')
-    ax1.set_title('Planning Time by Mode')
-    ax1.set_ylim(bottom=0)
-    ax1.grid(True, axis='y')
-
-    ax2.bar(x, mean_actions, yerr=std_actions, capsize=5, color='darkorange', alpha=0.8)
-    ax2.set_xticks(x)
-    ax2.set_xticklabels(labels)
-    ax2.set_ylabel('Mean Plan Length (actions)')
-    ax2.set_title('Plan Length by Mode')
-    ax2.set_ylim(bottom=0)
-    ax2.grid(True, axis='y')
-
-    ax3.bar(x, mean_mems, yerr=std_mems, capsize=5, color='mediumseagreen', alpha=0.8)
-    ax3.set_xticks(x)
-    ax3.set_xticklabels(labels)
-    ax3.set_ylabel('Mean Peak Memory (MB)')
-    ax3.set_title('Peak Memory by Mode')
-    ax3.set_ylim(bottom=0)
-    ax3.grid(True, axis='y')
+    for ax, (ylabel, title, color, mode_values) in zip(axes, panels):
+        means = [mode_values[mode].mean() if mode_values[mode].size else float('nan') for mode in modes]
+        stds = [mode_values[mode].std() if mode_values[mode].size else 0.0 for mode in modes]
+        ax.bar(x, means, yerr=stds, capsize=5, color=color, alpha=0.8)
+        ax.set_xticks(x)
+        ax.set_xticklabels(labels)
+        ax.set_ylabel(ylabel)
+        ax.set_title(title)
+        ax.set_ylim(bottom=0)
+        ax.grid(True, axis='y')
 
     plot_path = folder / filename
     plt.savefig(plot_path, dpi=300, bbox_inches='tight')
@@ -525,7 +539,10 @@ def plot_strategy_box_comparison(
             data,
             strategy_label,
             resolved_y,
-            drop_no_plan=(resolved_y in {'action_count', 'comparable_action_count'}),
+            drop_no_plan=(resolved_y in {
+                'action_count', 'comparable_action_count',
+                'reconfig_action', 'remaining_battery', 'distance',
+            }),
         )
         if ys is None or ys.size == 0:
             continue
@@ -610,28 +627,26 @@ def generate_strategy_comparison_plots(
             ylabel='Mean Plan Length (number of actions)',
             plot_suffix='_actions'))
 
+    camara_box_metrics = [
+        (None, 'Planning Time (seconds)', ''),
+        ('action_count', 'Mean Plan Length (number of actions)', '_actions'),
+        ('peak_memory', 'Peak Memory (MB)', '_memory'),
+        ('comparable_action_count', 'Plan Length (original edges)', '_comparable_actions'),
+        ('reconfig_action', 'Mean Reconfig Actions', '_reconfig_actions'),
+        ('remaining_battery', 'Remaining Battery', '_remaining_battery'),
+        ('distance', 'Distance Traveled (m)', '_distance'),
+    ]
+
     def _camara_box_comparison(exp_name: str) -> None:
         csv_by_strategy = strategy_results.get(exp_name, {})
         if exp_name in skip or len(csv_by_strategy) < 2:
             return
-        _append(plot_strategy_box_comparison(
-            exp_name, csv_by_strategy, comparison_dir,
-            ylabel='Planning Time (seconds)'))
-        _append(plot_strategy_box_comparison(
-            exp_name, csv_by_strategy, comparison_dir,
-            y_col='action_count',
-            ylabel='Mean Plan Length (number of actions)',
-            plot_suffix='_actions'))
-        _append(plot_strategy_box_comparison(
-            exp_name, csv_by_strategy, comparison_dir,
-            y_col='peak_memory',
-            ylabel='Peak Memory (MB)',
-            plot_suffix='_memory'))
-        _append(plot_strategy_box_comparison(
-            exp_name, csv_by_strategy, comparison_dir,
-            y_col='comparable_action_count',
-            ylabel='Plan Length (original edges)',
-            plot_suffix='_comparable_actions'))
+        for y_col, ylabel, plot_suffix in camara_box_metrics:
+            _append(plot_strategy_box_comparison(
+                exp_name, csv_by_strategy, comparison_dir,
+                y_col=y_col,
+                ylabel=ylabel,
+                plot_suffix=plot_suffix))
 
     _line_comparison('grid_map')
     _line_comparison('grid_map_no_sas')

@@ -14,18 +14,18 @@ def test_count_plan_actions_uses_last_numbered_plan(tmp_path: Path) -> None:
         "(move wp0 wp1)\n(move wp1 wp2)\n; cost = 2\n"
     )
 
-    assert utils.count_plan_actions(plan_base) == 2
+    assert utils.count_plan_actions(plan_base) == (2, 2, 0)
 
 
 def test_count_plan_actions_falls_back_to_plain_plan_file(tmp_path: Path) -> None:
     plan_file = tmp_path / "plan"
     plan_file.write_text("(move wp0 wp1)\n(move wp1 wp2)\n; comment\n")
 
-    assert utils.count_plan_actions(plan_file) == 2
+    assert utils.count_plan_actions(plan_file) == (2, 2, 0)
 
 
 def test_count_plan_actions_returns_no_plan_when_missing(tmp_path: Path) -> None:
-    assert utils.count_plan_actions(tmp_path / "missing_plan") == utils.NO_PLAN
+    assert utils.count_plan_actions(tmp_path / "missing_plan") == (utils.NO_PLAN, -1, -1)
 
 
 def test_run_planner_with_metrics_uses_shared_helpers(
@@ -40,7 +40,7 @@ def test_run_planner_with_metrics_uses_shared_helpers(
     monkeypatch.setattr(
         utils, "run_subprocess_with_memory", fake_run_subprocess_with_memory
     )
-    monkeypatch.setattr(utils, "count_plan_actions", lambda plan_file: 4)
+    monkeypatch.setattr(utils, "count_plan_actions", lambda plan_file: (4, 3, 1))
 
     perf_counter_values = iter([100.0, 100.75])
     monkeypatch.setattr(time, "perf_counter", lambda: next(perf_counter_values))
@@ -49,15 +49,19 @@ def test_run_planner_with_metrics_uses_shared_helpers(
     domain_file = tmp_path / "domain.pddl"
     problem_file = tmp_path / "problem.pddl"
 
-    planning_time, action_count, peak_memory = utils.run_planner_with_metrics(
-        plan_file,
-        domain_file,
-        problem_file,
-        "astar(blind())",
+    planning_time, action_count, move_action_count, reconfig_action_count, peak_memory = (
+        utils.run_planner_with_metrics(
+            plan_file,
+            domain_file,
+            problem_file,
+            "astar(blind())",
+        )
     )
 
     assert planning_time == 0.75
     assert action_count == 4
+    assert move_action_count == 3
+    assert reconfig_action_count == 1
     assert peak_memory == 12.5
     assert recorded["command"] == [
         "fast-downward.py",
@@ -80,6 +84,8 @@ def test_save_experiment_records_csv_omits_mode_for_single_mode_runs(
             x_value=10,
             planning_time=0.25,
             action_count=4,
+            move_action_count=3,
+            reconfig_action_count=1,
             peak_memory=33.0,
             owltopddl_time=0.1,
         )
@@ -90,7 +96,9 @@ def test_save_experiment_records_csv_omits_mode_for_single_mode_runs(
     )
 
     lines = csv_path.read_text().splitlines()
-    assert lines[0] == "nodes,owltopddl_time,time,action_count,peak_memory"
+    assert lines[0] == (
+        "nodes,owltopddl_time,time,action_count,move_action,reconfig_action,peak_memory"
+    )
     assert lines[1].startswith("10,1.000000000000000056e-01,")
 
 
@@ -104,6 +112,8 @@ def test_save_experiment_records_csv_keeps_mode_for_multi_mode_runs(
             x_value="wp1_wp2",
             planning_time=0.25,
             action_count=4,
+            move_action_count=3,
+            reconfig_action_count=1,
             peak_memory=33.0,
         ),
         ExperimentRecord(
@@ -111,6 +121,8 @@ def test_save_experiment_records_csv_keeps_mode_for_multi_mode_runs(
             x_value="wp1_wp2",
             planning_time=0.5,
             action_count=5,
+            move_action_count=4,
+            reconfig_action_count=1,
             peak_memory=30.0,
         ),
     ]
@@ -118,17 +130,19 @@ def test_save_experiment_records_csv_keeps_mode_for_multi_mode_runs(
     utils.save_experiment_records_csv(csv_path, records, x_name="init_goal")
 
     lines = csv_path.read_text().splitlines()
-    assert lines[0] == "mode,init_goal,planning_time,action_count,peak_memory"
+    assert lines[0] == (
+        "mode,init_goal,planning_time,action_count,move_action,reconfig_action,peak_memory"
+    )
     assert lines[1].startswith("adaptive,wp1_wp2,")
     assert lines[2].startswith("no-adaptation,wp1_wp2,")
 
 
 def test_plot_memory_summary_creates_png(tmp_path: Path) -> None:
     records = [
-        ExperimentRecord("adaptive", 10, 0.1, 3, 40.0),
-        ExperimentRecord("adaptive", 20, 0.2, 4, 42.0),
-        ExperimentRecord("no-adaptation", 10, 0.1, 3, 35.0),
-        ExperimentRecord("no-adaptation", 20, 0.2, 4, 36.0),
+        ExperimentRecord("adaptive", 10, 0.1, 3, 2, 1, 40.0),
+        ExperimentRecord("adaptive", 20, 0.2, 4, 3, 1, 42.0),
+        ExperimentRecord("no-adaptation", 10, 0.1, 3, 2, 1, 35.0),
+        ExperimentRecord("no-adaptation", 20, 0.2, 4, 3, 1, 36.0),
     ]
     out_file = tmp_path / "peak_memory_boxplot.png"
 
@@ -145,12 +159,38 @@ def test_plot_memory_summary_creates_png(tmp_path: Path) -> None:
 
 def test_plot_mode_summary_creates_png(tmp_path: Path) -> None:
     records = [
-        ExperimentRecord("adaptive", "wp1_wp2", 0.4, 3, 40.0),
-        ExperimentRecord("adaptive", "wp2_wp3", 0.5, 4, 42.0),
-        ExperimentRecord("no-adaptation", "wp1_wp2", 0.7, 5, 35.0),
-        ExperimentRecord("no-adaptation", "wp2_wp3", 0.8, 6, 36.0),
+        ExperimentRecord("adaptive", "wp1_wp2", 0.4, 3, 2, 1, 40.0),
+        ExperimentRecord("adaptive", "wp2_wp3", 0.5, 4, 3, 1, 42.0),
+        ExperimentRecord("no-adaptation", "wp1_wp2", 0.7, 5, 4, 1, 35.0),
+        ExperimentRecord("no-adaptation", "wp2_wp3", 0.8, 6, 5, 1, 36.0),
     ]
     out_file = tmp_path / "camara_summary.png"
+
+    reporting.plot_mode_summary(
+        tmp_path,
+        records,
+        {"adaptive": "Adaptive", "no-adaptation": "No adaptation"},
+        filename=out_file.name,
+    )
+
+    assert out_file.exists()
+    assert out_file.stat().st_size > 0
+
+
+def test_plot_mode_summary_includes_distance_and_battery_panels(
+    tmp_path: Path,
+) -> None:
+    records = [
+        ExperimentRecord(
+            "adaptive", "wp1_wp2", 0.4, 3, 2, 1, 40.0,
+            remaining_battery=20000, distance=15.0,
+        ),
+        ExperimentRecord(
+            "no-adaptation", "wp1_wp2", 0.7, 5, 4, 1, 35.0,
+            remaining_battery=17000, distance=25.0,
+        ),
+    ]
+    out_file = tmp_path / "camara_summary_with_energy.png"
 
     reporting.plot_mode_summary(
         tmp_path,
