@@ -15,7 +15,7 @@ from navigation_planta.experiment_runner import (
 )
 from navigation_planta.map_generator import MapGenerator
 from navigation_planta.no_adaptation import NoAdaptationMapGenerator
-from navigation_planta.utils import count_comparable_plan_actions
+from navigation_planta.utils import count_comparable_plan_actions_and_energy
 from navigation_planta.reporting import (
     plot_mode_summary,
     summarize_mode_records,
@@ -93,15 +93,20 @@ def run_single_case(folder_name, mode, run_n, init_goal, search='astar(blind())'
     mg = make_map_generator(mode)
     original_node_ids = set(mg.original_graph.nodes)
     plan_file = folder_name / mode / map_folder_name / 'plan'
-    comparable = count_comparable_plan_actions(plan_file, original_node_ids)
+    comparable, remaining_battery, distance = count_comparable_plan_actions_and_energy(
+        mg.original_graph, plan_file, original_node_ids, initial_battery=32560)
     record = dataclasses.replace(record, comparable_action_count=comparable)
+    record = dataclasses.replace(record, remaining_battery=remaining_battery)
+    record = dataclasses.replace(record, distance=distance)
 
     print(
         f'mode={mode:<13} init={init:<2} goal={goal:<2} '
         f'run={run_n:<2} time={record.planning_time:.6f}s '
         f'actions={record.action_count} comparable={record.comparable_action_count} '
+        f'remaining={record.remaining_battery} distance={record.distance:.1f} '
         f'mem={record.peak_memory:.1f}MB')
     return record
+
 
 def plot_results(folder_name, planning_time_list, modes):
     plot_mode_summary(

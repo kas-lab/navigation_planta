@@ -39,12 +39,16 @@ def run(folder_name, run, init, goal, map_generator, debug=False):
     ]
 
     action_count = -1
+    move_action_count = -1
+    reconfig_action_count = -1
+    remaining_battery = -1
+    distance = -1
     start_time = time.perf_counter()
     peak_memory = run_subprocess_with_memory(command)
     elapsed_time = time.perf_counter() - start_time
 
     if strat_file.exists():
-        action_count = map_generator.count_plan_actions_from_strategy(
+        action_count, move_action_count, reconfig_action_count, remaining_battery, distance = map_generator.count_plan_actions_from_strategy(
             strat_file.read_text(),
             nav_path,
             initial_battery=32560,
@@ -53,12 +57,16 @@ def run(folder_name, run, init, goal, map_generator, debug=False):
         if not debug:
             strat_file.unlink()
 
-    print(f"Execution Time: {elapsed_time:.6f} seconds  actions={action_count}  mem={peak_memory:.1f}MB")
+    print(f"Execution Time: {elapsed_time:.6f} seconds  actions={action_count} remaining_battery={remaining_battery} distance={distance:.1f}  mem={peak_memory:.1f}MB")
     return ExperimentRecord(
         mode='prism',
         x_value=f'wp{init}_wp{goal}',
         planning_time=elapsed_time,
         action_count=action_count,
+        move_action_count=move_action_count,
+        reconfig_action_count=reconfig_action_count,
+        remaining_battery=remaining_battery,
+        distance=distance,
         peak_memory=peak_memory,
     )
 

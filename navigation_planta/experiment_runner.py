@@ -95,7 +95,7 @@ def execute_pddl_case(
         owltopddl_time = 0.0
 
     plan_file = run_folder / 'plan'
-    planning_time, action_count, peak_memory = run_planner_with_metrics(
+    planning_time, action_count, move_action_count, reconfig_action_count, peak_memory = run_planner_with_metrics(
         plan_file,
         domain_for_planner,
         problem_for_planner,
@@ -106,7 +106,10 @@ def execute_pddl_case(
         x_value=x_value,
         planning_time=planning_time,
         action_count=action_count,
+        move_action_count=move_action_count,
+        reconfig_action_count=reconfig_action_count,
         peak_memory=peak_memory,
+        remaining_battery=-1,
         owltopddl_time=owltopddl_time if include_owltopddl_time else None,
     )
 

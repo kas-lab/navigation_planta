@@ -1,5 +1,5 @@
 from .map_generator import MapGenerator
-from .utils import NO_PLAN
+from .utils import NO_PLAN, CONFIG_ENERGY, energy_cost
 import textwrap
 from pathlib import Path
 
@@ -57,12 +57,12 @@ class PrismModelgenerator(MapGenerator):
             unsafe_amount,
             dark_amount)
         self.configurations = [
-            Conf("conf_amcl_kinect", 17790.0, 1.0, False, True),
-            Conf("conf_amcl_lidar", 19790.0, 0.7, False, False),
-            Conf("conf_mprt_kinect", 18942.0, 0.9, False, True),
-            Conf("conf_mprt_lidar", 20942.0, 0.6, False, False),
-            Conf("conf_aruco", 16963.0, 0.8, False, True),
-            Conf("conf_aruco_headlamp", 26963.0, 0.8, True, True)
+            Conf("conf_amcl_kinect", CONFIG_ENERGY["amcl_kinect"], 1.0, False, True),
+            Conf("conf_amcl_lidar", CONFIG_ENERGY["amcl_lidar"], 0.7, False, False),
+            Conf("conf_mprt_kinect", CONFIG_ENERGY["mprt_kinect"], 0.9, False, True),
+            Conf("conf_mprt_lidar", CONFIG_ENERGY["mprt_lidar"], 0.6, False, False),
+            Conf("conf_aruco", CONFIG_ENERGY["aruco"], 0.8, False, True),
+            Conf("conf_aruco_headlamp", CONFIG_ENERGY["aruco_headlamp"], 0.8, True, True),
         ]
 
         self.file_header = textwrap.dedent(f'''
@@ -92,15 +92,13 @@ class PrismModelgenerator(MapGenerator):
         formula_distances = "\n"
         formula_bat_update = "\n"
         formula_p_collide = "\n"
-        speed = 0.68  # m/s
         for i in range(len(nav_path) - 1):
             distance = self.graph[nav_path[i]][nav_path[i + 1]]['weight']
             formula_distances += f"formula dist_l{nav_path[i]}_l{nav_path[i+1]}={distance};\n"
 
-            # energy = speed*
             formula_bat_update_ = f"formula b_upd_l{nav_path[i]}_l{nav_path[i+1]}=\n"
             for conf in self.configurations:
-                energy = int(distance * speed * conf.energy * 0.01)
+                energy = energy_cost(distance, conf.energy)
                 formula_bat_update_ += f"\tc={conf.name}? max(0, b-{energy}) :\n"
                 hitrate = 0.0
                 if with_probabilities is True:
@@ -166,13 +164,12 @@ class PrismModelgenerator(MapGenerator):
             file.write("\nendmodule\n")
             file.write(energy_reward)
 
-
     def count_plan_actions_from_strategy(
             self,
             strategy_text: str,
             nav_path: list,
             initial_battery: int,
-            initial_config: int) -> int:
+            initial_config: int) -> tuple[int, int, int, int, float]:
         """Simulate the nominal execution path and return the number of actions.
 
         Parses the PRISM strategy export (type=actions) and follows the policy
@@ -181,15 +178,15 @@ class PrismModelgenerator(MapGenerator):
         taken before (and excluding) the terminal 'finish' action, or NO_PLAN
         if the strategy does not cover the initial state or the cap is hit.
         """
-        speed = 0.68
-
-        # Pre-compute battery decrement per (path step, conf index)
-        # Matches the b_upd_lX_lY formula: int(dist * speed * conf.energy * 0.01)
+        # Pre-compute battery decrement and distance per (path step, conf index)
+        # Matches the b_upd_lX_lY formula (see energy_cost()).
         step_costs: list[list[int]] = []
+        step_distances: list[float] = []
         for i in range(len(nav_path) - 1):
             dist = self.graph[nav_path[i]][nav_path[i + 1]]['weight']
+            step_distances.append(dist)
             step_costs.append([
-                int(dist * speed * conf.energy * 0.01)
+                energy_cost(dist, conf.energy)
                 for conf in self.configurations
             ])
 
@@ -225,27 +222,33 @@ class PrismModelgenerator(MapGenerator):
         c = initial_config
         interrupted, goal, rd, collided = False, False, False, False
         action_count = 0
+        move_action = 0
+        reconfig_action = 0
+        total_distance = 0.0
 
         for _ in range(10_000):
             action = policy.get((b, l, c, interrupted, goal, rd, collided))
             if action is None:
-                return NO_PLAN
+                return NO_PLAN, move_action, reconfig_action, b, total_distance
             if action == 'finish':
-                return action_count
+                return action_count, move_action, reconfig_action, b, total_distance
             action_count += 1
             if action.startswith('t_set_'):
                 conf_name = action[len('t_set_'):]   # e.g. "conf_aruco"
                 c = conf_name_to_idx[conf_name]
                 rd = True
+                reconfig_action += 1
             else:
                 # Move action (e.g. "l1_l2"): advance path index, drain battery
                 cost = step_costs[l][c]
                 b = max(0, b - cost)
+                total_distance += step_distances[l]
                 l += 1
                 rd = False
                 collided = False  # optimistic branch
+                move_action += 1
 
-        return NO_PLAN  # safety cap exceeded
+        return NO_PLAN, move_action, reconfig_action, b, total_distance  # safety cap exceeded
 
 
 if __name__ == '__main__':
