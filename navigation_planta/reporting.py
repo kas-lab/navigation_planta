@@ -127,6 +127,14 @@ def _record_remaining_battery(record) -> float | None:
     return getattr(record, 'remaining_battery', None)
 
 
+def _record_move_action_count(record) -> int:
+    return getattr(record, 'move_action_count', NO_PLAN)
+
+
+def _record_reconfig_action_count(record) -> int:
+    return getattr(record, 'reconfig_action_count', NO_PLAN)
+
+
 def _series_stats(values: Iterable[float]) -> tuple[float, float]:
     array = np.asarray(list(values), dtype=float)
     if array.size == 0:
@@ -195,6 +203,57 @@ def write_summary_report(folder: Path, lines: Sequence[str], filename: str = 'su
     report_path = folder / filename
     report_path.write_text('\n'.join(lines) + '\n')
     print(f'Summary saved to {report_path}')
+    return report_path
+
+
+# (column base name, accessor, drop the -1/NO_PLAN sentinel) for the per-mode
+# metric summary. Base names match the planning_times.csv column headers.
+_METRIC_SUMMARY_SPECS = (
+    ('move_action', _record_move_action_count, True),
+    ('reconfig_action', _record_reconfig_action_count, True),
+    ('peak_memory', _record_peak_memory, False),
+    ('remaining_battery', _record_remaining_battery, True),
+    ('distance', _record_distance, True),
+)
+
+
+def write_metric_summary_csv(
+        folder: Path,
+        records: Sequence,
+        mode_labels: dict[str, str],
+        filename: str = 'summary.csv') -> Path:
+    """Write per-mode mean and standard deviation of the execution metrics.
+
+    Produces a CSV with a header row and one data row per mode in
+    *mode_labels*. Columns are ``mode``, ``n`` (records for that mode), then
+    ``<metric>_mean``/``<metric>_std`` for move_action, reconfig_action,
+    peak_memory, remaining_battery, and distance. Unset values (``None`` and the
+    ``-1`` no-plan sentinel) are dropped before aggregating; a metric with no
+    samples for a mode is reported as ``nan``.
+    """
+    import csv
+
+    header = ['mode', 'n']
+    for name, _, _ in _METRIC_SUMMARY_SPECS:
+        header.extend([f'{name}_mean', f'{name}_std'])
+
+    report_path = folder / filename
+    with report_path.open('w', newline='') as csv_file:
+        writer = csv.writer(csv_file)
+        writer.writerow(header)
+        for mode, label in mode_labels.items():
+            n = sum(1 for record in records if _record_mode(record) == mode)
+            row: list = [label, n]
+            for _, accessor, drop_no_plan in _METRIC_SUMMARY_SPECS:
+                values = _mode_metric_values(
+                    records, mode, accessor, drop_no_plan=drop_no_plan)
+                if values.size == 0:
+                    row.extend(['nan', 'nan'])
+                    continue
+                mean, std = _series_stats(values)
+                row.extend([f'{mean:.6g}', f'{std:.6g}'])
+            writer.writerow(row)
+    print(f'Metric summary saved to {report_path}')
     return report_path
 
 
@@ -559,7 +618,6 @@ def plot_strategy_box_comparison(
         box_data,
         patch_artist=True,
         showmeans=True,
-        labels=box_labels,
         meanprops=dict(marker='o', markerfacecolor='red', markeredgecolor='black'),
         medianprops=dict(color='black'),
         whiskerprops=dict(linestyle='--', color='black'),

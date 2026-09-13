@@ -29,36 +29,43 @@ See `docs/architecture.md` for a developer-oriented overview.
 The first step is to get the docker image used for the experiments.
 
 You can either build it locally:
+
 ```Bash
 docker build -t navigation_planta .
 ```
 
 Or you can download it with:
+
 ```Bash
 docker pull ghcr.io/kas-lab/navigation_planta:main
 ```
 
 Run the full experiment suite with the locally built image:
+
 ```bash
 docker run --rm -it -v $PWD/results:/navigation_planta/results -v /etc/localtime:/etc/localtime:ro navigation_planta:latest python scripts/run_all_experiments.py
 ```
 
 Run only the grid-map scalability experiment:
+
 ```bash
 docker run --rm -it -v $PWD/results:/navigation_planta/results -v /etc/localtime:/etc/localtime:ro navigation_planta:latest python scripts/run_grid_map_scenario.py
 ```
 
 Open a shell inside the container image:
+
 ```bash
 docker run --rm -it -v /etc/localtime:/etc/localtime:ro navigation_planta:latest bash
 ```
 
 Open a shell with the local repository mounted inside the container:
+
 ```bash
 docker run --rm -it --name navigation_planta -v $PWD/src/navigation_planta:/navigation_planta/ -v /etc/localtime:/etc/localtime:ro navigation_planta:latest bash
 ```
 
 Run the full experiment suite with the GitHub image:
+
 ```bash
 docker run --rm -it -v $PWD/results:/navigation_planta/results -v /etc/localtime:/etc/localtime:ro ghcr.io/kas-lab/navigation_planta:main python scripts/run_all_experiments.py
 ```
@@ -128,7 +135,7 @@ The supported standalone experiment entrypoints are:
 
 Normal version:
 
-```
+```Bash
 export PATH=$HOME/navigation_planta_ws/src/owl_to_pddl:$PATH
 ```
 
@@ -156,11 +163,11 @@ The current pattern is:
 
 ## Run fast-downward solver
 
-```
+```Bash
 export PATH=$HOME/navigation_planta_ws/src/downward:$PATH
 ```
 
-```
+```Bash
 fast-downward.py  pddl/domain_sas_created.pddl pddl/problem_created.pddl --search "astar(blind())"
 ```
 
@@ -229,11 +236,11 @@ time prism navigate_map_one_path.prism -pf 'R{"time"}min=? [ F stop ]' -exportst
 time prism navigate_map_one_path.prism -pf 'R{"energy"}max=? [ F stop ]' -exportstrat stdout -const INITIAL_BATTERY=32560,INITIAL_LOCATION=0,TARGET_LOCATION=16,INITIAL_CONFIGURATION=1
 ```
 
-```
+```Bash
 time prism test.prism -pf 'R{"energy"}min=? [ F stop ]' -exportstrat stdout -const INITIAL_BATTERY=32560,INITIAL_LOCATION=0,TARGET_LOCATION=7,INITIAL_CONFIGURATION=1
 ```
 
-```
+```Bash
 time prism l52_l24.prism -javamaxmem 16g -cuddmaxmem 16g -pf 'R{"energy"}max=? [ F stop ]' -exportstrat stdout -const INITIAL_BATTERY=32560,INITIAL_LOCATION=0,TARGET_LOCATION=16,INITIAL_CONFIGURATION=1
 ```
 
@@ -273,6 +280,5 @@ Map example:
 --search 'astar(ff())'
 
 --search 'astar(lmcount(lm_merged([lm_rhw(),lm_hm(m=1)])))'
-
 
 for experiment C, ff was much faster

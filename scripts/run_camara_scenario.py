@@ -16,6 +16,7 @@ from navigation_planta.no_adaptation import NoAdaptationMapGenerator
 from navigation_planta.reporting import (
     plot_mode_summary,
     summarize_mode_records,
+    write_metric_summary_csv,
     write_summary_report,
 )
 
@@ -107,6 +108,8 @@ def print_summary(folder_name: Path, planning_time_list, modes):
     for line in summary_lines:
         print(line)
     write_summary_report(folder_name, summary_lines)
+    write_metric_summary_csv(
+        folder_name, planning_time_list, {m: MODE_LABELS[m] for m in modes})
 
 
 def parse_args():

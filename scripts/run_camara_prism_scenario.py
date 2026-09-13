@@ -2,6 +2,7 @@ from navigation_planta.prism_model_generator import PrismModelgenerator
 from navigation_planta.reporting import (
     plot_mode_summary,
     summarize_mode_records,
+    write_metric_summary_csv,
     write_summary_report,
 )
 from navigation_planta.utils import (
@@ -113,6 +114,8 @@ def runner(out_dir: Path | None = None,
     for line in summary_lines:
         print(line)
     write_summary_report(folder_name, summary_lines)
+    write_metric_summary_csv(
+        folder_name, planning_time_list, {'prism': 'Cámara et al. (2020)'})
 
     plot_mode_summary(
         folder_name, planning_time_list,
