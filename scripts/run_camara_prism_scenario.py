@@ -28,6 +28,7 @@ def run(folder_name, run, init, goal, map_generator, debug=False):
     map_generator.generate_prism_model(prism_filename, nav_path)
 
     strat_file = map_folder / 'strategy.txt'
+    strat_file.unlink(missing_ok=True)
     command = [
         "prism",
         str(prism_filename),
@@ -45,18 +46,21 @@ def run(folder_name, run, init, goal, map_generator, debug=False):
     remaining_battery = -1
     distance = -1
     start_time = time.perf_counter()
-    peak_memory = run_subprocess_with_memory(command)
+    peak_memory = run_subprocess_with_memory(
+        command, log_file=map_folder / 'prism.log')
     elapsed_time = time.perf_counter() - start_time
 
-    if strat_file.exists():
-        action_count, move_action_count, reconfig_action_count, remaining_battery, distance = map_generator.count_plan_actions_from_strategy(
-            strat_file.read_text(),
-            nav_path,
-            initial_battery=32560,
-            initial_config=1,
-        )
-        if not debug:
-            strat_file.unlink()
+    if not strat_file.exists():
+        raise RuntimeError(f'PRISM completed without exporting a strategy: {strat_file}')
+
+    action_count, move_action_count, reconfig_action_count, remaining_battery, distance = map_generator.count_plan_actions_from_strategy(
+        strat_file.read_text(),
+        nav_path,
+        initial_battery=32560,
+        initial_config=1,
+    )
+    if not debug:
+        strat_file.unlink()
 
     print(f"Execution Time: {elapsed_time:.6f} seconds  actions={action_count} remaining_battery={remaining_battery} distance={distance:.1f}  mem={peak_memory:.1f}MiB")
     return ExperimentRecord(

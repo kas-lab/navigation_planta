@@ -96,11 +96,24 @@ def test_rejects_invalid_sampling_interval(interval):
         run_subprocess_with_memory(['unused'], sample_interval=interval)
 
 
-def test_short_lived_command_and_failure_reporting(capsys):
+def test_short_lived_command_and_failure_reporting(tmp_path):
     assert run_subprocess_with_memory([sys.executable, '-c', 'pass']) >= 0
+    log = tmp_path / 'command.log'
+    with pytest.raises(subprocess.CalledProcessError) as error:
+        run_subprocess_with_memory(
+            [sys.executable, '-c',
+             'import sys; print("diagnostic", file=sys.stderr); raise SystemExit(7)'],
+            log_file=log)
+    assert error.value.returncode == 7
+    assert 'diagnostic' in error.value.stderr
+    assert 'diagnostic' in log.read_text()
+
+
+@pytest.mark.parametrize('code', [11, 12])
+def test_expected_unsolved_exit_can_be_accepted(code):
     assert run_subprocess_with_memory(
-        [sys.executable, '-c', 'raise SystemExit(7)']) >= 0
-    assert '[ERROR] Command failed:' in capsys.readouterr().out
+        [sys.executable, '-c', f'raise SystemExit({code})'],
+        accepted_returncodes=(0, 11, 12)) >= 0
 
 
 def test_missing_command_raises():

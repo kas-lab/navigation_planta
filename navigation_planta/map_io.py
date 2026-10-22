@@ -185,7 +185,11 @@ class MapIOPlottingMixin:
         return getattr(self, '_pre_discretization_graph', self.graph)
 
     def discretize_graph(self):
-        """Discretizes the graph so that all edges have the same maximum possible length."""
+        """Split long corridors, preserving their metadata and segment lengths.
+
+        Hitrate data is retained as original-corridor metadata, not converted
+        into independent per-segment collision probabilities.
+        """
         self._pre_discretization_graph = self.graph.copy()
         edge_lengths = [
             np.linalg.norm(
@@ -209,17 +213,19 @@ class MapIOPlottingMixin:
             if dist > max_length:
                 num_segments = int(np.ceil(dist / max_length))
                 prev_node = u
+                edge_data = self.graph[u][v].copy()
+                segment_data = {**edge_data, 'weight': float(dist / num_segments)}
 
                 for i in range(1, num_segments):
                     new_pos = pos_u + (pos_v - pos_u) * (i / num_segments)
                     max_node_id += 1
                     new_nodes[max_node_id] = tuple(new_pos)
-                    new_edges.append((prev_node, max_node_id))
+                    new_edges.append((prev_node, max_node_id, segment_data.copy()))
                     prev_node = max_node_id
 
-                new_edges.append((prev_node, v))
+                new_edges.append((prev_node, v, segment_data.copy()))
                 self.graph.remove_edge(u, v)
 
         for node_id, pos in new_nodes.items():
             self.graph.add_node(node_id, pos=pos)
-        self.graph.add_edges_from(new_edges, dark=False, unsafe=False)
+        self.graph.add_edges_from(new_edges)

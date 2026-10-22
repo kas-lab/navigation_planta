@@ -33,8 +33,9 @@ def test_run_planner_with_metrics_uses_shared_helpers(
 ) -> None:
     recorded = {}
 
-    def fake_run_subprocess_with_memory(command: list) -> float:
+    def fake_run_subprocess_with_memory(command: list, **kwargs) -> float:
         recorded["command"] = command
+        recorded["options"] = kwargs
         return 12.5
 
     monkeypatch.setattr(
@@ -63,6 +64,10 @@ def test_run_planner_with_metrics_uses_shared_helpers(
     assert move_action_count == 3
     assert reconfig_action_count == 1
     assert peak_memory == 12.5
+    assert recorded["options"] == {
+        "log_file": tmp_path / "planner.log",
+        "accepted_returncodes": (0, 11, 12),
+    }
     assert recorded["command"] == [
         "fast-downward.py",
         "--plan-file",

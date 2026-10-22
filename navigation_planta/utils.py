@@ -49,14 +49,26 @@ class ExperimentRecord:
     distance: float | None = None
 
 
-def run_subprocess_with_memory(command: list, sample_interval: float = 0.05) -> float:
+def run_subprocess_with_memory(
+        command: list,
+        sample_interval: float = 0.05,
+        *,
+        log_file: Path | None = None,
+        accepted_returncodes: tuple[int, ...] = (0,)) -> float:
     """Return estimated peak aggregate RSS of a command and descendants in MiB.
 
     Sum live processes' RSS each sample (50 ms by default), then retain the
     largest total. Already discovered children remain tracked if reparented.
     The experiment runner is excluded. Shared pages may be counted more than
     once; brief peaks and children that exit between samples can be missed.
+
+    Capture stdout/stderr without pipes so verbose children cannot deadlock.
+    If log_file is set, retain the complete output there; otherwise use a
+    temporary file. Unexpected exits raise CalledProcessError with an output
+    tail, allowing the experiment retry layer to handle execution failures.
     """
+    from contextlib import ExitStack
+    import tempfile
     import math
     import subprocess
     import time
@@ -66,8 +78,12 @@ def run_subprocess_with_memory(command: list, sample_interval: float = 0.05) -> 
         raise ValueError("sample_interval must be finite and positive")
 
     max_rss = 0
-    with subprocess.Popen(
-            command, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL) as process:
+    with ExitStack() as stack:
+        output = stack.enter_context(
+            Path(log_file).open('w+b') if log_file is not None
+            else tempfile.TemporaryFile())
+        process = stack.enter_context(subprocess.Popen(
+            command, stdout=output, stderr=subprocess.STDOUT))
         try:
             tracked = {psutil.Process(process.pid)}
         except psutil.NoSuchProcess:
@@ -97,8 +113,15 @@ def run_subprocess_with_memory(command: list, sample_interval: float = 0.05) -> 
                 break
             time.sleep(sample_interval)
 
-    if process.returncode != 0:
-        print(f"[ERROR] Command failed: {' '.join(str(a) for a in command)}")
+        if process.returncode not in accepted_returncodes:
+            output.seek(0, 2)
+            output.seek(max(0, output.tell() - 65536))
+            tail = output.read().decode('utf-8', errors='replace')
+            error = subprocess.CalledProcessError(
+                process.returncode, command, output=tail, stderr=tail)
+            if log_file is not None:
+                error.add_note(f'Command output saved to {log_file}')
+            raise error
     return max_rss / (1024 * 1024)
 
 def run_planner_with_metrics(
@@ -116,8 +139,19 @@ def run_planner_with_metrics(
         str(problem_file),
         '--search', search,
     ]
+    # A retry or a repeated invocation must never consume a previous plan.
+    for candidate in plan_file.parent.glob(plan_file.name + '.*'):
+        if candidate.name[len(plan_file.name) + 1:].isdigit():
+            candidate.unlink()
+    plan_file.unlink(missing_ok=True)
+
     start_time = time.perf_counter()
-    peak_memory = run_subprocess_with_memory(command)
+    peak_memory = run_subprocess_with_memory(
+        command,
+        log_file=plan_file.parent / 'planner.log',
+        # FD 11: provably unsolvable; 12: search completed without a solution.
+        # Resource limits and all execution/input errors still raise.
+        accepted_returncodes=(0, 11, 12))
     planning_time = time.perf_counter() - start_time
     action_count, move_action_count, reconfig_action_count = count_plan_actions(plan_file)
     return planning_time, action_count, move_action_count, reconfig_action_count, peak_memory
@@ -225,18 +259,21 @@ def count_energy_cost(graph, wp1, wp2, configuration) -> tuple[int, float]:
 
 
 def count_comparable_plan_actions_and_energy(
-        graph, plan_file: Path, original_node_ids: set[int], initial_battery: int, ) -> tuple[int, int, float]:
+        graph, plan_file: Path, original_node_ids: set[int], initial_battery: int,
+        *, calculate_energy: bool = True) -> tuple[int, int | None, float]:
     """Count plan actions in the PRISM-comparable space.
 
     Move actions whose destination waypoint is an intermediate (discretized)
     node are skipped; all other actions count as 1. This lets discretized-PDDL
     action counts be compared directly with PRISM counts on the original map.
+    With calculate_energy=False, return battery=None: the no-adaptation
+    baseline has no architectural configuration from which to infer energy.
     """
     target = _resolve_fd_plan_file(plan_file)
     if target is None:
-        return NO_PLAN, -1, -1
+        return NO_PLAN, -1 if calculate_energy else None, -1
     count = 0
-    remaining_battery = initial_battery
+    remaining_battery = initial_battery if calculate_energy else None
     total_distance = 0.0
     configuration = ''
     init_id = -1
@@ -256,9 +293,10 @@ def count_comparable_plan_actions_and_energy(
             dest_id = int(wp_args[1][2:])  # second wp-arg is destination
             if dest_id not in original_node_ids:
                 continue
-            cost, distance = count_energy_cost(
-                graph, init_id, dest_id, configuration)
-            remaining_battery -= cost
+            distance = graph[init_id][dest_id]['weight']
+            if calculate_energy:
+                cost, _ = count_energy_cost(graph, init_id, dest_id, configuration)
+                remaining_battery -= cost
             total_distance += distance
         count += 1
     return count, remaining_battery, total_distance

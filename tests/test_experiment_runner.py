@@ -19,7 +19,7 @@ def test_run_with_retries_retries_then_succeeds() -> None:
         attempts["count"] += 1
         if attempts["count"] < 3:
             raise RuntimeError("temporary")
-        return ExperimentRecord("adaptive", 1, 0.1, 2, 3.0)
+        return ExperimentRecord("adaptive", 1, 0.1, 2, 1, 1, 3.0)
 
     record = experiment_runner.run_with_retries(
         flaky,
@@ -37,7 +37,7 @@ def test_execute_pddl_case_records_owltopddl_when_requested(
     monkeypatch.setattr(
         experiment_runner,
         "run_planner_with_metrics",
-        lambda plan_file, domain_file, problem_file, search: (0.75, 4, 12.5),
+        lambda plan_file, domain_file, problem_file, search: (0.75, 4, 3, 1, 12.5),
     )
 
     def prepare_problem(run_folder: Path, mode: str) -> Path:
@@ -92,8 +92,10 @@ def test_run_sweep_experiment_writes_csv_and_uses_mode_folder(tmp_path: Path) ->
         retry_attempts=2,
     )
 
-    def run_one(folder: Path, mode: str, run_id: int, x_value: int, search: str) -> ExperimentRecord:
-        return ExperimentRecord(mode, x_value, planning_time=float(x_value), action_count=run_id + 1, peak_memory=10.0)
+    def run_one(folder: Path, mode: str, run_id: int, x_value: int, search: str, seed=None) -> ExperimentRecord:
+        return ExperimentRecord(
+            mode, x_value, planning_time=float(x_value), action_count=run_id + 1,
+            move_action_count=run_id + 1, reconfig_action_count=0, peak_memory=10.0)
 
     def plot_results(folder: Path, records, modes) -> None:
         plotted["called"] = True
