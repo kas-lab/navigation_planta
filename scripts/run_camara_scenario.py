@@ -90,7 +90,7 @@ def run_single_case(folder_name, mode, run_n, init_goal, search='lazy_greedy([ff
     print(
         f'mode={mode:<13} init={init:<2} goal={goal:<2} '
         f'run={run_n:<2} time={record.planning_time:.6f}s '
-        f'actions={record.action_count} mem={record.peak_memory:.1f}MB')
+        f'actions={record.action_count} mem={record.peak_memory:.1f}MiB')
     return record
 
 def plot_results(folder_name, planning_time_list, modes):

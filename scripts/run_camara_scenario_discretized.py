@@ -105,7 +105,7 @@ def run_single_case(folder_name, mode, run_n, init_goal, search='astar(blind())'
         f'run={run_n:<2} time={record.planning_time:.6f}s '
         f'actions={record.action_count} comparable={record.comparable_action_count} '
         f'remaining={record.remaining_battery} distance={record.distance:.1f} '
-        f'mem={record.peak_memory:.1f}MB')
+        f'mem={record.peak_memory:.1f}MiB')
     return record
 
 

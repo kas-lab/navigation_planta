@@ -177,7 +177,7 @@ def summarize_mode_records(records: Sequence, mode_labels: dict[str, str]) -> li
         mean_t, std_t = _series_stats(times)
         ac_str = f' mean actions: {np.mean(counts):.1f}' if counts else ''
         max_mem = max(mems) if mems else 0.0
-        return [f'Mean {mean_t:.4f}s Std dev: {std_t:.4f}s{ac_str} Max mem: {max_mem:.1f}MB']
+        return [f'Mean {mean_t:.4f}s Std dev: {std_t:.4f}s{ac_str} Max mem: {max_mem:.1f}MiB']
 
     lines: list[str] = []
     for mode in modes:
@@ -194,7 +194,7 @@ def summarize_mode_records(records: Sequence, mode_labels: dict[str, str]) -> li
         max_mem = max(mems) if mems else 0.0
         lines.append(
             f'{mode_labels[mode]} mean {mean_t:.4f}s std dev: {std_t:.4f}s{ac_str} '
-            f'max mem: {max_mem:.1f}MB'
+            f'max mem: {max_mem:.1f}MiB'
         )
     return lines
 
@@ -394,7 +394,7 @@ def plot_memory_summary(
     )
     ax.set_xticks(x)
     ax.set_xticklabels(labels)
-    ax.set_ylabel('Peak Memory (MB)')
+    ax.set_ylabel('Estimated peak aggregate RSS (MiB)')
     ax.set_title('Peak Memory by Mode')
     ax.set_ylim(bottom=0)
     ax.grid(True, axis='y')
@@ -425,7 +425,7 @@ def plot_mode_summary(
          _record_planning_time, False),
         ('Mean Plan Length (actions)', 'Plan Length by Mode', 'darkorange',
          _record_action_count, True),
-        ('Mean Peak Memory (MB)', 'Peak Memory by Mode', 'mediumseagreen',
+        ('Mean estimated peak aggregate RSS (MiB)', 'Peak Memory by Mode', 'mediumseagreen',
          _record_peak_memory, False),
         ('Mean Distance Traveled (m)', 'Distance by Mode', 'mediumpurple',
          _record_distance, True),
@@ -688,7 +688,7 @@ def generate_strategy_comparison_plots(
     camara_box_metrics = [
         (None, 'Planning Time (seconds)', ''),
         ('action_count', 'Mean Plan Length (number of actions)', '_actions'),
-        ('peak_memory', 'Peak Memory (MB)', '_memory'),
+        ('peak_memory', 'Estimated peak aggregate RSS (MiB)', '_memory'),
         ('comparable_action_count', 'Plan Length (original edges)', '_comparable_actions'),
         ('reconfig_action', 'Mean Reconfig Actions', '_reconfig_actions'),
         ('remaining_battery', 'Remaining Battery', '_remaining_battery'),

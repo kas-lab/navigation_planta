@@ -49,36 +49,64 @@ class ExperimentRecord:
     distance: float | None = None
 
 
-def run_subprocess_with_memory(command: list) -> float:
-    """Run *command* and return peak RSS memory usage in MB."""
+def run_subprocess_with_memory(command: list, sample_interval: float = 0.05) -> float:
+    """Return estimated peak aggregate RSS of a command and descendants in MiB.
+
+    Sum live processes' RSS each sample (50 ms by default), then retain the
+    largest total. Already discovered children remain tracked if reparented.
+    The experiment runner is excluded. Shared pages may be counted more than
+    once; brief peaks and children that exit between samples can be missed.
+    """
+    import math
     import subprocess
     import time
     import psutil
 
-    process = subprocess.Popen(
-        command, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, text=True)
-    try:
-        proc = psutil.Process(process.pid)
-    except psutil.NoSuchProcess:
-        raise RuntimeError("Failed to monitor process; it exited too quickly.")
+    if not math.isfinite(sample_interval) or sample_interval <= 0:
+        raise ValueError("sample_interval must be finite and positive")
+
     max_rss = 0
-    while process.poll() is None:
+    with subprocess.Popen(
+            command, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL) as process:
         try:
-            max_rss = max(max_rss, proc.memory_info().rss)
+            tracked = {psutil.Process(process.pid)}
         except psutil.NoSuchProcess:
-            break
-        time.sleep(0.05)
+            tracked = set()
+
+        while True:
+            returncode = process.poll()
+            # Process objects retain creation-time identity, avoiding PID reuse.
+            for proc in list(tracked):
+                try:
+                    if proc.is_running():
+                        tracked.update(proc.children(recursive=True))
+                except psutil.NoSuchProcess:
+                    pass
+
+            total_rss = 0
+            for proc in list(tracked):
+                try:
+                    if not proc.is_running() or proc.status() == psutil.STATUS_ZOMBIE:
+                        tracked.discard(proc)
+                        continue
+                    total_rss += proc.memory_info().rss
+                except psutil.NoSuchProcess:
+                    tracked.discard(proc)
+            max_rss = max(max_rss, total_rss)
+            if returncode is not None and not tracked:
+                break
+            time.sleep(sample_interval)
+
     if process.returncode != 0:
         print(f"[ERROR] Command failed: {' '.join(str(a) for a in command)}")
     return max_rss / (1024 * 1024)
-
 
 def run_planner_with_metrics(
         plan_file: Path,
         domain_file: Path,
         problem_file: Path,
         search: str) -> tuple[float, int, int, int, float]:
-    """Run Fast Downward and return wall-clock time, plan length, and peak RSS."""
+    """Return wall time, plan counts, and estimated peak aggregate RSS (MiB)."""
     import time
 
     command = [

@@ -128,7 +128,7 @@ def run_single(folder: Path, mode: str, run_id: int, m: int, search: str = 'lazy
     print(
         f'mode={mode:<13} m={m} run={run_id:2d} '
         f'owltopddl={record.owltopddl_time:.3f}s planning={record.planning_time:.6f}s '
-        f'actions={record.action_count} peak_memory={record.peak_memory:.2f}MB'
+        f'actions={record.action_count} peak_memory={record.peak_memory:.2f}MiB'
     )
     return record
 

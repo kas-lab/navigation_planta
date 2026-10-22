@@ -112,6 +112,28 @@ To run the full experiment suite, including the Cámara-style PRISM and PDDL com
 python scripts/run_all_experiments.py
 ```
 
+### Memory measurements
+
+The `peak_memory` CSV column reports **estimated peak aggregate RSS in MiB**.
+For each PRISM or Fast Downward invocation, the shared helper samples the
+command and its observed descendants every 50 ms, sums their current RSS,
+and retains the largest sampled total. Previously discovered children remain
+tracked if their parent exits. The experiment runner, map/model generation,
+OWL-to-PDDL preprocessing, and result plotting are excluded.
+
+This is a coarse process-tree estimate: shared pages may be counted more than
+once, and brief peaks or short-lived children may be missed. It is not a
+kernel-maintained peak or the sum of each process's independent peak.
+The same method is used for both approaches. Monitoring adds some overhead to
+the reported wall time. Historical driver-only or individual-process peak
+measurements are not directly comparable to these results.
+
+No host configuration or extra Docker permissions are required; `psutil` is
+already installed in the image. When using a prebuilt image, rebuild it to
+include this implementation (or mount an updated checkout).
+The helper's optional `sample_interval` argument is in seconds and defaults to
+`0.05`; experiment entrypoints use that default.
+
 ### Export Cámara comparison data
 
 Export a completed full-suite run to a separate directory (Python standard library

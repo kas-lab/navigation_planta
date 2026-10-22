@@ -58,7 +58,7 @@ def run(folder_name, run, init, goal, map_generator, debug=False):
         if not debug:
             strat_file.unlink()
 
-    print(f"Execution Time: {elapsed_time:.6f} seconds  actions={action_count} remaining_battery={remaining_battery} distance={distance:.1f}  mem={peak_memory:.1f}MB")
+    print(f"Execution Time: {elapsed_time:.6f} seconds  actions={action_count} remaining_battery={remaining_battery} distance={distance:.1f}  mem={peak_memory:.1f}MiB")
     return ExperimentRecord(
         mode='prism',
         x_value=f'wp{init}_wp{goal}',

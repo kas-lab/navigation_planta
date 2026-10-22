@@ -107,7 +107,7 @@ def run_single(folder: Path, mode: str, run_id: int, n_nodes: int, search: str =
     print(
         f'mode={mode:<13} n={n_nodes:4d} (eff={n_nodes_resulting:3d}) run={run_id:2d} '
         f'owltopddl={record.owltopddl_time:.3f}s planning={record.planning_time:.6f}s '
-        f'actions={record.action_count} peak_memory={record.peak_memory:.2f}MB'
+        f'actions={record.action_count} peak_memory={record.peak_memory:.2f}MiB'
     )
     return record
 
