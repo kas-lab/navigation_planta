@@ -28,8 +28,12 @@ def config_key(configuration_name: str) -> str:
     return configuration_name
 
 
+def unrounded_energy_cost(distance: float, configuration_energy: float) -> float:
+    return distance * ROBOT_SPEED * configuration_energy * 0.01
+
+
 def energy_cost(distance: float, configuration_energy: float) -> int:
-    return int(distance * ROBOT_SPEED * configuration_energy * 0.01)
+    return int(unrounded_energy_cost(distance, configuration_energy))
 
 
 @dataclass(frozen=True)
@@ -252,31 +256,50 @@ def count_plan_actions(plan_file: Path) -> tuple[int, int, int]:
     return action_count, move_count, reconfigure_count
 
 
-def count_energy_cost(graph, wp1, wp2, configuration) -> tuple[int, float]:
-    """Return (energy cost, distance) for the edge wp1->wp2 under configuration."""
-    distance = graph[wp1][wp2]['weight']
-    return energy_cost(distance, CONFIG_ENERGY[config_key(configuration)]), distance
+def corridor_energy_cost(
+        corridor_distance: float, distance_by_configuration: dict[str, float]) -> int:
+    """Return the energy cost of one original corridor.
+
+    Each configuration is charged for its share of the traveled segments,
+    scaled to the original corridor length, and the total is truncated once.
+    This matches PRISM's one-truncation-per-corridor convention, so a corridor
+    traversed under a single configuration costs exactly
+    ``energy_cost(corridor_distance, ...)`` and segmentation adds no bias.
+    """
+    traveled = sum(distance_by_configuration.values())
+    return int(sum(
+        unrounded_energy_cost(
+            corridor_distance * (distance / traveled),
+            CONFIG_ENERGY[config_key(configuration)])
+        for configuration, distance in distance_by_configuration.items()))
 
 
 def count_comparable_plan_actions_and_energy(
         graph, plan_file: Path, original_node_ids: set[int], initial_battery: int,
-        *, calculate_energy: bool = True) -> tuple[int, int | None, float]:
+        *, segment_graph=None, calculate_energy: bool = True) -> tuple[int, int | None, float]:
     """Count plan actions in the PRISM-comparable space.
 
     Move actions whose destination waypoint is an intermediate (discretized)
     node are skipped; all other actions count as 1. This lets discretized-PDDL
     action counts be compared directly with PRISM counts on the original map.
+    Energy is attributed per discretized segment (looked up in
+    ``segment_graph``, defaulting to ``graph``) to the configuration active
+    while traversing it, so reconfiguring mid-corridor is charged correctly;
+    see ``corridor_energy_cost()`` for the rounding convention.
     With calculate_energy=False, return battery=None: the no-adaptation
     baseline has no architectural configuration from which to infer energy.
     """
     target = _resolve_fd_plan_file(plan_file)
     if target is None:
         return NO_PLAN, -1 if calculate_energy else None, -1
+    if segment_graph is None:
+        segment_graph = graph
     count = 0
     remaining_battery = initial_battery if calculate_energy else None
     total_distance = 0.0
     configuration = ''
     init_id = -1
+    distance_by_configuration: dict[str, float] = {}
     for line in target.read_text().splitlines():
         line = line.strip()
         if not line or line.startswith(';'):
@@ -288,15 +311,20 @@ def count_comparable_plan_actions_and_energy(
 
         if tokens[0] == 'move':
             wp_args = [t for t in tokens[1:] if t.startswith('wp')]
-            if int(wp_args[0][2:]) in original_node_ids:
-                init_id = int(wp_args[0][2:])
+            source_id = int(wp_args[0][2:])
             dest_id = int(wp_args[1][2:])  # second wp-arg is destination
+            if source_id in original_node_ids:
+                init_id = source_id
+                distance_by_configuration = {}
+            if calculate_energy:
+                distance_by_configuration[configuration] = (
+                    distance_by_configuration.get(configuration, 0.0)
+                    + segment_graph[source_id][dest_id]['weight'])
             if dest_id not in original_node_ids:
                 continue
             distance = graph[init_id][dest_id]['weight']
             if calculate_energy:
-                cost, _ = count_energy_cost(graph, init_id, dest_id, configuration)
-                remaining_battery -= cost
+                remaining_battery -= corridor_energy_cost(distance, distance_by_configuration)
             total_distance += distance
         count += 1
     return count, remaining_battery, total_distance

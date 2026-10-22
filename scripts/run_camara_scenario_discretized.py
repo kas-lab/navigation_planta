@@ -96,6 +96,7 @@ def run_single_case(folder_name, mode, run_n, init_goal, search='astar(blind())'
     plan_file = folder_name / mode / map_folder_name / 'plan'
     comparable, remaining_battery, distance = count_comparable_plan_actions_and_energy(
         mg.original_graph, plan_file, original_node_ids, initial_battery=32560,
+        segment_graph=mg.graph,
         calculate_energy=mode == 'adaptive')
     record = dataclasses.replace(record, comparable_action_count=comparable)
     record = dataclasses.replace(record, remaining_battery=remaining_battery)

@@ -36,6 +36,13 @@ This file preserves stable Codex-facing context for `src/navigation_planta/`.
 - Experiment D baseline uses `pddl/experiment_combined_scalability/domain_no_sas_combined.pddl`.
 - In the CSV output, no-adaptation runs record `owltopddl_time=0.0` because OWL preprocessing is intentionally bypassed.
 
+## Safety Formulations in the Cámara Comparison
+
+- Preserve the distinct formulations by explicit user decision: PLANTA assigns unsafe corridors a hard safety requirement of `0.8`; PRISM uses configuration/corridor hitrates and filters movement for darkness compatibility, without a matching unsafe threshold.
+- The hitrates were obtained from the original authors (user-confirmed). The original paper distinguishes dark-corridor non-navigability from probabilistic collision risk (Section 3.2.2, Listing 2, and Section 4; printed pp. 131–132).
+- The comparison's PRISM objective is remaining battery, not safety optimization. Probabilistic collision modeling is not an equivalent hard safety constraint.
+- Review finding F3 is closed as won't fix. The remaining follow-up is manuscript disclosure of the differing safety formulations, not a PRISM transition-filter change. This does not establish full reproduction fidelity or validate PLANTA's threshold enforcement.
+
 ## Validation Pattern
 
 - Prefer isolated timing of map generation, problem generation, OWL conversion, and Fast Downward over running the entire experiment suite.

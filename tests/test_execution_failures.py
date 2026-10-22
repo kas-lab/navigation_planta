@@ -35,14 +35,55 @@ def test_baseline_metrics_do_not_invent_a_configuration(tmp_path):
     ) == (1, None, 10.0)
 
 
-def test_adaptive_energy_metrics_are_preserved(tmp_path):
+def _split_corridor_graphs():
     graph = nx.Graph()
     graph.add_edge(0, 1, weight=10.0)
+    segment_graph = nx.Graph()
+    segment_graph.add_edge(0, 2, weight=5.0)
+    segment_graph.add_edge(2, 1, weight=5.0)
+    return graph, segment_graph
+
+
+def test_adaptive_energy_metrics_are_preserved(tmp_path):
+    graph, segment_graph = _split_corridor_graphs()
     plan = tmp_path / "plan"
     plan.write_text("(reconfigure f_localization fd_aruco)\n(move wp0 wp2)\n(move wp2 wp1)\n")
-    assert utils.count_comparable_plan_actions_and_energy(graph, plan, {0, 1}, 32560) == (
-        2, 32560 - utils.energy_cost(10.0, utils.CONFIG_ENERGY["aruco"]), 10.0
-    )
+    assert utils.count_comparable_plan_actions_and_energy(
+        graph, plan, {0, 1}, 32560, segment_graph=segment_graph
+    ) == (2, 32560 - utils.energy_cost(10.0, utils.CONFIG_ENERGY["aruco"]), 10.0)
+
+
+def test_constant_configuration_corridor_truncates_once_like_prism(tmp_path):
+    # Three 10/3 m segments: truncating per segment would charge 1422 instead
+    # of PRISM's single truncation over the whole corridor (1424).
+    graph = nx.Graph()
+    graph.add_edge(0, 1, weight=10.0)
+    segment_graph = nx.Graph()
+    for u, v in [(0, 2), (2, 3), (3, 1)]:
+        segment_graph.add_edge(u, v, weight=10.0 / 3)
+    plan = tmp_path / "plan"
+    plan.write_text(
+        "(reconfigure f_localization fd_mprt_lidar)\n"
+        "(move wp0 wp2)\n(move wp2 wp3)\n(move wp3 wp1)\n")
+    _, remaining, _ = utils.count_comparable_plan_actions_and_energy(
+        graph, plan, {0, 1}, 32560, segment_graph=segment_graph)
+    assert remaining == 32560 - utils.energy_cost(10.0, utils.CONFIG_ENERGY["mprt_lidar"])
+
+
+def test_mid_corridor_reconfiguration_charges_each_segment_to_its_configuration(tmp_path):
+    graph, segment_graph = _split_corridor_graphs()
+    plan = tmp_path / "plan"
+    plan.write_text(
+        "(reconfigure f_localization fd_aruco)\n(move wp0 wp2)\n"
+        "(reconfigure f_localization fd_aruco_headlamp)\n(move wp2 wp1)\n")
+    count, remaining, distance = utils.count_comparable_plan_actions_and_energy(
+        graph, plan, {0, 1}, 32560, segment_graph=segment_graph)
+    expected_cost = int(
+        utils.unrounded_energy_cost(5.0, utils.CONFIG_ENERGY["aruco"])
+        + utils.unrounded_energy_cost(5.0, utils.CONFIG_ENERGY["aruco_headlamp"]))
+    assert (count, remaining, distance) == (3, 32560 - expected_cost, 10.0)
+    # Charging the whole corridor to the final configuration was the old bug.
+    assert remaining != 32560 - utils.energy_cost(10.0, utils.CONFIG_ENERGY["aruco_headlamp"])
 
 
 def test_failed_planner_clears_old_plans_and_does_not_parse_them(monkeypatch, tmp_path):

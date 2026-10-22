@@ -78,6 +78,28 @@ The standalone PDDL experiment entrypoints follow the same mode convention:
 - `--mode no-adaptation`: direct Fast Downward baseline without OWL preprocessing
 - `--mode both`: run both variants and save a `mode` column in the CSV output
 
+## Running Tests
+
+Run tests in a container from the `navigation_planta:latest` image (built from `Dockerfile`; an image is usually already on disk, check with `docker image ls navigation_planta`). The host Python has no networkx/psutil, so don't run tests there. The image has every dependency, including PRISM, Fast Downward and pytest, so no tests get skipped. From `src/navigation_planta/`:
+
+```bash
+docker run --rm -v "$PWD":/navigation_planta -w /navigation_planta navigation_planta:latest \
+  python -m pytest -q tests
+```
+
+Images built before pytest was added to `Dockerfile` lack it; if you get `No module named pytest`, rebuild, or run `bash -c "pip install -q pytest && python -m pytest -q tests"` instead.
+
+Mounting the checkout over `/navigation_planta` makes the image's editable install pick up local changes without a rebuild. Rebuild the image only when `Dockerfile` or `setup.py` dependencies change.
+
+## Navigation Comparison Safety Semantics
+
+- Decision: retain the current PLANTA and PRISM safety formulations; F3 in `docs/code_review_findings.md` is closed as won't fix, not pending implementation work.
+- PLANTA's PDDL generator assigns a safety requirement of `0.8` to unsafe corridors. PRISM filters movement commands for darkness compatibility but models collision risk using corridor- and configuration-specific hitrates, not an equivalent hard unsafe-corridor threshold.
+- This distinction follows the original Cámara et al. (SEAMS 2020) approach's separation of darkness-related non-navigability and probabilistic collision risk. The user confirms that the hitrate data were obtained from the original authors.
+- Do not add an unsafe/accuracy movement filter to PRISM merely to match PLANTA unless the user explicitly requests a change in comparison semantics.
+- The reported PRISM comparison optimizes remaining battery; do not conflate including collision probabilities with optimizing safety or enforcing a hard safety threshold.
+- Describe the comparison as using different safety formulations, not identical feasible movements or equivalent safety guarantees. The manuscript needs to disclose this explicitly; do not silently edit it or claim that this caveat is already documented.
+
 ## Timing Rule
 
 - The grid-scenario wall-clock time is not the same as the reported planning time.

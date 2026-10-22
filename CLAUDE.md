@@ -82,6 +82,19 @@ docker run --rm -it --name navigation_planta \
   navigation_planta:latest bash
 ```
 
+## Running Tests
+
+Run tests in a container from the `navigation_planta:latest` image (built from `Dockerfile`; an image is usually already on disk, check with `docker image ls navigation_planta`). The host Python has no networkx/psutil, so don't run tests there. The image has every dependency, including PRISM, Fast Downward and pytest, so no tests get skipped. From `src/navigation_planta/`:
+
+```bash
+docker run --rm -v "$PWD":/navigation_planta -w /navigation_planta navigation_planta:latest \
+  python -m pytest -q tests
+```
+
+Images built before pytest was added to `Dockerfile` lack it; if you get `No module named pytest`, rebuild, or run `bash -c "pip install -q pytest && python -m pytest -q tests"` instead.
+
+Mounting the checkout over `/navigation_planta` makes the image's editable install pick up local changes without a rebuild. Rebuild the image only when `Dockerfile` or `setup.py` dependencies change.
+
 ## OWL File Series (FD Scaling)
 
 The `owl/experiment_fd_scalability/navigation_fd_*.owl` files are **cumulative**: fd_10 contains everything in fd_8 plus new FDs.
@@ -98,6 +111,15 @@ When adding or changing a component/FD that first appears at level N, update **a
 | `navigation_fd_15.owl` | 15 | `c_radar` |
 
 `fd_sick_lidar` requires `c_sick_lidar` (not generic `c_lidar`). `fd_lidar_inertial` requires both `c_lidar` and `c_imu`. `requiresC` is multi-valued — comma-separate multiple components.
+
+## Navigation Comparison Safety Semantics
+
+- Decision: retain the current PLANTA and PRISM safety formulations; F3 in `docs/code_review_findings.md` is closed as won't fix, not pending implementation work.
+- PLANTA's PDDL generator assigns a safety requirement of `0.8` to unsafe corridors. PRISM filters movement commands for darkness compatibility but models collision risk using corridor- and configuration-specific hitrates, not an equivalent hard unsafe-corridor threshold.
+- This distinction follows the original Cámara et al. (SEAMS 2020) approach's separation of darkness-related non-navigability and probabilistic collision risk. The user confirms that the hitrate data were obtained from the original authors.
+- Do not add an unsafe/accuracy movement filter to PRISM merely to match PLANTA unless the user explicitly requests a change in comparison semantics.
+- The reported PRISM comparison optimizes remaining battery; do not conflate including collision probabilities with optimizing safety or enforcing a hard safety threshold.
+- Describe the comparison as using different safety formulations, not identical feasible movements or equivalent safety guarantees. The manuscript needs to disclose this explicitly; do not silently edit it or claim that this caveat is already documented.
 
 ## Timing Rule
 

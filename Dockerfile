@@ -11,7 +11,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
   && rm -rf /var/lib/apt/lists/*
 
 RUN pip install --no-cache-dir \
-  psutil networkx "numpy==1.26.4" matplotlib scipy \
+  psutil networkx "numpy==1.26.4" matplotlib scipy pytest \
   unified-planning "unified-planning[fast-downward]"
 
 ENV JAVA_HOME=/usr/lib/jvm/default-java
