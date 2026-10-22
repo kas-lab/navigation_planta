@@ -144,9 +144,8 @@ def run_planner_with_metrics(
         '--search', search,
     ]
     # A retry or a repeated invocation must never consume a previous plan.
-    for candidate in plan_file.parent.glob(plan_file.name + '.*'):
-        if candidate.name[len(plan_file.name) + 1:].isdigit():
-            candidate.unlink()
+    for candidate, _ in _numbered_fd_plan_files(plan_file):
+        candidate.unlink()
     plan_file.unlink(missing_ok=True)
 
     start_time = time.perf_counter()
@@ -223,14 +222,26 @@ def save_experiment_records_csv(
             writer.writerow(row)
 
 
+def _numbered_fd_plan_files(plan_file: Path) -> list[tuple[Path, int]]:
+    """Return (path, number) for each ``{plan_file}.N`` file with a numeric N."""
+    prefix_length = len(plan_file.name) + 1
+    numbered = []
+    for candidate in plan_file.parent.glob(plan_file.name + '.*'):
+        suffix = candidate.name[prefix_length:]
+        if suffix.isdigit():
+            numbered.append((candidate, int(suffix)))
+    return numbered
+
+
 def _resolve_fd_plan_file(plan_file: Path) -> Path | None:
     """Return the actual FD plan file path, or None if not found.
 
-    FD writes plan.1, plan.2, … — the last file is the best plan.
+    Single-plan searches write ``plan_file`` itself; iterated/anytime searches
+    write plan.1, plan.2, … where the highest number is the best plan.
     """
-    candidates = sorted(plan_file.parent.glob(plan_file.name + '.*'))
-    if candidates:
-        return candidates[-1]
+    numbered = _numbered_fd_plan_files(plan_file)
+    if numbered:
+        return max(numbered, key=lambda item: item[1])[0]
     return plan_file if plan_file.exists() else None
 
 

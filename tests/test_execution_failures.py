@@ -86,6 +86,28 @@ def test_mid_corridor_reconfiguration_charges_each_segment_to_its_configuration(
     assert remaining != 32560 - utils.energy_cost(10.0, utils.CONFIG_ENERGY["aruco_headlamp"])
 
 
+def test_plan_resolver_selects_highest_numbered_plan(tmp_path):
+    plan = tmp_path / "plan"
+    for filename in ["plan", "plan.9", "plan.10"]:
+        (tmp_path / filename).write_text("")
+    assert utils._resolve_fd_plan_file(plan) == tmp_path / "plan.10"
+
+
+def test_plan_resolver_ignores_non_numeric_suffixes(tmp_path):
+    plan = tmp_path / "plan"
+    for filename in ["plan", "plan.log", "plan.1.bak"]:
+        (tmp_path / filename).write_text("")
+    assert utils._resolve_fd_plan_file(plan) == plan
+    plan.unlink()
+    assert utils._resolve_fd_plan_file(plan) is None
+
+
+def test_plan_resolver_falls_back_to_unnumbered_plan(tmp_path):
+    plan = tmp_path / "plan"
+    plan.write_text("")
+    assert utils._resolve_fd_plan_file(plan) == plan
+
+
 def test_failed_planner_clears_old_plans_and_does_not_parse_them(monkeypatch, tmp_path):
     plan = tmp_path / "plan"
     for filename in ["plan", "plan.1", "plan.10"]:

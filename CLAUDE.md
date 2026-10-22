@@ -135,7 +135,7 @@ The reported **planning time** covers only the `fast-downward.py` call. Map gene
 
 - **Heuristics + axioms**: `ff()`, `add()`, `hmax()`, `cg()` all timeout (>60s on n=10) because axiom-layer relaxation is extremely expensive on this domain. Only `blind()` and `goalcount()` are feasible. Do not attempt to switch to relaxation-based heuristics.
 - **CLI option order**: `--plan-file` is a *driver* option and must come **before** the domain/problem paths — `fast-downward.py --plan-file foo domain.pddl problem.pddl --search "..."`. Placing it after `--search` causes FD to exit non-zero immediately.
-- **Plan file naming**: FD writes `{plan-file}.1`, `.2`, … (numbered), not the base name directly.
+- **Plan file naming**: single-plan searches (`astar`, `lazy_greedy`, `lazy_wastar`, i.e. every current experiment) write `{plan-file}` itself. Only `iterated(...)`/anytime searches write numbered `{plan-file}.1`, `.2`, …, where the highest number is the best plan. Resolve plan files with `_resolve_fd_plan_file()` in `navigation_planta/utils.py`, which handles both and compares suffixes numerically.
 - **Subprocess cleanup**: `subprocess.run(timeout=N)` leaves the FD C++ child alive on timeout. Use `subprocess.Popen` + `start_new_session=True`, then `os.killpg(os.getpgid(proc.pid), signal.SIGKILL)` on `TimeoutExpired` to kill the whole process group.
 - **Benchmark script**: `scripts/benchmark_search_strategies.py` tests all viable strategies on the combined scenario with configurable node sizes, runs, and timeout. Run with `--nodes 10,20,50 --runs 3 --timeout 60` to find the fastest strategy before updating experiment scripts.
 
