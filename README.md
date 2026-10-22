@@ -112,6 +112,48 @@ To run the full experiment suite, including the Cámara-style PRISM and PDDL com
 python scripts/run_all_experiments.py
 ```
 
+### Export Cámara comparison data
+
+Export a completed full-suite run to a separate directory (Python standard library
+only; no experiments are rerun):
+
+```bash
+python scripts/export_camara_paper_data.py results/all_experiments/<timestamp> \
+  --output-dir results/paper_export
+```
+
+By default this writes three separate datasets, **without pooling strategies**:
+
+- `camara_map_pddl_experiment_astar.csv` — adaptive A* with blind heuristic
+- `camara_map_pddl_experiment_eager.csv` — adaptive eager greedy with goal-count heuristic
+- `camara_map_prism_experiment.csv` — PRISM baseline
+
+For the existing two-box paper figures, select exactly one strategy:
+
+```bash
+python scripts/export_camara_paper_data.py results/all_experiments/<timestamp> \
+  --strategy astar --output-dir results/paper_export
+```
+
+Use `--strategy eager` to select eager greedy instead. Single-strategy exports
+use `camara_map_pddl_experiment.csv`, matching the existing paper filename.
+The exporter finds strategies using each directory's `search.txt`, not its name.
+It requires complete adaptive results and PRISM results, finite nonnegative
+measurements, and identical initial–goal pair coverage and uniform repetition
+counts across all selected datasets. Invalid/no-plan observations cause an error;
+rows are never silently dropped. CSV files are copied byte-for-byte.
+
+`camara_export_manifest.json` records source paths, search configurations, row
+counts, and SHA-256 hashes. Existing outputs are protected unless `--overwrite`
+is supplied. All inputs and output conflicts are checked before writing.
+
+The script only writes to `--output-dir`. It does not change manuscript sources
+or run the paper's preprocessing. You can explicitly choose
+`--output-dir ../planta_paper_overleaf/data` when ready to replace paper data;
+the existing preprocessing and figures support the single-strategy filenames.
+Displaying both strategies requires separate changes to the paper's preprocessing
+and figures.
+
 To benchmark search strategies on the combined scenario, use:
 
 ```bash
