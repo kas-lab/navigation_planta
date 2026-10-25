@@ -164,7 +164,7 @@ def test_plot_strategy_box_comparison_creates_expected_filename(tmp_path: Path) 
         {"astar(blind())": csv_a, "prism (baseline)": csv_b},
         tmp_path,
         y_col="peak_memory",
-        ylabel="Peak Memory (MB)",
+        ylabel="RSS Peak Memory [MiB]",
         plot_suffix="_memory",
     )
 

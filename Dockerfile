@@ -8,11 +8,12 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
   default-jdk \
   wget \
   unzip \
+  texlive-latex-extra \
+  texlive-pictures \
+  texlive-fonts-recommended \
+  texlive-fonts-extra \
+  poppler-utils \
   && rm -rf /var/lib/apt/lists/*
-
-RUN pip install --no-cache-dir \
-  psutil networkx "numpy==1.26.4" matplotlib scipy pytest \
-  unified-planning "unified-planning[fast-downward]"
 
 ENV JAVA_HOME=/usr/lib/jvm/default-java
 
@@ -47,5 +48,6 @@ COPY owl/ owl/
 COPY pddl/ pddl/
 COPY prism/ prism/
 COPY data/map_camara_2020_paper/ data/map_camara_2020_paper/
-COPY setup.py .
-RUN pip install --no-cache-dir -e .
+COPY pyproject.toml .
+RUN pip install --no-cache-dir -e ".[test]"
+COPY tests/ tests/
