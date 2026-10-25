@@ -17,9 +17,10 @@ import shutil
 import sys
 import tempfile
 
-from .camara_export import COMMON_COLUMNS, STRATEGIES, discover_strategies, validate_csv
-from .paper_statistics import box_statistics, comparable_moves, sweep_statistics
+from camara_export import COMMON_COLUMNS, STRATEGIES, discover_strategies, validate_csv
+from paper_statistics import box_statistics, comparable_moves, sweep_statistics
 
+# Stable manifest identifier: preserve compatibility with existing export bundles.
 EXPORTER = 'navigation_planta.paper_export'
 SCHEMA_VERSION = 1
 MANUSCRIPT_ROOT = Path(__file__).resolve().parents[2] / 'planta_paper_overleaf'
@@ -391,7 +392,7 @@ def check_output(suite, output, overwrite):
 def generate_paper_artifacts(suite, output, *, overwrite=False, dry_run=False,
                              profile=PaperProfile(), no_previews=False, latex_prefix=''):
     """Validate, stage, render, then publish. Return the manifest/discovery report."""
-    from .paper_rendering import generate_sources, preflight, render_previews
+    from paper_rendering import generate_sources, preflight, render_previews
 
     latex_prefix = validate_latex_prefix(latex_prefix)
     suite = Path(suite).resolve(strict=True)

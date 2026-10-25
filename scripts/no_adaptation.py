@@ -2,7 +2,7 @@
 
 from unified_planning.shortcuts import Object, Problem
 
-from .map_generator import MapGenerator
+from map_generator import MapGenerator
 
 
 class NoAdaptationMapGenerator(MapGenerator):

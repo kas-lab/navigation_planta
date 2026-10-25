@@ -2,9 +2,9 @@ from pathlib import Path
 
 import time
 
-from navigation_planta import reporting
-from navigation_planta import utils
-from navigation_planta.utils import ExperimentRecord
+import reporting
+import utils
+from utils import ExperimentRecord
 
 
 def test_count_plan_actions_uses_last_numbered_plan(tmp_path: Path) -> None:

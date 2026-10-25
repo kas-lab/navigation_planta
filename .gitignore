@@ -40,3 +40,4 @@ results/
 *.app
 
 COLCON_IGNORE
+.pytest_cache/

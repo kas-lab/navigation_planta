@@ -4,15 +4,9 @@
 
 import argparse
 import json
-import sys
 from pathlib import Path
 
-SCRIPT_DIR = Path(__file__).parent
-REPO_ROOT = SCRIPT_DIR.parent
-
-sys.path.insert(0, str(REPO_ROOT))
-
-from navigation_planta.reporting import (  # noqa: E402
+from reporting import (
     EXPERIMENT_COMPARISON_CONFIG,
     generate_strategy_comparison_plots,
 )

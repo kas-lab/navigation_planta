@@ -26,7 +26,6 @@ Examples:
 
 import argparse
 import re
-import sys
 import time
 from datetime import datetime
 from pathlib import Path
@@ -34,7 +33,6 @@ from pathlib import Path
 SCRIPT_DIR = Path(__file__).parent
 REPO_ROOT = SCRIPT_DIR.parent
 
-sys.path.insert(0, str(SCRIPT_DIR))
 
 from run_camara_scenario import runner as run_camara
 from run_camara_scenario_discretized import runner as run_camara_discretized
@@ -44,7 +42,7 @@ from run_corridor_type_scale_scenario import runner as run_corridor
 from run_fd_scale_scenario import runner as run_fd
 from run_grid_map_scenario import runner as run_grid_map
 from run_mission_action_scale_scenario import runner as run_ma
-from navigation_planta.reporting import (
+from reporting import (
     EXPERIMENT_COMPARISON_CONFIG,
     generate_strategy_comparison_plots,
 )

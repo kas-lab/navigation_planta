@@ -5,8 +5,8 @@ import pytest
 
 
 try:
-    from navigation_planta.map_generator import MapGenerator
-    from navigation_planta.scenario_variants import MissionActionNoAdaptationMapGenerator
+    from map_generator import MapGenerator
+    from scenario_variants import MissionActionNoAdaptationMapGenerator
 except Exception as exc:  # pragma: no cover - environment dependent
     pytest.skip(
         f"Unified Planning stack is not importable in this host environment: {exc}",

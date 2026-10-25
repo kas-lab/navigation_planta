@@ -5,7 +5,7 @@ import pytest
 
 
 try:
-    from navigation_planta.scenario_variants import (
+    from scenario_variants import (
         CombinedScenarioMapGenerator,
         CorridorTypeMapGenerator,
         MissionActionMapGenerator,

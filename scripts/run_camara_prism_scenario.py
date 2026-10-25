@@ -1,11 +1,11 @@
-from navigation_planta.prism_model_generator import PrismModelgenerator
-from navigation_planta.reporting import (
+from prism_model_generator import PrismModelgenerator
+from reporting import (
     plot_mode_summary,
     summarize_mode_records,
     write_metric_summary_csv,
     write_summary_report,
 )
-from navigation_planta.utils import (
+from utils import (
     ExperimentRecord,
     run_subprocess_with_memory,
     save_experiment_records_csv,

@@ -1,0 +1,7 @@
+psutil
+networkx
+numpy==1.26.4
+matplotlib
+scipy
+unified-planning[fast-downward]
+pytest

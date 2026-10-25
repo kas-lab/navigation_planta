@@ -20,9 +20,7 @@ import json
 from pathlib import Path
 import sys
 
-sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
-
-from navigation_planta.camara_export import (  # noqa: E402
+from camara_export import (
     COMMON_COLUMNS, MANIFEST_NAME, STRATEGIES, validate_csv,
 )
 

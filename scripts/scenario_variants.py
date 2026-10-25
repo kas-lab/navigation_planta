@@ -5,8 +5,8 @@ import random
 import unified_planning
 from unified_planning.shortcuts import BoolType, Object
 
-from .map_generator import MapGenerator
-from .no_adaptation import NoAdaptationMapGenerator
+from map_generator import MapGenerator
+from no_adaptation import NoAdaptationMapGenerator
 
 
 def _build_waypoints(generator) -> dict[int, Object]:

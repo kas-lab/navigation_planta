@@ -1,7 +1,7 @@
 import networkx as nx
-from .graph_generation import GraphGenerationMixin
-from .map_io import MapIOPlottingMixin
-from .pddl_builder import PDDLBuilderMixin
+from graph_generation import GraphGenerationMixin
+from map_io import MapIOPlottingMixin
+from pddl_builder import PDDLBuilderMixin
 
 
 class MapGenerator(GraphGenerationMixin, MapIOPlottingMixin, PDDLBuilderMixin):

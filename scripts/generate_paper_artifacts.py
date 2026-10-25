@@ -9,9 +9,7 @@ import json
 from pathlib import Path
 import sys
 
-sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
-
-from navigation_planta.paper_export import generate_paper_artifacts  # noqa: E402
+from paper_export import generate_paper_artifacts
 
 
 def main():

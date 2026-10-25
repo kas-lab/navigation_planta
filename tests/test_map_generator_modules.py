@@ -3,8 +3,8 @@ import random
 import networkx as nx
 import numpy as np
 
-from navigation_planta.graph_generation import GraphGenerationMixin
-from navigation_planta.map_io import MapIOPlottingMixin
+from graph_generation import GraphGenerationMixin
+from map_io import MapIOPlottingMixin
 
 
 class DummyMapGenerator(GraphGenerationMixin, MapIOPlottingMixin):

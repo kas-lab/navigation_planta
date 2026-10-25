@@ -7,7 +7,7 @@ import time
 import psutil
 import pytest
 
-from navigation_planta.utils import run_subprocess_with_memory
+from utils import run_subprocess_with_memory
 
 
 def test_concurrent_children_are_summed_but_sequential_peaks_are_not():

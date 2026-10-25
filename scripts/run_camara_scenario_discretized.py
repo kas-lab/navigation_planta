@@ -8,15 +8,15 @@ import functools
 import subprocess
 from pathlib import Path
 
-from navigation_planta.experiment_runner import (
+from experiment_runner import (
     SweepExperimentConfig,
     execute_pddl_case,
     run_sweep_experiment,
 )
-from navigation_planta.map_generator import MapGenerator
-from navigation_planta.no_adaptation import NoAdaptationMapGenerator
-from navigation_planta.utils import count_comparable_plan_actions_and_energy
-from navigation_planta.reporting import (
+from map_generator import MapGenerator
+from no_adaptation import NoAdaptationMapGenerator
+from utils import count_comparable_plan_actions_and_energy
+from reporting import (
     plot_mode_summary,
     summarize_mode_records,
     write_metric_summary_csv,

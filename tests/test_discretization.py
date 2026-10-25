@@ -8,7 +8,7 @@ import subprocess
 import networkx as nx
 import pytest
 
-from navigation_planta.map_io import MapIOPlottingMixin
+from map_io import MapIOPlottingMixin
 
 
 MAP_FILE = Path(__file__).resolve().parents[1] / "data/map_camara_2020_paper/map-p2cp3.json"
@@ -86,7 +86,7 @@ def test_camara_all_corridors_keep_metadata_and_connectivity():
 
 def test_camara_discretized_requirements_reach_pddl(tmp_path):
     pytest.importorskip("unified_planning")
-    from navigation_planta.map_generator import MapGenerator
+    from map_generator import MapGenerator
 
     generator = MapGenerator()
     generator.load_and_discretize_json(MAP_FILE)
@@ -109,7 +109,7 @@ def test_camara_discretized_requirements_reach_pddl(tmp_path):
 )
 def test_discretized_camara_corridor_can_be_planned_with_required_configuration(tmp_path):
     pytest.importorskip("unified_planning")
-    from navigation_planta.map_generator import MapGenerator
+    from map_generator import MapGenerator
 
     root = MAP_FILE.parents[2]
     generator = MapGenerator()

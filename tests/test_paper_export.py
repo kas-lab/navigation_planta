@@ -7,8 +7,8 @@ from unittest.mock import patch
 
 import pytest
 
-from navigation_planta.camara_export import STRATEGIES
-from navigation_planta.paper_export import (
+from camara_export import STRATEGIES
+from paper_export import (
     PaperProfile, SWEEPS, check_output, generate_paper_artifacts, load_suite, write_csv,
 )
 
@@ -60,8 +60,8 @@ def fake_render(root, fragments, **kwargs):
 
 @pytest.fixture
 def mocked_tools():
-    with patch('navigation_planta.paper_rendering.preflight', return_value={'test': 'mock'}), \
-            patch('navigation_planta.paper_rendering.render_previews', side_effect=fake_render):
+    with patch('paper_rendering.preflight', return_value={'test': 'mock'}), \
+            patch('paper_rendering.render_previews', side_effect=fake_render):
         yield
 
 
@@ -200,7 +200,7 @@ def test_failure_preserves_existing_bundle(suite, tmp_path, mocked_tools):
     out = tmp_path / 'export'
     generate_paper_artifacts(root, out, profile=profile)
     original, inputs = snapshot(out), snapshot(root)
-    with patch('navigation_planta.paper_rendering.render_previews', side_effect=RuntimeError('TeX failed')):
+    with patch('paper_rendering.render_previews', side_effect=RuntimeError('TeX failed')):
         with pytest.raises(RuntimeError, match='TeX failed'):
             generate_paper_artifacts(root, out, profile=profile, overwrite=True)
     assert snapshot(out) == original
@@ -263,8 +263,8 @@ def test_no_previews_needs_no_rendering_tools(suite, tmp_path):
     root, profile = suite
     out = tmp_path / 'export'
     out.mkdir()  # An existing empty destination is safe without --overwrite.
-    with patch('navigation_planta.paper_rendering.preflight', side_effect=AssertionError('tool check')), \
-            patch('navigation_planta.paper_rendering.render_previews', side_effect=AssertionError('render')):
+    with patch('paper_rendering.preflight', side_effect=AssertionError('tool check')), \
+            patch('paper_rendering.render_previews', side_effect=AssertionError('render')):
         report = generate_paper_artifacts(root, out, profile=profile, no_previews=True,
                                           latex_prefix='navigation_experiment')
     assert not (out / 'standalone').exists()
@@ -298,7 +298,7 @@ def test_only_dedicated_manuscript_bundle_is_allowed(suite, tmp_path):
     paper = tmp_path / 'paper'
     paper.mkdir()
     (paper / 'main.tex').write_text('preserve manuscript')
-    with patch('navigation_planta.paper_export.MANUSCRIPT_ROOT', paper):
+    with patch('paper_export.MANUSCRIPT_ROOT', paper):
         for forbidden in (paper, paper / 'data', paper / 'navigation_experiment/nested'):
             with pytest.raises(ValueError, match='dedicated'):
                 check_output(root, forbidden, False)

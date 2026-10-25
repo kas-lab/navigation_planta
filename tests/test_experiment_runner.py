@@ -1,7 +1,7 @@
 from pathlib import Path
 
-from navigation_planta import experiment_runner
-from navigation_planta.utils import ExperimentRecord
+import experiment_runner
+from utils import ExperimentRecord
 
 
 def test_resolve_modes_handles_both() -> None:

@@ -1,7 +1,7 @@
 import csv
 from pathlib import Path
 
-from navigation_planta.reporting import (
+from reporting import (
     plot_numeric_sweep_results,
     plot_strategy_box_comparison,
     plot_strategy_line_comparison,
@@ -9,7 +9,7 @@ from navigation_planta.reporting import (
     write_metric_summary_csv,
     write_summary_report,
 )
-from navigation_planta.utils import ExperimentRecord, save_experiment_records_csv
+from utils import ExperimentRecord, save_experiment_records_csv
 
 
 def test_plot_numeric_sweep_results_handles_missing_action_series(tmp_path: Path) -> None:

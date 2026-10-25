@@ -34,7 +34,6 @@ import argparse
 import os
 import signal
 import subprocess
-import sys
 import time
 from datetime import datetime
 from pathlib import Path
@@ -45,9 +44,8 @@ import matplotlib.pyplot as plt
 SCRIPT_DIR = Path(__file__).parent
 REPO_ROOT = SCRIPT_DIR.parent
 
-sys.path.insert(0, str(SCRIPT_DIR))
-from navigation_planta.utils import count_plan_actions, NO_PLAN
-from navigation_planta.scenario_variants import CombinedScenarioMapGenerator
+from utils import count_plan_actions, NO_PLAN
+from scenario_variants import CombinedScenarioMapGenerator
 from run_combined_scenario import (
     OWL_FILE,
     ADAPTIVE_DOMAIN_FILE,

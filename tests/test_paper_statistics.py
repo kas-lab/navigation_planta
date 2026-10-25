@@ -3,7 +3,7 @@ import math
 
 import pytest
 
-from navigation_planta.paper_statistics import (
+from paper_statistics import (
     box_statistics, comparable_moves, describe, rank_sample, sweep_statistics,
 )
 

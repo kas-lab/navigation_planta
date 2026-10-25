@@ -9,15 +9,15 @@ from pathlib import Path
 SCRIPT_DIR = Path(__file__).parent
 REPO_ROOT = SCRIPT_DIR.parent
 
-from navigation_planta.experiment_runner import (
+from experiment_runner import (
     SweepExperimentConfig,
     execute_pddl_case,
     run_sweep_experiment,
 )
-from navigation_planta.map_generator import MapGenerator
-from navigation_planta.no_adaptation import NoAdaptationMapGenerator
-from navigation_planta.reporting import plot_memory_summary, plot_numeric_sweep_results
-from navigation_planta.scenario_variants import CorridorTypeMapGenerator
+from map_generator import MapGenerator
+from no_adaptation import NoAdaptationMapGenerator
+from reporting import plot_memory_summary, plot_numeric_sweep_results
+from scenario_variants import CorridorTypeMapGenerator
 
 OWL_FILES = {
     2: REPO_ROOT / 'owl' / 'navigation.owl',
