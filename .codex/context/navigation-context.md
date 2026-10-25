@@ -30,7 +30,7 @@ This file preserves stable Codex-facing context for `src/navigation_planta/`.
 - The standalone PDDL experiment scripts now support `--mode adaptive|no-adaptation|both`, with `adaptive` kept as the default.
 - No-adaptation runs skip `OWLToPDDL.sh` entirely and call Fast Downward directly on stripped baseline domains.
 - For baseline-only navigation tasks, `scripts/helpers/no_adaptation.py` provides `NoAdaptationMapGenerator`, which writes only `robot_at`, `corridor`, and the init/goal facts.
-- For mission-action baselines, `scripts/helpers/no_adaptation.py` provides `MissionNoAdaptationMapGenerator`, which preserves mission waypoint and `*_done` goal predicates while omitting adaptation-specific QA requirements.
+- For mission-action baselines, `scripts/helpers/scenario_variants.py` provides `MissionActionNoAdaptationMapGenerator`, which preserves mission waypoint and `*_done` goal predicates while omitting adaptation-specific QA requirements.
 - Experiment A and B baselines reuse `pddl/domain_no_sas.pddl`.
 - Experiment C baselines use `pddl/experiment_ma_scalability/domain_no_sas_ma_{2,3,4,5}.pddl`.
 - Experiment D baseline uses `pddl/experiment_combined_scalability/domain_no_sas_combined.pddl`.
@@ -41,7 +41,7 @@ This file preserves stable Codex-facing context for `src/navigation_planta/`.
 - Preserve the distinct formulations by explicit user decision: PLANTA assigns unsafe corridors a hard safety requirement of `0.8`; PRISM uses configuration/corridor hitrates and filters movement for darkness compatibility, without a matching unsafe threshold.
 - The hitrates were obtained from the original authors (user-confirmed). The original paper distinguishes dark-corridor non-navigability from probabilistic collision risk (Section 3.2.2, Listing 2, and Section 4; printed pp. 131–132).
 - The comparison's PRISM objective is remaining battery, not safety optimization. Probabilistic collision modeling is not an equivalent hard safety constraint.
-- Review finding F3 is closed as won't fix. The remaining follow-up is manuscript disclosure of the differing safety formulations, not a PRISM transition-filter change. This does not establish full reproduction fidelity or validate PLANTA's threshold enforcement.
+- The differing safety formulations are intentional. The remaining follow-up is manuscript disclosure, not a PRISM transition-filter change. This does not establish full reproduction fidelity or validate PLANTA's threshold enforcement.
 
 ## Validation Pattern
 

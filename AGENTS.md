@@ -15,7 +15,6 @@ This file is the repository policy. Stable repo facts that are useful across tas
 
 ## Repository Layout
 
-- `scripts/run_camara_scenario.py`: Camara map experiment entrypoint
 - `scripts/run_camara_scenario_discretized.py`: discretized Camara experiment entrypoint
 - `scripts/run_camara_prism_scenario.py`: PRISM baseline entrypoint
 - `scripts/run_grid_map_scenario.py`: grid scalability experiment entrypoint
@@ -45,7 +44,7 @@ docker build -t navigation_planta .
 Open an interactive container with the repo mounted:
 
 ```bash
-docker run --rm -it --name navigation_planta -v $PWD/src/navigation_planta:/navigation_planta/ -v /etc/localtime:/etc/localtime:ro navigation_planta:latest bash
+docker run --rm -it -v "$PWD":/navigation_planta -w /navigation_planta navigation_planta:latest bash
 ```
 
 Run the full experiment suite:
@@ -87,9 +86,15 @@ docker run --rm -v "$PWD":/navigation_planta -w /navigation_planta navigation_pl
   python -m pytest -q tests
 ```
 
-Images built before pytest was added to `Dockerfile` lack it; if you get `No module named pytest`, rebuild, or run `bash -c "pip install -q pytest && python -m pytest -q tests"` instead.
-
 The code runs directly from `scripts/`, without installing the repository. Mounting the checkout over `/navigation_planta` picks up local changes without a rebuild. Rebuild the image when `Dockerfile` or `requirements.txt` changes.
+
+## Experiment And Analysis Workflows
+
+- The paper uses the discretized Cámara PDDL runner and the PRISM runner; there is no non-discretized Cámara entrypoint.
+- The default full suite uses 10 repetitions and both A* with blind and eager greedy with goal-count heuristics.
+- `scripts/generate_paper_artifacts.py` is the canonical publication exporter; it validates full paper coverage and uses sample SD.
+- The suite generates comparison PNGs through `scripts/helpers/reporting.py`. `scripts/regenerate_comparison_plots.py` rebuilds those same diagnostic plots; the publication exporter produces a distinct plot set, not identical replacements.
+- PRISM models and PDDL problems are generated in result directories; do not add static generated examples to tracked inputs.
 
 ## Navigation Comparison Safety Semantics
 

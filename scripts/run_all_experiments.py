@@ -11,9 +11,10 @@ Usage:
 
     --runs N      Number of runs per condition for scalability experiments (default: 10).
     --skip        Space-separated experiment names to skip. Valid names:
-                      grid_map  camara_pddl  camara_prism  camara_discretized
-                      fd  ma  corridor  combined
-    --search      One or more Fast Downward search strings (default: lazy_greedy+ff).
+                      grid_map  grid_map_no_sas  camara_prism
+                      camara_discretized  camara_discretized_no_sas
+                      fd  ma  ma_no_sas  corridor  combined  combined_no_sas
+    --search      Fast Downward search strings (default: A* blind and eager greedy goalcount).
                   Multiple values run each experiment once per strategy and
                   produce a comparison plot per experiment afterwards.
 
@@ -34,7 +35,6 @@ SCRIPT_DIR = Path(__file__).parent
 REPO_ROOT = SCRIPT_DIR.parent
 
 
-from run_camara_scenario import runner as run_camara
 from run_camara_scenario_discretized import runner as run_camara_discretized
 from run_camara_prism_scenario import runner as run_prism
 from run_combined_scenario import runner as run_combined
@@ -72,8 +72,9 @@ def main():
         help='Runs per condition for scalability experiments (default: 10)')
     parser.add_argument(
         '--skip', nargs='*', default=[], metavar='NAME',
-        help='Experiment names to skip (grid_map camara_pddl camara_prism '
-             'camara_discretized fd ma corridor combined)')
+        help='Experiment names to skip (grid_map grid_map_no_sas camara_prism '
+             'camara_discretized camara_discretized_no_sas fd ma ma_no_sas '
+             'corridor combined combined_no_sas)')
     parser.add_argument(
         '--search', nargs='+',
         default=['astar(blind())','eager_greedy([goalcount()])'],
@@ -141,12 +142,6 @@ def main():
                        base_seed=_SEED_GRID_MAP)
         if csv:
             strategy_results['grid_map_no_sas'][strat_label] = csv
-
-        # csv = _run_one('camara_pddl', 'Camara 2020 map — PDDL (PLANTA)',
-        #                run_camara, strat_dir / 'camara_pddl',
-        #                mode='adaptive', runs=runs, search=search_str)
-        # if csv:
-        #     strategy_results['camara_pddl'][strat_label] = csv
 
         csv = _run_one('camara_discretized', 'Camara 2020 map — discretized PDDL',
                        run_camara_discretized, strat_dir / 'camara_discretized',

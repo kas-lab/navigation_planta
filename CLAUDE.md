@@ -16,7 +16,6 @@ No ROS required. All experiments run as plain Python scripts.
 
 | Path | Role |
 |---|---|
-| `scripts/run_camara_scenario.py` | Camara map experiment entrypoint |
 | `scripts/run_camara_scenario_discretized.py` | Discretized Camara experiment (PDDL, supports no-adaptation mode) |
 | `scripts/run_camara_prism_scenario.py` | PRISM baseline for Camara map |
 | `scripts/run_grid_map_scenario.py` | Grid scalability experiment entrypoint |
@@ -34,7 +33,6 @@ No ROS required. All experiments run as plain Python scripts.
 | `scripts/helpers/prism_model_generator.py` | PRISM model generation + policy simulation |
 | `scripts/helpers/no_adaptation.py` | Baseline map generator (no-adaptation mode, uses `domain_no_sas.pddl`) |
 | `pddl/domain_sas.pddl` | Hand-written base PDDL domain — the only file to edit for domain changes |
-| `pddl/domain.pddl` | Baseline domain without TOMASys (for reference only, not used in experiments) |
 | `owl/navigation.owl` | TOMASys ontology — baseline (N=6 FDs) |
 | `owl/experiment_fd_scalability/` | FD-scaling OWL series (N=2,4,6,8,10,12,15); **cumulative** — each file contains all FDs from smaller N |
 | `data/map_camara_2020_paper/` | JSON map assets for the Camara comparison scenario |
@@ -47,9 +45,9 @@ Each experiment script runs these steps in order:
 1. **Map → problem.pddl** — `map_generator.py` builds the waypoint graph and serializes it as a PDDL problem file.
 2. **OWL + base domain → created files** — `OWLToPDDL.sh` takes `owl/navigation.owl` and `pddl/domain_sas.pddl` as inputs and produces `domain_created.pddl` + `problem_created.pddl`.
 3. **Planning** — `fast-downward.py` runs the search configured by each script on the created files.
-4. **Results** — planning times saved to `results/planning_times.csv`.
+4. **Results** — metrics saved to `planning_times.csv` in each experiment's result directory under `results/`.
 
-Only `domain_sas.pddl` and `navigation.owl` are hand-authored. Everything else is generated.
+The base and scenario-specific domains in `pddl/` and ontologies in `owl/` are maintained inputs. Problem files, converted domains, PRISM models, and run outputs are generated in result directories.
 
 ## Common Commands
 
@@ -58,9 +56,9 @@ Install dependencies:
 python -m pip install -r requirements.txt
 ```
 
-Run Camara scenario (from `src/navigation_planta/`):
+Run the paper's discretized Camara scenario (from the repository root):
 ```bash
-python scripts/run_camara_scenario.py
+python scripts/run_camara_scenario_discretized.py
 ```
 
 Run grid scalability experiment:
@@ -77,8 +75,7 @@ Run via Docker:
 ```bash
 docker build -t navigation_planta .
 docker run --rm -it --name navigation_planta \
-  -v $PWD/src/navigation_planta:/navigation_planta/ \
-  -v /etc/localtime:/etc/localtime:ro \
+  -v "$PWD":/navigation_planta -w /navigation_planta \
   navigation_planta:latest bash
 ```
 
@@ -91,8 +88,6 @@ docker run --rm -v "$PWD":/navigation_planta -w /navigation_planta navigation_pl
   python -m pytest -q tests
 ```
 
-Images built before pytest was added to `Dockerfile` lack it; if you get `No module named pytest`, rebuild, or run `bash -c "pip install -q pytest && python -m pytest -q tests"` instead.
-
 The code runs directly from `scripts/`, without installing the repository. Mounting the checkout over `/navigation_planta` picks up local changes without a rebuild. Rebuild the image when `Dockerfile` or `requirements.txt` changes.
 
 ## OWL File Series (FD Scaling)
@@ -104,13 +99,21 @@ When adding or changing a component/FD that first appears at level N, update **a
 |---|---|---|
 | `navigation_fd_2.owl` | 2 | — |
 | `navigation_fd_4.owl` | 4 | — |
-| `navigation_fd_6.owl` | 6 | — |
+| `owl/navigation.owl` | 6 | — |
 | `navigation_fd_8.owl` | 8 | `c_wheel_encoder` |
 | `navigation_fd_10.owl` | 10 | `c_sick_lidar` |
 | `navigation_fd_12.owl` | 12 | `c_imu` |
 | `navigation_fd_15.owl` | 15 | `c_radar` |
 
 `fd_sick_lidar` requires `c_sick_lidar` (not generic `c_lidar`). `fd_lidar_inertial` requires both `c_lidar` and `c_imu`. `requiresC` is multi-valued — comma-separate multiple components.
+
+## Experiment And Analysis Workflows
+
+- The paper uses the discretized Cámara PDDL runner and the PRISM runner; there is no non-discretized Cámara entrypoint.
+- The default full suite uses 10 repetitions and both A* with blind and eager greedy with goal-count heuristics.
+- `scripts/generate_paper_artifacts.py` is the canonical publication exporter; it validates full paper coverage and uses sample SD.
+- The suite generates comparison PNGs through `scripts/helpers/reporting.py`. `scripts/regenerate_comparison_plots.py` rebuilds those same diagnostic plots; the publication exporter produces a distinct plot set, not identical replacements.
+- PRISM models and PDDL problems are generated in result directories; do not add static generated examples to tracked inputs.
 
 ## Navigation Comparison Safety Semantics
 

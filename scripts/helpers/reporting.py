@@ -418,7 +418,7 @@ def plot_mode_summary(
 
     # (ylabel, title, bar color, accessor) for each candidate panel. A panel
     # is only drawn if some mode has at least one valid sample for it, so
-    # scenarios that don't track distance/battery (e.g. run_camara_scenario.py)
+    # scenarios that don't track distance/battery
     # keep the original 3-panel figure.
     metric_specs = [
         ('Mean Planning Time (seconds)', 'Planning Time by Mode', 'steelblue',

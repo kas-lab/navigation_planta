@@ -11,9 +11,11 @@ Navigate the README:
 **TL;DR:** Run the navigation full experimental suite with the upstream docker image saving the results in a `results` folder from where the command is executed:
 
 ```bash
-docker run --rm \
-  -v "$PWD/results":/navigation_planta/results -w /navigation_planta \
-  ghcr.io/kas-lab/navigation_planta:main python scripts/run_all_experiments.py
+docker run --rm -it \
+  -v "$PWD/results":/navigation_planta/results \
+  -v /etc/localtime:/etc/localtime:ro \
+  -w /navigation_planta \
+  ghcr.io/kas-lab/navigation_planta python scripts/run_all_experiments.py
 ```
 
 ## Repository layout
@@ -25,7 +27,6 @@ docker run --rm \
 | `tests/` | Unit and integration tests |
 | `owl/` | Ontologies for the adaptive scenarios |
 | `pddl/` | Base and scenario-specific PDDL inputs |
-| `prism/` | Static PRISM example models |
 | `data/` | Cámara navigation map and associated assets |
 | `requirements.txt` | Python runtime and test dependencies |
 | `Dockerfile` | Complete experiment and rendering environment |
@@ -43,8 +44,8 @@ docker build -t navigation_planta .
 Alternatively, download the published image and assign the same local name:
 
 ```bash
-docker pull ghcr.io/kas-lab/navigation_planta:main
-docker tag ghcr.io/kas-lab/navigation_planta:main navigation_planta:latest
+docker pull ghcr.io/kas-lab/navigation_planta
+docker tag ghcr.io/kas-lab/navigation_planta navigation_planta:latest
 ```
 
 The image includes Python dependencies, pytest, Fast Downward, PRISM, OWL-to-PDDL, and the LaTeX/Poppler tools used to render plots and tables.
@@ -149,7 +150,7 @@ If you want to iteractively run experiments inside the docker container, run the
 
 ```bash
 docker run --rm -it \
-  -v "$PWD":/navigation_planta -w /navigation_planta \
+  -v "$PWD":/navigation_planta -v /etc/localtime:/etc/localtime:ro -w /navigation_planta \
   navigation_planta:latest bash
 ```
 
@@ -168,16 +169,16 @@ Or run the full suite directly with one Docker command from the repository root.
 Using the published upstream image:
 
 ```bash
-docker run --rm \
-  -v "$PWD/results":/navigation_planta/results -w /navigation_planta \
-  ghcr.io/kas-lab/navigation_planta:main python scripts/run_all_experiments.py
+docker run --rm -it \
+  -v "$PWD/results":/navigation_planta/results -v /etc/localtime:/etc/localtime:ro -w /navigation_planta \
+  ghcr.io/kas-lab/navigation_planta python scripts/run_all_experiments.py
 ```
 
 Using the locally built image:
 
 ```bash
-docker run --rm \
-  -v "$PWD/results":/navigation_planta/results -w /navigation_planta \
+docker run --rm -it \
+  -v "$PWD/results":/navigation_planta/results -v /etc/localtime:/etc/localtime:ro -w /navigation_planta \
   navigation_planta:latest python scripts/run_all_experiments.py
 ```
 

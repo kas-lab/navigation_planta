@@ -47,6 +47,5 @@ RUN pip install --no-cache-dir -r requirements.txt
 COPY scripts/ scripts/
 COPY owl/ owl/
 COPY pddl/ pddl/
-COPY prism/ prism/
 COPY data/map_camara_2020_paper/ data/map_camara_2020_paper/
 COPY tests/ tests/

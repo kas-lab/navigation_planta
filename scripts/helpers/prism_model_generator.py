@@ -1,7 +1,6 @@
 from helpers.map_generator import MapGenerator
 from helpers.utils import NO_PLAN, CONFIG_ENERGY, energy_cost
 import textwrap
-from pathlib import Path
 
 custom_lookup_table = {
     (True, False): False,
@@ -89,13 +88,10 @@ class PrismModelgenerator(MapGenerator):
         for i in range(len(nav_path)):
             consts += f"const l{nav_path[i]}={i};\n"
 
-        formula_distances = "\n"
         formula_bat_update = "\n"
         formula_p_collide = "\n"
         for i in range(len(nav_path) - 1):
             distance = self.graph[nav_path[i]][nav_path[i + 1]]['weight']
-            formula_distances += f"formula dist_l{nav_path[i]}_l{nav_path[i+1]}={distance};\n"
-
             formula_bat_update_ = f"formula b_upd_l{nav_path[i]}_l{nav_path[i+1]}=\n"
             for conf in self.configurations:
                 energy = energy_cost(distance, conf.energy)
@@ -153,7 +149,6 @@ class PrismModelgenerator(MapGenerator):
         with open(file_path, "w") as file:
             file.write(self.file_header)
             file.write(consts)
-            # file.write(formula_distances)
             file.write(formula_bat_update)
             file.write(formula_p_collide)
             file.write("\nformula target_location = l=TARGET_LOCATION;\n")
@@ -249,12 +244,3 @@ class PrismModelgenerator(MapGenerator):
                 move_action += 1
 
         return NO_PLAN, move_action, reconfig_action, b, total_distance  # safety cap exceeded
-
-
-if __name__ == '__main__':
-    prism_generator = PrismModelgenerator()
-    base_folder = Path("data/map_camara_2020_paper")
-    prism_generator.load_json(base_folder / "map-p2cp3.json")
-    nav_path = prism_generator.find_shortest_path(from_node=1, to_node=18)
-    print(nav_path)
-    prism_generator.generate_prism_model("prism/test.prism", nav_path)

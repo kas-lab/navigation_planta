@@ -3,14 +3,12 @@
 import re
 
 import unified_planning
-from unified_planning.engines import PlanGenerationResultStatus
 from unified_planning.io import PDDLWriter
 from unified_planning.io.pddl_writer import ConverterToPDDLString
 from unified_planning.shortcuts import (
     BoolType,
     InstantaneousAction,
     Object,
-    OneshotPlanner,
     Problem,
     UserType,
 )
@@ -186,11 +184,3 @@ class PDDLBuilderMixin:
                     'wp%i' %
                     init_goal[1],
                     self.waypoint_type)))
-
-    def solve_plan(self):
-        planner = OneshotPlanner(name="fast-downward")
-        result = planner.solve(self.problem)
-        if result.status == PlanGenerationResultStatus.SOLVED_SATISFICING:
-            print(f'Found a plan.\nThe plan is: {result.plan}')
-        else:
-            print("No plan found.")
