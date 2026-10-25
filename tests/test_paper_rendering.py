@@ -6,8 +6,8 @@ from unittest.mock import patch
 
 import pytest
 
-from paper_export import load_suite, write_data
-from paper_rendering import (
+from helpers.paper_export import load_suite, write_data
+from helpers.paper_rendering import (
     BOX_STYLES, SUPPORT, box_plot, generate_sources, preflight, render_previews,
     run_command, sweep_ticks,
 )
@@ -155,14 +155,14 @@ def test_sweep_tick_extension():
 
 
 def test_missing_tool_and_subprocess_errors():
-    with patch('paper_rendering.shutil.which', return_value=None):
+    with patch('helpers.paper_rendering.shutil.which', return_value=None):
         with pytest.raises(RuntimeError, match='Missing rendering executables'):
             preflight()
-    with patch('paper_rendering.subprocess.run',
+    with patch('helpers.paper_rendering.subprocess.run',
                return_value=subprocess.CompletedProcess(['pdflatex'], 1, stdout='TeX detail', stderr='failure')):
         with pytest.raises(RuntimeError, match='TeX detail'):
             run_command(['pdflatex'])
-    with patch('paper_rendering.subprocess.run',
+    with patch('helpers.paper_rendering.subprocess.run',
                side_effect=subprocess.TimeoutExpired(['pdflatex'], 1)):
         with pytest.raises(RuntimeError, match='Could not execute'):
             run_command(['pdflatex'])

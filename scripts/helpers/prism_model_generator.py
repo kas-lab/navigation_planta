@@ -1,5 +1,5 @@
-from map_generator import MapGenerator
-from utils import NO_PLAN, CONFIG_ENERGY, energy_cost
+from helpers.map_generator import MapGenerator
+from helpers.utils import NO_PLAN, CONFIG_ENERGY, energy_cost
 import textwrap
 from pathlib import Path
 

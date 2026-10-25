@@ -6,7 +6,7 @@ import argparse
 import json
 from pathlib import Path
 
-from reporting import (
+from helpers.reporting import (
     EXPERIMENT_COMPARISON_CONFIG,
     generate_strategy_comparison_plots,
 )

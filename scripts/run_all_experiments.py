@@ -42,7 +42,7 @@ from run_corridor_type_scale_scenario import runner as run_corridor
 from run_fd_scale_scenario import runner as run_fd
 from run_grid_map_scenario import runner as run_grid_map
 from run_mission_action_scale_scenario import runner as run_ma
-from reporting import (
+from helpers.reporting import (
     EXPERIMENT_COMPARISON_CONFIG,
     generate_strategy_comparison_plots,
 )

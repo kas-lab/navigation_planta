@@ -3,346 +3,360 @@
 [![GitHub release (latest by date)](https://img.shields.io/github/v/release/kas-lab/navigation_planta)](https://github.com/kas-lab/navigation_planta/releases)
 [![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.15855793.svg)](https://doi.org/10.5281/zenodo.15855793)
 
+Experimental setup for the paper **“Plan your Self-Adaptation! – Ontology-mediated Task and Architecture Co-adaptation Planning for Robots”**. This repository evaluates PLANTA through navigation scalability experiments and a comparison with the approach in [Cámara et al., SEAMS 2020](https://doi.org/10.1145/3387939.3391591).
 
-This repository applies PLANTA to a robot self-adaptation scenario based on the paper ["Software architecture and task plan co-adaptation for mobile service robots"](https://dl-acm-org.tudelft.idm.oclc.org/doi/abs/10.1145/3387939.3391591), and compares it with the solution proposed in that paper.
+Navigate the README:
+[Installation](#installation) · [Run experiments](#run-experiments) · [Generate plots and tables](#generate-plots-and-tables) · [Manual tool examples](#manual-tool-examples) · [Tests](#tests) · [Adding a new experiment](#adding-a-new-experiment) · [Repository layout](#repository-layout)
 
-This repo contains the experimental setup used in the paper "Plan your Self-Adaptation! – Efficient Task and Architecture Co-adaptation Planning for Robots".
+**TL;DR:** Run the navigation full experimental suite with the upstream docker image saving the results in a `results` folder from where the command is executed:
 
-The remainder of this README explains how to reproduce the experiments.
+```bash
+docker run --rm \
+  -v "$PWD/results":/navigation_planta/results -w /navigation_planta \
+  ghcr.io/kas-lab/navigation_planta:main python scripts/run_all_experiments.py
+```
 
-## Repository structure
+## Repository layout
 
-- `experiment_runner.py`: shared sweep orchestration
-- `reporting.py`: plotting, comparison figures, and summary reports
-- `scenario_variants.py`: corridor, mission, and combined scenario variants
-- `map_generator.py`: facade over graph generation, map I/O, and PDDL construction
-- `graph_generation.py`: graph generation and pathfinding
-- `map_io.py`: JSON loading, discretization, and map plotting
-- `pddl_builder.py`: Unified Planning domain/problem construction and serialization
-- `utils.py`: planner execution, CSV serialization, and plan parsing
-- `prism_model_generator.py`: PRISM model generation and policy simulation
+| Path | Contents |
+|---|---|
+| `scripts/` | Runnable experiment and analysis entrypoints |
+| `scripts/helpers/` | Shared generators, experiment orchestration, and reporting helpers |
+| `tests/` | Unit and integration tests |
+| `owl/` | Ontologies for the adaptive scenarios |
+| `pddl/` | Base and scenario-specific PDDL inputs |
+| `prism/` | Static PRISM example models |
+| `data/` | Cámara navigation map and associated assets |
+| `requirements.txt` | Python runtime and test dependencies |
+| `Dockerfile` | Complete experiment and rendering environment |
 
-See `docs/architecture.md` for a developer-oriented overview.
+## Installation
 
-## Docker
+### Docker — recommended
 
-The first step is to get the docker image used for the experiments.
+Build the image from the repository root:
 
-You can either build it locally:
-
-```Bash
+```bash
 docker build -t navigation_planta .
 ```
 
-Or you can download it with:
+Alternatively, download the published image and assign the same local name:
 
-```Bash
+```bash
 docker pull ghcr.io/kas-lab/navigation_planta:main
+docker tag ghcr.io/kas-lab/navigation_planta:main navigation_planta:latest
 ```
 
-Run the full experiment suite with the locally built image:
+The image includes Python dependencies, pytest, Fast Downward, PRISM, OWL-to-PDDL, and the LaTeX/Poppler tools used to render plots and tables.
+
+### Manual installation — Debian/Ubuntu
+
+#### Python and system dependencies
 
 ```bash
-docker run --rm -it -v $PWD/results:/navigation_planta/results -v /etc/localtime:/etc/localtime:ro navigation_planta:latest python scripts/run_all_experiments.py
+sudo apt-get update
+sudo apt-get install -y python3 python3-venv python3-pip \
+  git cmake build-essential openjdk-17-jdk wget unzip
+
+# Run from the repository root.
+python3 -m venv .venv
+source .venv/bin/activate
+python -m pip install -r requirements.txt
 ```
 
-Run only the grid-map scalability experiment:
+**Note:** remember to activate the virtual env if you start a fresh terminal: `source .venv/bin/activate`
+
+`requirements.txt` includes test dependencies and Unified Planning's Fast Downward plugin. However, the experiments also require the standalone Fast Downward executable installed below.
+
+Choose a directory for the external tools and configure Java:
 
 ```bash
-docker run --rm -it -v $PWD/results:/navigation_planta/results -v /etc/localtime:/etc/localtime:ro navigation_planta:latest python scripts/run_grid_map_scenario.py
+export PLANTA_TOOLS="$HOME/planta-tools"
+mkdir -p "$PLANTA_TOOLS"
 ```
 
-Open a shell inside the container image:
+If you dont have a `JAVA_HOME` environment variable setup, you need to set it. To check whether it is already set run: `env | grep JAVA_HOME`, if returns empty it means `JAVA_HOME` is not set. Make sure to have at least java 17.
+
+Set `JAVA_HOME`:
 
 ```bash
-docker run --rm -it -v /etc/localtime:/etc/localtime:ro navigation_planta:latest bash
+export JAVA_HOME="$(dirname "$(dirname "$(readlink -f "$(command -v javac)")")")"
 ```
 
-Open a shell with the local repository mounted inside the container:
+After setting it, save the current value in `~/.bashrc` for future Bash sessions:
 
 ```bash
-docker run --rm -it --name navigation_planta -v $PWD/src/navigation_planta:/navigation_planta/ -v /etc/localtime:/etc/localtime:ro navigation_planta:latest bash
+echo "export JAVA_HOME=\"$JAVA_HOME\"" >> ~/.bashrc
 ```
 
-Run the full experiment suite with the GitHub image:
+#### PRISM
+
+Download and Build PRISM 4.10.1:
 
 ```bash
-docker run --rm -it -v $PWD/results:/navigation_planta/results -v /etc/localtime:/etc/localtime:ro ghcr.io/kas-lab/navigation_planta:main python scripts/run_all_experiments.py
+git clone --branch v4.10.1 https://github.com/prismmodelchecker/prism.git \
+  "$PLANTA_TOOLS/prism"
+(cd "$PLANTA_TOOLS/prism/prism" && make && make test)
+export PATH="$PLANTA_TOOLS/prism/prism/bin:$PATH"
+# Make PRISM available in future Bash sessions.
+echo "export PATH=\"$PLANTA_TOOLS/prism/prism/bin:\$PATH\"" >> ~/.bashrc
 ```
 
-**Note:** If you want to change the directory where the results are going to be saved in the host machine, replace `PWD/results` with the path of the directory where you want the results to be saved.
+#### Fast Downward
 
-## Manual installation
-
-Docker is the recommended path for full reproducibility. The manual setup below covers the Python package dependencies, but the full experiment suite also needs Java 17, PRISM, Fast Downward, and the OWL-to-PDDL toolchain.
-
-Install Python dependencies:
-```
-pip install psutil networkx numpy==1.26.4 matplotlib scipy
-```
-
-Install [Unified Planning](https://unified-planning.readthedocs.io/en/latest/getting_started/installation.html):
+Download and build Fast Downward release 24.06.1:
 
 ```bash
-pip install unified-planning
+git clone --branch release-24.06.1 https://github.com/aibasel/downward.git \
+  "$PLANTA_TOOLS/downward"
+(cd "$PLANTA_TOOLS/downward" && ./build.py)
+export PATH="$PLANTA_TOOLS/downward:$PATH"
+# Make Fast Downward available in future Bash sessions.
+echo "export PATH=\"$PLANTA_TOOLS/downward:\$PATH\"" >> ~/.bashrc
 ```
-Install fast-downward unified planning engine:
+
+#### OWL-to-PDDL
+
+Build dlToPlanning using its Gradle wrapper, which downloads the required Gradle distribution:
 
 ```bash
-pip install unified-planning[fast-downward]
+git clone https://github.com/remaro-network/dlToPlanning.git \
+  "$PLANTA_TOOLS/dlToPlanning"
+(cd "$PLANTA_TOOLS/dlToPlanning" && ./gradlew shadowJar)
+export PATH="$PLANTA_TOOLS/dlToPlanning:$PATH"
+# Make OWL-to-PDDL available in future Bash sessions.
+echo "export PATH=\"$PLANTA_TOOLS/dlToPlanning:\$PATH\"" >> ~/.bashrc
 ```
 
-Build:
+#### LaTeX and image previews
+
+PDF/PNG previews of the publication plots and tables require TeX Live and Poppler:
 
 ```bash
-colcon build --symlink-install --packages-skip plansys2_downward_planner
+sudo apt-get install -y texlive-latex-extra texlive-pictures \
+  texlive-fonts-recommended texlive-fonts-extra poppler-utils
 ```
+
+These packages provide `pdflatex`, `kpsewhich`, `pdftoppm`, and the required LaTeX packages, including Libertine. They are not needed when exporting TeX sources with `--no-previews`.
 
 ## Run experiments
 
-To reproduce the grid-map experiment from the paper, use:
+Run all commands from the repository root. With manual installation, activate `.venv` first.
+
+### Docker execution environment
+
+If you want to iteractively run experiments inside the docker container, run the container and open a shell with the checkout mounted:
 
 ```bash
-python scripts/run_grid_map_scenario.py
+docker run --rm -it \
+  -v "$PWD":/navigation_planta -w /navigation_planta \
+  navigation_planta:latest bash
 ```
 
-To run the full experiment suite, including the Cámara-style PRISM and PDDL comparisons, use:
+Run the same Python commands below inside this shell. Source changes are immediately available, and outputs remain in the host checkout's `results/` directory. The repository itself is not installed.
+
+### Full experiment suite
+
+To run all navigation experiments from the paper, run:
 
 ```bash
 python scripts/run_all_experiments.py
 ```
 
-### Memory measurements
+Or run the full suite directly with one Docker command from the repository root. These commands use the code included in the image and save results to the host's `results/` directory.
 
-The `peak_memory` CSV column reports **estimated peak aggregate RSS in MiB**.
-For each PRISM or Fast Downward invocation, the shared helper samples the
-command and its observed descendants every 50 ms, sums their current RSS,
-and retains the largest sampled total. Previously discovered children remain
-tracked if their parent exits. The experiment runner, map/model generation,
-OWL-to-PDDL preprocessing, and result plotting are excluded.
-
-This is a coarse process-tree estimate: shared pages may be counted more than
-once, and brief peaks or short-lived children may be missed. It is not a
-kernel-maintained peak or the sum of each process's independent peak.
-The same method is used for both approaches. Monitoring adds some overhead to
-the reported wall time. Historical driver-only or individual-process peak
-measurements are not directly comparable to these results.
-
-No host configuration or extra Docker permissions are required; `psutil` is
-already installed in the image. When using a prebuilt image, rebuild it to
-include this implementation (or mount an updated checkout).
-The helper's optional `sample_interval` argument is in seconds and defaults to
-`0.05`; experiment entrypoints use that default.
-
-### Export Cámara comparison data
-
-Export a completed full-suite run to a separate directory (Python standard library
-only; no experiments are rerun):
+Using the published upstream image:
 
 ```bash
-python scripts/export_camara_paper_data.py results/all_experiments/<timestamp> \
-  --output-dir results/paper_export
+docker run --rm \
+  -v "$PWD/results":/navigation_planta/results -w /navigation_planta \
+  ghcr.io/kas-lab/navigation_planta:main python scripts/run_all_experiments.py
 ```
 
-By default this writes three separate datasets, **without pooling strategies**:
-
-- `camara_map_pddl_experiment_astar.csv` — adaptive A* with blind heuristic
-- `camara_map_pddl_experiment_eager.csv` — adaptive eager greedy with goal-count heuristic
-- `camara_map_prism_experiment.csv` — PRISM baseline
-
-For the existing two-box paper figures, select exactly one strategy:
+Using the locally built image:
 
 ```bash
-python scripts/export_camara_paper_data.py results/all_experiments/<timestamp> \
-  --strategy astar --output-dir results/paper_export
+docker run --rm \
+  -v "$PWD/results":/navigation_planta/results -w /navigation_planta \
+  navigation_planta:latest python scripts/run_all_experiments.py
 ```
 
-Use `--strategy eager` to select eager greedy instead. Single-strategy exports
-use `camara_map_pddl_experiment.csv`, matching the existing paper filename.
-The exporter finds strategies using each directory's `search.txt`, not its name.
-It requires complete adaptive results and PRISM results, finite nonnegative
-measurements, and identical initial–goal pair coverage and uniform repetition
-counts across all selected datasets. Invalid/no-plan observations cause an error;
-rows are never silently dropped. CSV files are copied byte-for-byte.
+These run all experiments with the default paper settings. Generate the publication plots and tables afterward using [Generate plots and tables](#generate-plots-and-tables).
 
-`camara_export_manifest.json` records source paths, search configurations, row
-counts, and SHA-256 hashes. Existing outputs are protected unless `--overwrite`
-is supplied. All inputs and output conflicts are checked before writing.
+**Note:** Running the full experiment suite takes approximately 44 hours... So you might consider running the experiment suite with a dettached `tmux` or `screen` session.  
 
-The script only writes to `--output-dir`. It does not change manuscript sources
-or run the paper's preprocessing. You can explicitly choose
-`--output-dir ../planta_paper_overleaf/data` when ready to replace paper data;
-the existing preprocessing and figures support the single-strategy filenames.
-Displaying both strategies requires separate changes to the paper's preprocessing
-and figures.
+The default suite runs the five scalability scenarios, discretized Cámara PDDL, and the Cámara PRISM baseline. It uses **10 repetitions**, with adaptive PDDL runs under **A* with the blind heuristic** and **eager greedy with the goal-count heuristic**. It also runs no-adaptation baselines for grid, discretized Cámara, mission-action, and combined scenarios.
 
-To benchmark search strategies on the combined scenario, use:
+Outputs are saved under `results/all_experiments/<timestamp>/`, with strategy-specific subdirectories, `camara_prism/`, and `comparison/`. Check the final status summary for failed experiments before using the results.
+
+To customize a run, for example:
+
+```bash
+python scripts/run_all_experiments.py --runs 1 \
+  --search 'astar(blind())' --skip camara_prism camara_discretized \
+  camara_discretized_no_sas
+```
+
+`--runs` changes repetitions, not the scenario sizes. `--skip` selects individual run names. Adaptive and no-adaptation runs have separate names such as `grid_map` and `grid_map_no_sas`. Reduced or skipped runs are **not sufficient for the publication exporter**.
+
+### Individual experiments
+
+| Experiment | Name in the paper | Script in `scripts/` |
+|---|---|---|
+| Grid-map scalability | S1 | `run_grid_map_scenario.py` |
+| FunctionDesign scalability | S2 | `run_fd_scale_scenario.py` |
+| Corridor-type scalability | S3 | `run_corridor_type_scale_scenario.py` |
+| Mission-action scalability | S4 | `run_mission_action_scale_scenario.py` |
+| Combined scalability | S5 | `run_combined_scenario.py` |
+| Discretized Cámara PDDL | PLANTA comparison (A* / eager greedy) | `run_camara_scenario_discretized.py` |
+| Cámara PRISM baseline | Cámara et al. (replicated) | `run_camara_prism_scenario.py` |
+
+For example, run the grid experiment or compare its adaptive and no-adaptation modes:
+
+```bash
+python scripts/run_grid_map_scenario.py
+python scripts/run_grid_map_scenario.py --mode both --runs 1
+```
+
+PDDL entrypoints support `--mode adaptive|no-adaptation|both`. Individual scripts save results in their own timestamped directories under `results/`. Use each script's help for its options and defaults:
+
+```bash
+python scripts/run_grid_map_scenario.py --help
+```
+
+To run a single discretized Cámara experiment from waypoint 12 to waypoint 11, use the command below. Each range includes its first number but excludes its second.
+
+```bash
+python scripts/run_camara_scenario_discretized.py \
+  --init 12 13 --goal 11 12 --runs 1
+```
+
+To benchmark search strategies on the combined scenario:
 
 ```bash
 python scripts/benchmark_search_strategies.py --nodes 10,20,50 --runs 3 --timeout 60
 ```
 
-The supported standalone experiment entrypoints are:
+**Interpreting measurements:** PDDL planning times cover the Fast Downward call, not map generation or OWL preprocessing. Memory is estimated peak aggregate RSS in MiB. The PRISM comparison optimizes remaining battery. PLANTA and PRISM retain different safety formulations, not identical movement feasibility or equivalent safety guarantees.
 
-- `scripts/run_grid_map_scenario.py`
-- `scripts/run_camara_scenario.py`
-- `scripts/run_camara_scenario_discretized.py`
-- `scripts/run_camara_prism_scenario.py`
-- `scripts/run_fd_scale_scenario.py`
-- `scripts/run_corridor_type_scale_scenario.py`
-- `scripts/run_mission_action_scale_scenario.py`
-- `scripts/run_combined_scenario.py`
-- `scripts/run_all_experiments.py`
-- `scripts/benchmark_search_strategies.py`
+## Generate plots and tables
 
-## Convert OWL ontology to PDDL
+Experiment scripts generate runtime plots automatically. For publication data, LaTeX plots, and tables, post-process a **completed full-suite result directory**:
 
-Normal version:
-
-```Bash
-export PATH=$HOME/navigation_planta_ws/src/owl_to_pddl:$PATH
-```
-
-Example matching the adaptive experiment flow:
 ```bash
-OWLToPDDL.sh --owl=owl/navigation.owl --tBox --inDomain=pddl/domain_sas.pddl --outDomain=pddl/domain_sas_created.pddl --aBox --inProblem=problem.pddl --outProblem=problem_created.pddl --replace-output --add-num-comparisons
+python scripts/generate_paper_artifacts.py "results/all_experiments/<timestamp>" \
+  --output-dir results/paper_artifacts
 ```
 
-ROS version:
+This does not rerun experiments or edit manuscript sources. The publication profile requires the full parameter grids and 10 repetitions, both default adaptive strategies, PRISM, and A* no-adaptation results for grid, mission-action, and combined scalability. Missing, invalid, or incomplete inputs cause an error rather than being silently discarded.
+
+The output bundle contains:
+
+| Output | Contents |
+|---|---|
+| `data/` | Raw and processed CSVs, plus boxplot statistics |
+| `plots/` | Includable PGFPlots sources and PDF/PNG previews |
+| `tables/` | CSV/LaTeX summary tables and PDF/PNG previews |
+| `summaries/` | Numerical summaries in CSV/JSON |
+| `standalone/` | LaTeX wrappers for preview rendering |
+| `manifest.json` | Input/output hashes, methods, and provenance |
+
+| Option | Purpose |
+|---|---|
+| `--no-previews` | Export sources and data without PDF/PNG rendering or LaTeX dependency checks |
+| `--dry-run` | Validate inputs and report the planned export without writing files |
+| `--overwrite` | Replace a complete, unmodified bundle previously created by this exporter |
+| `--latex-prefix PATH` | Set the bundle's relative path inside the destination LaTeX project |
+
+For example, generate sources directly into a LaTeX project's bundle directory:
+
 ```bash
-ros2 run owl_to_pddl owl_to_pddl.py --ros-args -p owl_file:=owl/navigation.owl -p in_domain_file:=pddl/domain_sas.pddl -p out_domain_file:=pddl/domain_sas_created.pddl -p in_problem_file:=pddl/problem.pddl -p out_problem_file:=pddl/problem_created.pddl
+python scripts/generate_paper_artifacts.py "results/all_experiments/<timestamp>" \
+  --output-dir /path/to/latex-project/navigation_experiment \
+  --latex-prefix navigation_experiment --no-previews
 ```
 
-The repository contains both `owl/navigation.owl` and `owl/navigation_with_imports.owl`. The current Python experiment scripts use `owl/navigation.owl` unless a scenario-specific OWL file is selected.
+The generated bundle README explains how to include the sources. Keep the export separate from the input results. Paper-artifact statistics use **sample standard deviation**, not standard error or confidence intervals; strategies are never pooled.
+
+To rebuild only the experiment comparison plots from existing CSVs:
+
+```bash
+python scripts/regenerate_comparison_plots.py "results/all_experiments/<timestamp>"
+```
+
+This writes to the suite's `comparison/` directory and does not generate the publication bundle.
+
+## Manual tool examples
+
+The experiment scripts automate these steps. The examples below are for inspecting individual stages, using `results/manual/` rather than overwriting tracked inputs. Run them from the repository root, either inside the Docker shell or with the manual environment configured.
+
+### Generate PDDL, convert OWL, and run Fast Downward
+
+Create a small navigation problem:
+
+```bash
+mkdir -p results/manual
+PYTHONPATH=scripts python - <<'PY'
+import random
+from helpers.map_generator import MapGenerator
+
+random.seed(42)
+generator = MapGenerator(num_nodes=9, nodes_skip=0)
+generator.generate_connected_grid_map()
+generator.generate_domain_problem_files(problem_filename="results/manual/problem.pddl")
+PY
+```
+
+Combine it with the ontology and adaptive base domain, then plan:
+
+```bash
+OWLToPDDL.sh --owl=owl/navigation.owl --tBox \
+  --inDomain=pddl/domain_sas.pddl --outDomain=results/manual/domain_created.pddl \
+  --aBox --inProblem=results/manual/problem.pddl \
+  --outProblem=results/manual/problem_created.pddl \
+  --replace-output --add-num-comparisons
+
+fast-downward.py --plan-file results/manual/plan \
+  results/manual/domain_created.pddl results/manual/problem_created.pddl \
+  --search 'astar(blind())'
+```
+
+### Generate and solve a PRISM model
+
+Generate a model for one route in the Cámara map. `TARGET` is the final **path index**, not the original waypoint ID:
+
+```bash
+mkdir -p results/manual
+TARGET=$(PYTHONPATH=scripts python - <<'PY'
+from helpers.prism_model_generator import PrismModelgenerator
+
+generator = PrismModelgenerator()
+generator.load_json("data/map_camara_2020_paper/map-p2cp3.json")
+route = generator.find_shortest_path(from_node=12, to_node=11)
+generator.generate_prism_model("results/manual/route.prism", route)
+print(len(route) - 1)
+PY
+)
+prism results/manual/route.prism -pf 'R{"energy"}max=? [ F stop ]' \
+  -exportstrat results/manual/strategy.txt:type=actions \
+  -const "INITIAL_BATTERY=32560,INITIAL_LOCATION=0,TARGET_LOCATION=$TARGET,INITIAL_CONFIGURATION=1"
+```
+
+This uses the same remaining-battery objective as the PRISM experiment runner.
+
+## Tests
+
+Run all tests in the Docker shell or a fully configured manual environment:
+
+```bash
+python -m pytest -q tests
+```
+
+Use `-v` instead of `-q` for individual test names. Planner integration and rendering checks require the external tools above; a partial manual installation may skip tests or fail dependency checks.
 
 ## Adding a new experiment
 
-The current pattern is:
-
-1. add or extend a scenario generator in `navigation_planta/`
-2. create a thin script in `scripts/` with constants and CLI parsing
-3. use `run_sweep_experiment()` from `navigation_planta.experiment_runner`
-4. use plotting and summary helpers from `navigation_planta.reporting`
-5. add focused tests in `tests/` for new scenario or reporting behavior
-
-## Run fast-downward solver
-
-```Bash
-export PATH=$HOME/navigation_planta_ws/src/downward:$PATH
-```
-
-```Bash
-fast-downward.py  pddl/domain_sas_created.pddl pddl/problem_created.pddl --search "astar(blind())"
-```
-
-```bash
-ros2 run downward_ros fast-downward.py --alias lama-first pddl/domain_sas_created.pddl pddl/problem_created.pddl
-```
-
-## Example of results
-
-The exact values depend on the sampled map and the execution environment. The examples below are illustrative.
-
-Parameters:
-
-```python
-self.num_nodes = 30
-self.nodes_skip = 0.1 # 10%
-self.unconnected_amount = 0.15 # 10%
-self.unsafe_amount = 0.25 # 10%
-self.dark_amount = 0.25 # 10%
-```
-
-time:
-```bash
-Solution found.
-Peak memory: 45500 KB
-Remove intermediate file output.sas
-search exit code: 0
-
-INFO     Planner time: 0.15s
-
-real	0m0,325s
-user	0m0,270s
-sys	0m0,054s
-```
-
-Parameters:
-```python
-self.num_nodes = 300
-self.nodes_skip = 0.1 # 10%
-self.unconnected_amount = 0.15 # 10%
-self.unsafe_amount = 0.25 # 10%
-self.dark_amount = 0.25 # 10%
-```
-
-time:
-```bash
-Solution found.
-Peak memory: 50856 KB
-Remove intermediate file output.sas
-search exit code: 0
-
-INFO     Planner time: 8.33s
-
-real	0m8,517s
-user	0m8,230s
-sys	0m0,287s
-```
-
-## Run PRISM
-
-```Bash
-time prism navigate_map_one_path.prism -pf 'R{"time"}min=? [ F stop ]' -exportstrat stdout -const INITIAL_BATTERY=5000,INITIAL_LOCATION=1,TARGET_LOCATION=5,INITIAL_CONFIGURATION=1
-```
-
-```Bash
-time prism navigate_map_one_path.prism -pf 'R{"energy"}max=? [ F stop ]' -exportstrat stdout -const INITIAL_BATTERY=32560,INITIAL_LOCATION=0,TARGET_LOCATION=16,INITIAL_CONFIGURATION=1
-```
-
-```Bash
-time prism test.prism -pf 'R{"energy"}min=? [ F stop ]' -exportstrat stdout -const INITIAL_BATTERY=32560,INITIAL_LOCATION=0,TARGET_LOCATION=7,INITIAL_CONFIGURATION=1
-```
-
-```Bash
-time prism l52_l24.prism -javamaxmem 16g -cuddmaxmem 16g -pf 'R{"energy"}max=? [ F stop ]' -exportstrat stdout -const INITIAL_BATTERY=32560,INITIAL_LOCATION=0,TARGET_LOCATION=16,INITIAL_CONFIGURATION=1
-```
-
-```Bash
-python scripts/run_camara_prism_scenario.py
-```
-
-Run with docker:
-```bash
-docker run --rm -it -v $PWD/results:/navigation_planta/results navigation_planta:latest python scripts/run_camara_prism_scenario.py
-```
-
-```bash
-docker run --rm -it -v $PWD/results:/navigation_planta/results navigation_planta:latest python scripts/run_camara_prism_scenario.py
-```
-
-```bash
-docker run --rm -it -v $PWD/results:/navigation_planta/results ghcr.io/kas-lab/navigation_planta:main python scripts/run_camara_prism_scenario.py
-```
-
-## Run grid map evaluation
-
-```bash
-docker run --rm -it -v $PWD/results:/navigation_planta/results ghcr.io/kas-lab/navigation_planta:main python scripts/run_grid_map_scenario.py
-```
-
-`scripts/run_grid_map_scenario.py` reports planning time around the `fast-downward.py` call only. The total wall-clock runtime per case is larger because map generation, problem-file generation, plotting, and `OWLToPDDL.sh` happen before the timer starts.
-
-Map example:
-
-![map example](image.png)
-
-## Fast-Downward heuristics
-
---search 'astar(blind())'
-
---search 'astar(ff())'
-
---search 'astar(lmcount(lm_merged([lm_rhw(),lm_hm(m=1)])))'
-
-for experiment C, ff was much faster
+1. Add or extend a generator in `scripts/helpers/scenario_variants.py` when new scenario behavior is needed.
+2. Add a `scripts/run_<experiment>_scenario.py` entrypoint with its parameters and CLI options; reuse `scripts/helpers/experiment_runner.py` and `scripts/helpers/reporting.py` for PDDL sweeps and reporting.
+3. Add focused tests under `tests/` for the generated problem and expected results.
+4. If it belongs in the full suite, register it in `scripts/run_all_experiments.py` and the comparison configuration in `scripts/helpers/reporting.py`. Extend the publication exporter explicitly if the new experiment should appear in its output.

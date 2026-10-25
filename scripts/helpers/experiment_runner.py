@@ -7,7 +7,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import Callable, Generic, Sequence, TypeVar
 
-from utils import ExperimentRecord, run_planner_with_metrics, save_experiment_records_csv
+from helpers.utils import ExperimentRecord, run_planner_with_metrics, save_experiment_records_csv
 
 X = TypeVar('X')
 

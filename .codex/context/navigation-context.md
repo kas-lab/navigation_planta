@@ -11,11 +11,11 @@ This file preserves stable Codex-facing context for `src/navigation_planta/`.
 
 ## Primary Components
 
-- `scripts/runner.py`: full experiment runner
+- `scripts/run_all_experiments.py`: full experiment runner
 - `scripts/run_grid_map_scenario.py`: grid-only runner
-- `scripts/no_adaptation.py`: shared stripped-problem generators for no-adaptation PDDL baselines
-- `scripts/map_generator.py`: map generation, plotting, UP problem construction, and problem PDDL writing
-- `scripts/prism_model_generator.py`: PRISM model generation
+- `scripts/helpers/no_adaptation.py`: shared stripped-problem generators for no-adaptation PDDL baselines
+- `scripts/helpers/map_generator.py`: map generation, plotting, UP problem construction, and problem PDDL writing
+- `scripts/helpers/prism_model_generator.py`: PRISM model generation
 - `pddl/`: base domain files
 - `owl/`: ontology inputs for OWL-to-PDDL
 
@@ -29,8 +29,8 @@ This file preserves stable Codex-facing context for `src/navigation_planta/`.
 
 - The standalone PDDL experiment scripts now support `--mode adaptive|no-adaptation|both`, with `adaptive` kept as the default.
 - No-adaptation runs skip `OWLToPDDL.sh` entirely and call Fast Downward directly on stripped baseline domains.
-- For baseline-only navigation tasks, `scripts/no_adaptation.py` provides `NoAdaptationMapGenerator`, which writes only `robot_at`, `corridor`, and the init/goal facts.
-- For mission-action baselines, `scripts/no_adaptation.py` provides `MissionNoAdaptationMapGenerator`, which preserves mission waypoint and `*_done` goal predicates while omitting adaptation-specific QA requirements.
+- For baseline-only navigation tasks, `scripts/helpers/no_adaptation.py` provides `NoAdaptationMapGenerator`, which writes only `robot_at`, `corridor`, and the init/goal facts.
+- For mission-action baselines, `scripts/helpers/no_adaptation.py` provides `MissionNoAdaptationMapGenerator`, which preserves mission waypoint and `*_done` goal predicates while omitting adaptation-specific QA requirements.
 - Experiment A and B baselines reuse `pddl/domain_no_sas.pddl`.
 - Experiment C baselines use `pddl/experiment_ma_scalability/domain_no_sas_ma_{2,3,4,5}.pddl`.
 - Experiment D baseline uses `pddl/experiment_combined_scalability/domain_no_sas_combined.pddl`.

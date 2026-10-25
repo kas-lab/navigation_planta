@@ -26,13 +26,13 @@ No ROS required. All experiments run as plain Python scripts.
 | `scripts/run_combined_scenario.py` | Exp D — Combined scalability |
 | `scripts/run_all_experiments.py` | Runs all experiments sequentially; supports `--search`, `--runs`, `--skip` |
 | `scripts/benchmark_search_strategies.py` | Benchmarks viable FD strategies on the combined scenario |
-| `navigation_planta/experiment_runner.py` | Shared sweep execution framework |
-| `navigation_planta/reporting.py` | Shared plotting, summaries, and comparison figures |
-| `navigation_planta/scenario_variants.py` | Package-level corridor, mission, and combined scenario variants |
-| `navigation_planta/utils.py` | Shared: `count_plan_actions()`, `NO_PLAN = -1` — import from here, don't redefine |
-| `navigation_planta/map_generator.py` | Facade over graph generation, map I/O, and PDDL serialization |
-| `navigation_planta/prism_model_generator.py` | PRISM model generation + policy simulation |
-| `navigation_planta/no_adaptation.py` | Baseline map generator (no-adaptation mode, uses `domain_no_sas.pddl`) |
+| `scripts/helpers/experiment_runner.py` | Shared sweep execution framework |
+| `scripts/helpers/reporting.py` | Shared plotting, summaries, and comparison figures |
+| `scripts/helpers/scenario_variants.py` | Shared corridor, mission, and combined scenario variants |
+| `scripts/helpers/utils.py` | Shared: `count_plan_actions()`, `NO_PLAN = -1` — import from here, don't redefine |
+| `scripts/helpers/map_generator.py` | Facade over graph generation, map I/O, and PDDL serialization |
+| `scripts/helpers/prism_model_generator.py` | PRISM model generation + policy simulation |
+| `scripts/helpers/no_adaptation.py` | Baseline map generator (no-adaptation mode, uses `domain_no_sas.pddl`) |
 | `pddl/domain_sas.pddl` | Hand-written base PDDL domain — the only file to edit for domain changes |
 | `pddl/domain.pddl` | Baseline domain without TOMASys (for reference only, not used in experiments) |
 | `owl/navigation.owl` | TOMASys ontology — baseline (N=6 FDs) |
@@ -55,7 +55,7 @@ Only `domain_sas.pddl` and `navigation.owl` are hand-authored. Everything else i
 
 Install dependencies:
 ```bash
-pip install networkx "numpy==1.26.4" matplotlib scipy unified-planning "unified-planning[fast-downward]"
+python -m pip install -r requirements.txt
 ```
 
 Run Camara scenario (from `src/navigation_planta/`):
@@ -93,7 +93,7 @@ docker run --rm -v "$PWD":/navigation_planta -w /navigation_planta navigation_pl
 
 Images built before pytest was added to `Dockerfile` lack it; if you get `No module named pytest`, rebuild, or run `bash -c "pip install -q pytest && python -m pytest -q tests"` instead.
 
-Mounting the checkout over `/navigation_planta` makes the image's editable install pick up local changes without a rebuild. Rebuild the image only when `Dockerfile` or `setup.py` dependencies change.
+The code runs directly from `scripts/`, without installing the repository. Mounting the checkout over `/navigation_planta` picks up local changes without a rebuild. Rebuild the image when `Dockerfile` or `requirements.txt` changes.
 
 ## OWL File Series (FD Scaling)
 
@@ -114,7 +114,7 @@ When adding or changing a component/FD that first appears at level N, update **a
 
 ## Navigation Comparison Safety Semantics
 
-- Decision: retain the current PLANTA and PRISM safety formulations; F3 in `docs/code_review_findings.md` is closed as won't fix, not pending implementation work.
+- Decision: retain the current PLANTA and PRISM safety formulations. Their differences are intentional, not pending implementation work.
 - PLANTA's PDDL generator assigns a safety requirement of `0.8` to unsafe corridors. PRISM filters movement commands for darkness compatibility but models collision risk using corridor- and configuration-specific hitrates, not an equivalent hard unsafe-corridor threshold.
 - This distinction follows the original Cámara et al. (SEAMS 2020) approach's separation of darkness-related non-navigability and probabilistic collision risk. The user confirms that the hitrate data were obtained from the original authors.
 - Do not add an unsafe/accuracy movement filter to PRISM merely to match PLANTA unless the user explicitly requests a change in comparison semantics.
@@ -135,7 +135,7 @@ The reported **planning time** covers only the `fast-downward.py` call. Map gene
 
 - **Heuristics + axioms**: `ff()`, `add()`, `hmax()`, `cg()` all timeout (>60s on n=10) because axiom-layer relaxation is extremely expensive on this domain. Only `blind()` and `goalcount()` are feasible. Do not attempt to switch to relaxation-based heuristics.
 - **CLI option order**: `--plan-file` is a *driver* option and must come **before** the domain/problem paths — `fast-downward.py --plan-file foo domain.pddl problem.pddl --search "..."`. Placing it after `--search` causes FD to exit non-zero immediately.
-- **Plan file naming**: single-plan searches (`astar`, `lazy_greedy`, `lazy_wastar`, i.e. every current experiment) write `{plan-file}` itself. Only `iterated(...)`/anytime searches write numbered `{plan-file}.1`, `.2`, …, where the highest number is the best plan. Resolve plan files with `_resolve_fd_plan_file()` in `navigation_planta/utils.py`, which handles both and compares suffixes numerically.
+- **Plan file naming**: single-plan searches (`astar`, `lazy_greedy`, `lazy_wastar`, i.e. every current experiment) write `{plan-file}` itself. Only `iterated(...)`/anytime searches write numbered `{plan-file}.1`, `.2`, …, where the highest number is the best plan. Resolve plan files with `_resolve_fd_plan_file()` in `scripts/helpers/utils.py`, which handles both and compares suffixes numerically.
 - **Subprocess cleanup**: `subprocess.run(timeout=N)` leaves the FD C++ child alive on timeout. Use `subprocess.Popen` + `start_new_session=True`, then `os.killpg(os.getpgid(proc.pid), signal.SIGKILL)` on `TimeoutExpired` to kill the whole process group.
 - **Benchmark script**: `scripts/benchmark_search_strategies.py` tests all viable strategies on the combined scenario with configurable node sizes, runs, and timeout. Run with `--nodes 10,20,50 --runs 3 --timeout 60` to find the fastest strategy before updating experiment scripts.
 

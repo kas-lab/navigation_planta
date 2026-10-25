@@ -10,7 +10,7 @@ from types import SimpleNamespace
 import networkx as nx
 import pytest
 
-import experiment_runner, utils
+from helpers import experiment_runner, utils
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -213,7 +213,7 @@ def test_real_discretized_baseline_returns_metrics(runners, tmp_path):
 
 @pytest.mark.skipif(not shutil.which("fast-downward.py"), reason="Fast Downward required")
 def test_real_unsolvable_problem_is_not_an_execution_error(tmp_path):
-    from no_adaptation import NoAdaptationMapGenerator
+    from helpers.no_adaptation import NoAdaptationMapGenerator
 
     generator = NoAdaptationMapGenerator()
     for node in range(4):

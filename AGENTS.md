@@ -24,11 +24,11 @@ This file is the repository policy. Stable repo facts that are useful across tas
 - `scripts/run_mission_action_scale_scenario.py`: mission-action scalability entrypoint
 - `scripts/run_combined_scenario.py`: combined scalability entrypoint
 - `scripts/run_all_experiments.py`: full suite entrypoint
-- `navigation_planta/experiment_runner.py`: shared experiment orchestration
-- `navigation_planta/reporting.py`: shared plotting, comparison, and summary helpers
-- `navigation_planta/scenario_variants.py`: package-level scenario variants
-- `navigation_planta/map_generator.py`: facade over graph generation, map I/O, and PDDL generation
-- `navigation_planta/prism_model_generator.py`: PRISM model generation for the Cámara-style comparison
+- `scripts/helpers/experiment_runner.py`: shared experiment orchestration
+- `scripts/helpers/reporting.py`: shared plotting, comparison, and summary helpers
+- `scripts/helpers/scenario_variants.py`: shared scenario variants
+- `scripts/helpers/map_generator.py`: facade over graph generation, map I/O, and PDDL generation
+- `scripts/helpers/prism_model_generator.py`: PRISM model generation for the Cámara-style comparison
 - `pddl/`: base domain files used by OWL-to-PDDL
 - `owl/`: ontology inputs for OWL-to-PDDL
 - `results/`: generated experiment outputs
@@ -89,11 +89,11 @@ docker run --rm -v "$PWD":/navigation_planta -w /navigation_planta navigation_pl
 
 Images built before pytest was added to `Dockerfile` lack it; if you get `No module named pytest`, rebuild, or run `bash -c "pip install -q pytest && python -m pytest -q tests"` instead.
 
-Mounting the checkout over `/navigation_planta` makes the image's editable install pick up local changes without a rebuild. Rebuild the image only when `Dockerfile` or `setup.py` dependencies change.
+The code runs directly from `scripts/`, without installing the repository. Mounting the checkout over `/navigation_planta` picks up local changes without a rebuild. Rebuild the image when `Dockerfile` or `requirements.txt` changes.
 
 ## Navigation Comparison Safety Semantics
 
-- Decision: retain the current PLANTA and PRISM safety formulations; F3 in `docs/code_review_findings.md` is closed as won't fix, not pending implementation work.
+- Decision: retain the current PLANTA and PRISM safety formulations. Their differences are intentional, not pending implementation work.
 - PLANTA's PDDL generator assigns a safety requirement of `0.8` to unsafe corridors. PRISM filters movement commands for darkness compatibility but models collision risk using corridor- and configuration-specific hitrates, not an equivalent hard unsafe-corridor threshold.
 - This distinction follows the original Cámara et al. (SEAMS 2020) approach's separation of darkness-related non-navigability and probabilistic collision risk. The user confirms that the hitrate data were obtained from the original authors.
 - Do not add an unsafe/accuracy movement filter to PRISM merely to match PLANTA unless the user explicitly requests a change in comparison semantics.
@@ -109,7 +109,7 @@ Mounting the checkout over `/navigation_planta` makes the image's editable insta
 
 ## Grid Experiment Performance Notes
 
-- `navigation_planta/map_generator.py` now generates connected grid maps by construction instead of retrying until a connected sample appears.
+- `scripts/helpers/map_generator.py` now generates connected grid maps by construction instead of retrying until a connected sample appears.
 - `generate_grid_graph()` keeps a connected subset of cells, adds only local 4-neighbor edges, and removes only edges outside a spanning tree.
 - `generate_domain_problem_files()` uses `write_problem_fast()` for the problem file because `unified_planning`'s generic `PDDLWriter.write_problem()` is too slow for this scenario.
 

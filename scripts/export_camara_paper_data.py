@@ -20,7 +20,7 @@ import json
 from pathlib import Path
 import sys
 
-from camara_export import (
+from helpers.camara_export import (
     COMMON_COLUMNS, MANIFEST_NAME, STRATEGIES, validate_csv,
 )
 

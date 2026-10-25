@@ -9,7 +9,7 @@ import json
 from pathlib import Path
 import sys
 
-from paper_export import generate_paper_artifacts
+from helpers.paper_export import generate_paper_artifacts
 
 
 def main():

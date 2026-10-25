@@ -7,7 +7,7 @@ import subprocess
 import sys
 import tempfile
 
-from paper_export import (CAMARA_METRICS, METHOD_LABELS, METHOD_PREFIXES, METHOD_STEMS,
+from helpers.paper_export import (CAMARA_METRICS, METHOD_LABELS, METHOD_PREFIXES, METHOD_STEMS,
                            SWEEPS, SWEEP_PLOT_METRICS, write_csv)
 
 

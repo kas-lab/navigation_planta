@@ -42,12 +42,11 @@ RUN ./gradlew shadowJar
 ENV PATH=/dlToPlanning:$PATH
 
 WORKDIR /navigation_planta
-COPY navigation_planta/ navigation_planta/
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
 COPY scripts/ scripts/
 COPY owl/ owl/
 COPY pddl/ pddl/
 COPY prism/ prism/
 COPY data/map_camara_2020_paper/ data/map_camara_2020_paper/
-COPY pyproject.toml .
-RUN pip install --no-cache-dir -e ".[test]"
 COPY tests/ tests/

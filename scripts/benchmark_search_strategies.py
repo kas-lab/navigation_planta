@@ -44,8 +44,8 @@ import matplotlib.pyplot as plt
 SCRIPT_DIR = Path(__file__).parent
 REPO_ROOT = SCRIPT_DIR.parent
 
-from utils import count_plan_actions, NO_PLAN
-from scenario_variants import CombinedScenarioMapGenerator
+from helpers.utils import count_plan_actions, NO_PLAN
+from helpers.scenario_variants import CombinedScenarioMapGenerator
 from run_combined_scenario import (
     OWL_FILE,
     ADAPTIVE_DOMAIN_FILE,

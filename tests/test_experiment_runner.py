@@ -1,7 +1,7 @@
 from pathlib import Path
 
-import experiment_runner
-from utils import ExperimentRecord
+from helpers import experiment_runner
+from helpers.utils import ExperimentRecord
 
 
 def test_resolve_modes_handles_both() -> None:

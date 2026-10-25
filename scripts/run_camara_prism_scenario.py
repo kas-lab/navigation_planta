@@ -1,11 +1,11 @@
-from prism_model_generator import PrismModelgenerator
-from reporting import (
+from helpers.prism_model_generator import PrismModelgenerator
+from helpers.reporting import (
     plot_mode_summary,
     summarize_mode_records,
     write_metric_summary_csv,
     write_summary_report,
 )
-from utils import (
+from helpers.utils import (
     ExperimentRecord,
     run_subprocess_with_memory,
     save_experiment_records_csv,

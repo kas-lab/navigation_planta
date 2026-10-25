@@ -5,7 +5,7 @@ import pytest
 
 
 try:
-    from scenario_variants import (
+    from helpers.scenario_variants import (
         CombinedScenarioMapGenerator,
         CorridorTypeMapGenerator,
         MissionActionMapGenerator,
